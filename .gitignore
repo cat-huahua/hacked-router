@@ -1,0 +1,38 @@
+# ── 私钥与证书私钥：绝对不要进仓库 ──
+*.key
+key.pem
+*_key.pem
+
+# ── 抓包 / 日志：会泄漏内网结构和 MAC ──
+*.log
+*.out
+*.pcap
+*.pcapng
+spy.log
+acs.log
+ntp.log
+
+# ── Python ──
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# ── 本机实跑产生的文件 ──
+/tmp_*
+*.pkl
+*_session.txt
+now.json
+
+# ── 大文件：固件本体不进 git（放在 ~/Router_backup/）──
+*.trx
+*.w
+*.bin
+*.img
+*.sqsh
+*.ubi
+
+# ── 如果以后把真实凭证抽到单独文件，就放这里 ──
+secrets.py
+secrets.json
+.env

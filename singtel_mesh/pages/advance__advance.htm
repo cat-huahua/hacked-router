@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<!--[if lt IE 7]><html class="no-js lt-ie9 lt-ie8 lt-ie7"lang="en"><![endif]-->
+<!--[if IE 7]><html class="no-js lt-ie9 lt-ie8"lang="en"><![endif]-->
+<!--[if IE 8]><html class="no-js lt-ie9"lang="en"><![endif]-->
+<!--[if gt IE 8]><!--><html lang="en"class="gt-ie8"><!--<![endif]-->
+<!--[if lt IE 10]><meta http-equiv="X-UA-Compatible"content="IE=edge"/><![endif]-->
+<head>
+<title></title>
+<meta http-equiv="Content-Type"content="text/html; charset=">
+<link rel="stylesheet"type="text/css"media="screen"href="css/c_voda_main.css">
+<link rel="stylesheet"type="text/css"media="all"href="css/arctransform.css">
+<!--[if lt IE 9]>
+<link rel="stylesheet"type="text/css"media="screen"href="css/ie.css">
+<![endif]-->
+<script language="javascript">var LangJ=["advance"];CGIs=["advance"];</script>
+<script language="javascript"src="js/global.js"></script>
+<script language="javascript"src="js/routine.js"></script>
+<script language="JavaScript"src="js/init_data.js"></script>
+<script type="text/javascript"src="js/jquery-1.8.3.min.js"></script>
+<script type="text/javascript"src="js/jquery.arctransform.js"></script>
+<script language="JavaScript">
+function checkTimeout(value,limit)
+{
+var alertText=getLangM(10022)+limit;
+if(!isNumeric(value)||parseInt(value,10)<0||parseInt(value,10)>parseInt(limit,10)){
+alert(alertText);
+return true;}
+return false;}
+function download()
+{
+do_jload([["cgi/cgi_advance.js"]],function(){
+var certFile_URL='/tmp/'+cert_file;
+certFile_URL=URLToken(certFile_URL);
+location.replace(certFile_URL);});
+return false;}
+function evaltF()
+{
+var f=document.tF;
+var timeout=parseInt(f.timeout.value);
+if(isNaN(timeout)||isNValidInt(timeout)||isNegInt(timeout)||(timeout<10||timeout>30))
+{
+AlertM(14478);
+return false;}
+var httoken_val=ArcBase._t();
+var data_tmp=timeout+"?$[+"+f.https_en.value;
+$.ajax({
+type:"POST",
+url:"/cgi-bin/toplogy.cgi",
+dataType:"text",
+data:{httoken:httoken_val,
+cmd:"synclogouttime",
+data:data_tmp}}).done(function(data){
+if(data=="ok"){
+top.G_option.uploadtype=0;
+ShowProgress(10,function(){
+if(document.tF.https_en.value=="1")
+window.top.location.href="https://"+document.location.host;
+else
+window.top.location.href="http://"+document.location.host;});}else{
+alert("synclogouttime msg send error.");
+return false;}});}
+function init()
+{
+var f=document.tF;
+cfg2Form(f);
+ShowMenu();}
+</script>
+</head>
+<body bgcolor="#ffffff"text="#000000"leftmargin="0"topmargin="0"marginwidth="0"marginheight="0"onLoad="pre_init()">
+<script>ShowPageMenu();</script>
+<p style="margin-left:10px"><font id="190003"class="taFont4"></font></p>
+<form name="tF"action="/cgi-bin/advance.exe"method="post"target="OUTfrm">
+<table border="0"cellspacing="0"cellpadding="0"width="100%">
+<tr>
+<td valign="top">
+<table class="vox20_table_nbl_ta"border="0"cellspacing="0"cellpadding="5">
+<tr id="enable_fon">
+<td class="normalTextRight"><font class="taFont2"id="14477"></font></td>
+<td class="tdTextTa_20"colspan="2">
+<input name="timeout"size=3 maxlength=2 value=""class=txt1>&nbsp;<font id="14479"/>
+</td>
+</tr>
+<tr>
+<td class="normalTextRight">&nbsp;</td>
+<td class="tdTextTa_20"colspan="2"></td>
+</tr>
+<tr style="display:none">
+<td class="normalTextRight"><font class="taFont2"id="14481"></font></td>
+<td class="tdTextTa_20"colspan="2">
+<select name="https_en">
+<option id="2904"value="1"></option>
+<option id="2905"value="0"></option>
+</select>&nbsp;
+</td>
+</tr>
+<tr style="display:none">
+<td colspan="2">
+<font class="taFont2"id="14483"></font><br>
+<font class="taFont2"id="14484"></font><br>
+<font class="taFont2"id="14486"></font><br>
+<font class="taFont2"id="14487"></font>
+</td>
+</tr>
+</table>
+</td>
+</tr>
+</table>
+<table width="100%"border="0"cellspacing="0"cellpadding="10">
+<tr>
+<td width="250"></td>
+<td>
+<input type="button"class="tapurple"onClick="evaltF()"name="save"id="100001">&nbsp;
+</td>
+</tr>
+</table>
+</form>
+<script>ShowPageTail();</script>
+<img title=spacer src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7NDk3OTMwNDg5" border=0>
+</body>
+</html>

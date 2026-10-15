@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<!--[if lt IE 7]><html class="no-js lt-ie9 lt-ie8 lt-ie7"lang="en"><![endif]-->
+<!--[if IE 7]><html class="no-js lt-ie9 lt-ie8"lang="en"><![endif]-->
+<!--[if IE 8]><html class="no-js lt-ie9"lang="en"><![endif]-->
+<!--[if gt IE 8]><!--><html lang="en"class="gt-ie8"><!--<![endif]-->
+<!--[if lt IE 10]><meta http-equiv="X-UA-Compatible"content="IE=edge"/><![endif]-->
+<head>
+<title></title>
+<meta http-equiv="Content-Type"content="text/html; charset=">
+<link rel="stylesheet"type="text/css"media="screen"href="css/c_voda_main.css">
+<link rel="stylesheet"type="text/css"media="all"href="css/arctransform.css">
+<!--[if lt IE 9]>
+<link rel="stylesheet"type="text/css"media="screen"href="css/ie.css">
+<![endif]-->
+<script language="javascript">var LangJ=["tl_sys_r","tl_sys_fw"];var CGIs=["lan"];</script>
+<script language="javascript"src="js/global.js"></script>
+<script language="javascript"src="js/routine.js"></script>
+<script language="JavaScript"src="js/init_data.js"></script>
+<script type="text/javascript"src="js/jquery-1.8.3.min.js"></script>
+<script type="text/javascript"src="js/jquery.arctransform.js"></script>
+<script language="JavaScript">
+function doConfirm(){
+var f=document.RebootForm;
+var httoken_val=ArcBase._t();
+if(ConfirmM(535)){
+AlertM(536);
+$.ajax({
+type:"POST",
+url:"/cgi-bin/toplogy.cgi",
+dataType:"text",
+data:{httoken:httoken_val,
+cmd:"reboot",
+data:"1"}}).done(function(data){
+if(data=="ok"){
+top.location.href="reboot.htm";
+return true;}else{
+alert("Reboot msg send error.");
+return false;}});
+return true;}
+return false;}
+function evaltF(){
+HiddenObject("submit_enabled_id");
+DisplayObject("submit_disabled_id");
+return doConfirm();}
+function evaltFRestore(){
+return doConfirmRes();}
+function doConfirmRes(){
+var httoken_val=ArcBase._t();
+var f=document.tF;
+if(ConfirmM(426)){
+AlertM(427);
+$.ajax({
+type:"POST",
+url:"/cgi-bin/toplogy.cgi",
+dataType:"text",
+data:{httoken:httoken_val,
+cmd:"factoryreboot",
+data:"0"}}).done(function(data){
+if(data=="ok"){
+top.location.href="reboot.htm";
+return true;}else{
+alert("Reset msg send error.");
+return false;}});}else{
+AlertM((428));
+return false;}}
+function init(){
+var f=document.RebootForm;
+ShowMenu();
+HiddenObject("submit_disabled_id");}
+</script>
+</head>
+<body bgcolor="#ffffff"text="#000000"leftmargin="0"topmargin="0"marginwidth="0"marginheight="0"onLoad="pre_init()">
+<script>ShowPageMenu();</script>
+<p style="margin-left:10px"><font id="550"class="taFont4"></font></p>
+<table border="0"cellspacing="0"cellpadding="0"width="90%"height="100%">
+<tr>
+<td valign="top"width="95%"height="100%"class="copy_1"><br>
+<form method="POST"action="/cgi-bin/restart.exe"name="RebootForm"target="OUTfrm">
+<input type="hidden"name="page"value="tools_gateway">
+<input type="hidden"name="logout">
+<table border=0 class="copy_1"cellspacing="0"cellpadding="10">
+<tr>
+<td>
+<font id="533"class="taFont2"></font>
+<br><br><br>
+</td>
+</tr>
+</table>
+<table width="98%"border="0"cellspacing="0"cellpadding="0">
+<tr>
+<td align="center"id="submit_disabled_id">
+<input type="button"class="tapurple"onClick="evaltF()"name="apply"id="550"disabled="true">&nbsp;
+</td>
+<td align="center"id="submit_enabled_id">
+<input type="button"class="tapurple"onClick="evaltF()"name="apply"id="550">&nbsp;
+</td>
+</tr>
+</table>
+</form>
+</td>
+</tr>
+<tr id="factory_rest_table">
+<td id="factory_rest_table"valign="top"width="95%"height="50%"class="copy_1"><br>
+<form method="POST"action="/cgi-bin/restore.exe"name="tF"target="OUTfrm">
+<input type="hidden"name="page"value="tools_restore">
+<input type="hidden"name="logout">
+<table border=0 class="copy_1"cellspacing="0"cellpadding="10">
+<tr>
+<td>
+<font id="552"class="btFont1"></font>
+<br>
+</td>
+</tr>
+<tr>
+<td>
+<font id="425"class="btFont2"></font>
+<br><br><br>
+</td>
+</tr>
+</table>
+<table width="98%"border="0"cellspacing="0"cellpadding="0">
+<tr>
+<td align="center">
+<input type="button"onClick="evaltFRestore()"name="REstore"class="btpurple"id="429">
+</td>
+</tr>
+</table>
+</form>
+</td>
+</tr>
+</table>
+<script>ShowPageTail();</script>
+<img title=spacer src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7ODQ3NjEwNzUx" border=0>
+</body>
+</html>

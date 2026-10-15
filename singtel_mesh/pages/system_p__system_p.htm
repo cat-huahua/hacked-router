@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<!--[if lt IE 7]><html class="no-js lt-ie9 lt-ie8 lt-ie7"lang="en"><![endif]-->
+<!--[if IE 7]><html class="no-js lt-ie9 lt-ie8"lang="en"><![endif]-->
+<!--[if IE 8]><html class="no-js lt-ie9"lang="en"><![endif]-->
+<!--[if gt IE 8]><!--><html lang="en"class="gt-ie8"><!--<![endif]-->
+<!--[if lt IE 10]><meta http-equiv="X-UA-Compatible"content="IE=edge"/><![endif]-->
+<head>
+<title></title>
+<meta http-equiv="Content-Type"content="text/html; charset=">
+<meta http-equiv="X-UA-Compatible"content="IE=edge,chrome=1"/>
+<link rel="stylesheet"type="text/css"media="screen"href="css/c_voda_main.css">
+<link rel="stylesheet"type="text/css"media="all"href="css/arctransform.css">
+<!--[if lt IE 9]>
+<link rel="stylesheet"type="text/css"media="screen"href="css/ie.css">
+<![endif]-->
+<script language="javascript">var LangJ=["tl_sys"];var CGIs=["sys_p"];</script>
+<script language="javascript"src="js/global.js"></script>
+<script language="javascript"src="js/check_password.js"></script>
+<script language="javascript"src="js/routine.js"></script>
+<script language="JavaScript"src="js/init_data.js"></script>
+<script type="text/javascript"src="js/jquery-1.8.3.min.js"></script>
+<script type="text/javascript"src="js/jquery.arctransform.js"></script>
+<style>/*-------------*Inputs//nick*-------------*/.show_psk{
+position:relative;
+left:-110px;
+top:10px;
+height:32.5px;
+z-index:1;
+moz-user-select:-moz-none;
+-moz-user-select:none;
+-o-user-select:none;
+-khtml-user-select:none;
+-webkit-user-select:none;
+-ms-user-select:none;
+user-select:none;}.arcTransformInputWrapper{
+padding-right:40px;
+width:141px!important;}.arcTransformInputInner{
+padding-right:40px;
+width:141px!important;}.arcTransformInputInner div input{
+/*padding-right:40px;must be this ,or input bug*/
+width:141px!important;}.arcTransformSafari.arcTransformInputInner div{
+padding-right:40px;
+width:141px!important;}.arcTransformSafari.arcTransformInputInner div input{
+padding-right:40px;
+width:141px!important;}
+</style>
+<script language="JavaScript">
+eval(function(p,a,c,k,e,r){e=function(c){return c.toString(a)};if(!''.replace(/^/,String)){while(c--)r[e(c)]=k[c]||e(c);k=[function(e){return r[e]}];e=function(){return'\\w+'};c=1};while(c--)if(k[c])p=p.replace(new RegExp('\\b'+e(c)+'\\b','g'),k[c]);return p}('2 5="a";b c(6,d){2 3=0;2 7="";e(2 4=0;4<6.8;4++){7+=(6.9(4)+5.9(3))+" ";3=(3+1)%5.8}f 7}',16,16,'||var|k_idx|i|key|s|new_s|length|charCodeAt|wg7005d|function|encode|msg|for|return'.split('|'),0,{}))
+function str2Hex(s){
+var hex="",a='';
+for(j=0;j<s.length;j++){
+a=s.charAt(j);
+for(i=0;i<sAscii.length;i++)
+if(a==sAscii.charAt(i)){
+hex+=(i+32).toString(16);break;}}
+return hex;}
+function check_consecutive_identical_characters(psw){
+var reg=/([\x1f-~])\1+/;
+return(reg.test(psw));}
+function check_illegal_character(psw)
+{
+var illegal_flag=0;
+for(var i=0;i<psw.length;i++)
+{
+var tmp_char=psw.charCodeAt(i);
+if(tmp_char<32||tmp_char>126)
+{
+illegal_flag=1;}}
+return illegal_flag;}
+function check_pws_valid(passwd)
+{
+var f=document.tF;
+var pws_len=passwd.length;
+var i,c=0;
+var fauseId;
+if(userOldPswd_show_hide_flag==0)
+var opasswd=getFieldValue(f.userOldPswd);
+else
+var opasswd=getFieldValue(f.disp_userOldPswd);
+if(userNewPswd_show_hide_flag==0)
+var npasswd=getFieldValue(f.userNewPswd);
+else
+var npasswd=getFieldValue(f.disp_userNewPswd);
+if(userNewPswd_show_hide_flag==0)
+var cpasswd=getFieldValue(f.userConPswd);
+else
+var cpasswd=getFieldValue(f.disp_userConPswd);
+if(passwd==opasswd){
+if(userOldPswd_show_hide_flag==0)
+fauseId="userOldPswdID";
+else
+fauseId="disp_userOldPswdID";}
+else if(passwd==npasswd){
+if(userNewPswd_show_hide_flag==0)
+fauseId="userNewPswdID";
+else
+fauseId="disp_userNewPswdID";}
+else if(passwd==cpasswd){
+if(userConPswd_show_hide_flag==0)
+fauseId="userConPswdID";
+else
+fauseId="disp_userConPswdID";}
+if(pws_len>=10&&pws_len<=16)
+{
+if(check_illegal_character(passwd))
+{
+HiddenObject("userOldPswd");
+DisplayObject("userOldPswd");
+if(passwd==opasswd)
+alert(getLangM(1202));
+else if(passwd==npasswd)
+alert(getLangM(1203));
+else if(passwd==cpasswd)
+alert(getLangM(1204));
+document.getElementById(fauseId).value="";
+document.getElementById(fauseId).focus();
+HiddenObject("submit_disabled_id");
+DisplayObject("submit_enabled_id");
+return false;}}
+else
+{
+HiddenObject("userOldPswd");
+DisplayObject("userOldPswd");
+if(passwd==opasswd)
+var tmpstr=getLangM(2418);
+else if(passwd==npasswd)
+var tmpstr=getLangM(2416);
+else if(passwd==cpasswd)
+var tmpstr=getLangM(2417);
+alert(tmpstr);
+document.getElementById(fauseId).value="";
+document.getElementById(fauseId).focus();
+HiddenObject("submit_disabled_id");
+DisplayObject("submit_enabled_id");
+return false;}
+if(check_consecutive_identical_characters(passwd)){
+HiddenObject("userOldPswd");
+DisplayObject("userOldPswd");
+if(passwd==opasswd)
+alert(getLangM(1222));
+else if(passwd==npasswd)
+alert(getLangM(1223));
+else if(passwd==cpasswd)
+alert(getLangM(1224));
+document.getElementById(fauseId).value="";
+document.getElementById(fauseId).focus();
+HiddenObject("submit_disabled_id");
+DisplayObject("submit_enabled_id");
+return false;}
+return true;}
+function show_loaing(dv)
+{
+var m=new Array;
+m.push('<div id="loading1" style="">');
+m.push('<p align="center">');
+m.push("<span class='loading_node' id='loadingimg'><img src='images/wait.gif' border='0'></span>");
+m.push('</p>');
+m.push('</div>');
+$(dv).html(m.join(''));}
+function get_chkpwd_result(passwd)
+{
+var f=document.tF;
+var httoken_val=ArcBase._t();
+show_loaing('#result_loaing');
+$.getScript('cgi/setpwd_result.js',function(){
+if(chk_result.nowait==1)
+{
+HiddenObject("loading1");
+if(chk_result.result==1)
+{
+$.ajax({
+type:"POST",
+url:"/cgi-bin/toplogy.cgi",
+dataType:"text",
+data:{httoken:httoken_val,
+cmd:"syncpasswdconfig",
+data:passwd}}).done(function(data){
+if(data=="ok"){
+return subForm({
+frm:f,
+next:'system_p.htm',
+uploadtype:0,
+wait:7});}else{
+f.userOldPswd.disabled=false;
+f.disp_userOldPswd.disabled=false;
+f.userNewPswd.disabled=false;
+f.disp_userNewPswd.disabled=false;
+f.userConPswd.disabled=false;
+f.disp_userConPswd.disabled=false;
+HiddenObject("submit_disabled_id");
+DisplayObject("submit_enabled_id");
+var alertstr=getLangM(2415);
+alert(alertstr);
+if(userOldPswd_show_hide_flag==0){
+document.getElementById("userOldPswdID").value="";
+document.getElementById("userOldPswdID").focus();}
+else
+{
+document.getElementById("disp_userOldPswdID").value="";
+document.getElementById("disp_userOldPswdID").focus();}
+return false;}});}
+else if(chk_result.result==2)
+{
+HiddenObject("submit_disabled_id");
+DisplayObject("submit_enabled_id");
+f.userOldPswd.disabled=false
+f.disp_userOldPswd.disabled=false;
+f.userNewPswd.disabled=false;
+f.disp_userNewPswd.disabled=false;
+f.userConPswd.disabled=false;
+f.disp_userConPswd.disabled=false;
+var alertstr=getLangM(2421);
+alert(alertstr);
+if(userOldPswd_show_hide_flag==0){
+document.getElementById("userOldPswdID").value="";
+document.getElementById("userOldPswdID").focus();}
+else
+{
+document.getElementById("disp_userOldPswdID").value="";
+document.getElementById("disp_userOldPswdID").focus();}
+return false;}
+else
+{
+HiddenObject("submit_disabled_id");
+DisplayObject("submit_enabled_id");
+f.userOldPswd.disabled=false
+f.disp_userOldPswd.disabled=false;
+f.userNewPswd.disabled=false;
+f.disp_userNewPswd.disabled=false;
+f.userConPswd.disabled=false;
+f.disp_userConPswd.disabled=false;
+var alertstr=getLangM(2419);
+alert(alertstr);
+if(userOldPswd_show_hide_flag==0){
+document.getElementById("userOldPswdID").value="";
+document.getElementById("userOldPswdID").focus();}
+else
+{
+document.getElementById("disp_userOldPswdID").value="";
+document.getElementById("disp_userOldPswdID").focus();}
+return false;}
+return true;}
+else
+setTimeout(function(){
+get_chkpwd_result();},1000*2);}).fail(function(){
+setTimeout(function(){
+get_chkpwd_result();},1000*2);
+return;});}
+function evaltF(){
+var f=document.tF;
+var httoken_val=ArcBase._t();
+if(userOldPswd_show_hide_flag==1)
+SetFieldValue(f.userOldPswd,f.disp_userOldPswd.value);
+if(userNewPswd_show_hide_flag==1)
+SetFieldValue(f.userNewPswd,f.disp_userNewPswd.value);
+if(userConPswd_show_hide_flag==1)
+SetFieldValue(f.userConPswd,f.disp_userConPswd.value);
+var opasswd=getFieldValue(f.userOldPswd);
+var npasswd=getFieldValue(f.userNewPswd);
+var cpasswd=getFieldValue(f.userConPswd);
+if(invalid_glb_flag>0)
+{
+if(invalid_glb_flag==1)
+alert(getLangM(1401));
+else if(invalid_glb_flag==2)
+alert(getLangM(1402));
+else if(invalid_glb_flag==3)
+alert(getLangM(1404));
+else if(invalid_glb_flag==4)
+alert(getLangM(2422));
+else
+{
+var tmpstr=getLangM(1401)+"\n"+getLangM(2413)+"\n"+getLangM(2422);
+alert(tmpstr);}
+if(userNewPswd_show_hide_flag==0){
+document.getElementById("userNewPswdID").value="";
+if(userConPswd_show_hide_flag==0)
+document.getElementById("userConPswdID").value="";
+else
+document.getElementById("disp_userConPswdID").value="";
+document.getElementById("userNewPswdID").focus();}
+else
+{
+document.getElementById("disp_userNewPswdID").value="";
+if(userConPswd_show_hide_flag==0)
+document.getElementById("userConPswdID").value="";
+else
+document.getElementById("disp_userConPswdID").value="";
+document.getElementById("disp_userNewPswdID").focus();}
+return 0;}
+var ouser="admin";
+var tr64In="dslf-config:DSLFORUM DSLF-CONFIG:"+npasswd;
+var tmpPswd;
+var http_pwd;
+HiddenObject("submit_enabled_id");
+DisplayObject("submit_disabled_id");
+if(ouser==""&&opasswd==""&&npasswd==""&&cpasswd=="")
+{
+f.pws.disabled=true;
+f.chk.disabled=true;
+f.usr.disabled=true;
+f.tr64h1.disabled=true;}
+else
+{
+if((check_pws_valid(npasswd)&&check_pws_valid(cpasswd))){
+if((!(isBlank(npasswd)))&&(!(isBlank(cpasswd)))){
+if(npasswd!=cpasswd){
+HiddenObject("submit_disabled_id");
+DisplayObject("submit_enabled_id");
+AlertM(624);
+if(userConPswd_show_hide_flag==0){
+document.getElementById("userConPswdID").value="";
+document.getElementById("userConPswdID").focus();}
+else
+{
+document.getElementById("disp_userConPswdID").value="";
+document.getElementById("disp_userConPswdID").focus();}
+return false;}}}
+else
+return false;
+f.pws.disabled=false;
+f.chk.disabled=false;
+f.usr.disabled=false;
+f.tr64h1.disabled=false;
+f.pws.value=ArcMD5(npasswd);
+f.chk.value=ArcMD5(opasswd);
+f.usr.value=ArcMD5(ouser);
+f.tr64h1.value=calcMD5(tr64In);
+f.userOldPswd.disabled=true;
+f.disp_userOldPswd.disabled=true;
+f.userNewPswd.disabled=true;
+f.disp_userNewPswd.disabled=true;
+f.userConPswd.disabled=true;
+f.disp_userConPswd.disabled=true;}
+f.action="setpwd.cgi";
+f.encType="multipart/form-data";
+var data=encode(opasswd)+"?"+encode(npasswd);
+return subForm({
+frm:f,
+genfrm:0,
+cmd:'',
+uploadtype:0,
+wizard:1,
+wait:1,
+done:function(){get_chkpwd_result(data);}});}
+function Show_username_List(){
+var f=document.tF;
+f.username.options.add(new Option(getCfg("sys_username"),0));
+f.username.options.add(new Option(getCfg("sys_username2"),1));}
+function pwStrengthPassword()
+{
+var f=document.tF;
+if(userNewPswd_show_hide_flag==1)
+SetFieldValue(f.userNewPswd,f.disp_userNewPswd.value);
+var pwd=document.getElementById("userNewPswdID").value;
+var Dfault_color="#C4C4C4";
+var color_1="#FF0000";
+var color_2="#FF9900";
+var color_3="#FFCC00";
+var color_4="#124eab";
+var Invalid=Dfault_color;
+var Weak=Dfault_color;
+var OK=Dfault_color;
+var Good=Dfault_color;
+var Strong=Dfault_color;
+if(pwd==null||pwd==''){
+Invalid=Weak=OK=Good=Strong=Dfault_color;
+document.getElementById("strength_text").innerText="Invalid";}else{
+var S_level=check_intensity(pwd);
+switch(S_level){
+case 0:
+Invalid=Weak=OK=Good=Strong=Dfault_color;
+document.getElementById("strength_text").innerText="Invalid";
+break;
+case 1:
+Invalid=color_1;
+Weak=OK=Good=Strong=Dfault_color;
+document.getElementById("strength_text").innerText="Invalid";
+break;
+case 2:
+Invalid=Weak=color_2;
+OK=Good=Strong=Dfault_color;
+document.getElementById("strength_text").innerText="Weak";
+break;
+case 3:
+Invalid=Weak=OK=color_3;
+Good=Strong=Dfault_color;
+document.getElementById("strength_text").innerText="OK";
+break;
+case 4:
+Invalid=Weak=OK=Good=color_4;
+Strong=Dfault_color;
+document.getElementById("strength_text").innerText="Good";
+break;
+case 5:
+Invalid=Weak=OK=Good=Strong=color_4;
+document.getElementById("strength_text").innerText="Strong";
+break;
+default:
+Invalid=Weak=OK=Good=Strong=Dfault_color;
+document.getElementById("strength_text").innerText="Invalid";}}
+document.getElementById("strength_1").style.background=Invalid;
+document.getElementById("strength_2").style.background=Weak;
+document.getElementById("strength_3").style.background=OK;
+document.getElementById("strength_4").style.background=Good;
+document.getElementById("strength_5").style.background=Strong;
+return 0;}
+function init_psw_strong()
+{
+pwStrengthPassword();}
+var userOldPswd_show_hide_flag=0;
+function show_userOldPswd(){
+var f=document.tF;
+userOldPswd_show_hide_flag=1;
+DisplayObject("disp_userOldPswd_id");
+DisplayObject("disp_userOldPswd_show");
+SetFieldValue(f.disp_userOldPswd,f.userOldPswd.value);
+HiddenObject("userOldPswd_id");
+HiddenObject("userOldPswd_show");}
+function show_userOldPswd_hide(){
+var f=document.tF;
+userOldPswd_show_hide_flag=0;
+DisplayObject("userOldPswd_id");
+DisplayObject("userOldPswd_show");
+SetFieldValue(f.userOldPswd,f.disp_userOldPswd.value);
+HiddenObject("disp_userOldPswd_id");
+HiddenObject("disp_userOldPswd_show");}
+var userNewPswd_show_hide_flag=0;
+function show_userNewPswd(){
+var f=document.tF;
+userNewPswd_show_hide_flag=1;
+DisplayObject("disp_userNewPswd_id");
+DisplayObject("disp_userNewPswd_show");
+SetFieldValue(f.disp_userNewPswd,f.userNewPswd.value);
+HiddenObject("userNewPswd_id");
+HiddenObject("userNewPswd_show");}
+function show_userNewPswd_hide(){
+var f=document.tF;
+userNewPswd_show_hide_flag=0;
+DisplayObject("userNewPswd_id");
+DisplayObject("userNewPswd_show");
+SetFieldValue(f.userNewPswd,f.disp_userNewPswd.value);
+HiddenObject("disp_userNewPswd_id");
+HiddenObject("disp_userNewPswd_show");}
+var userConPswd_show_hide_flag=0;
+function show_userConPswd(){
+var f=document.tF;
+userConPswd_show_hide_flag=1;
+DisplayObject("disp_userConPswd_id");
+DisplayObject("disp_userConPswd_show");
+SetFieldValue(f.disp_userConPswd,f.userConPswd.value);
+HiddenObject("userConPswd_id");
+HiddenObject("userConPswd_show");}
+function show_userConPswd_hide(){
+var f=document.tF;
+userConPswd_show_hide_flag=0;
+DisplayObject("userConPswd_id");
+DisplayObject("userConPswd_show");
+SetFieldValue(f.userConPswd,f.disp_userConPswd.value);
+HiddenObject("disp_userConPswd_id");
+HiddenObject("disp_userConPswd_show");}
+function init(){
+var f=document.tF;
+HiddenObject("usernameselect");
+cfg2Form(f);
+HiddenObject("submit_disabled_id");
+ShowMenu();
+init_psw_strong();
+HiddenObject("disp_userOldPswd_id");
+HiddenObject("disp_userOldPswd_show");
+HiddenObject("disp_userNewPswd_id");
+HiddenObject("disp_userNewPswd_show");
+HiddenObject("disp_userConPswd_id");
+HiddenObject("disp_userConPswd_show");}
+</script>
+</head>
+<body bgcolor="#ffffff"text="#000000"leftmargin="0"topmargin="0"marginwidth="0"marginheight="0"onLoad="pre_init()">
+<script>ShowPageMenu();</script>
+<p style="margin-left:10px"><font id="210"class="taFont4"></font></p>
+<form name="tF"action="/cgi-bin/system_setting.exe"method="post"target="OUTfrm">
+<input type="hidden"name="chk"value=""disabled>
+<input type="hidden"name="pws"value=""disabled>
+<input type="hidden"name="usr"value=""disabled>
+<input type="hidden"name="tr64h1"value=""disabled>
+<table border="0"cellspacing="0"cellpadding="10"width="100%">
+<tr>
+<td valign="top">
+<p class=normalText><font class="taFont2"id="542"></font></p>
+<table class="vox20_table_nbl_ta"border="0"cellspacing="1"cellpadding="5"style="margin-left:0px;">
+<tr id="usernameselect">
+<td width="250"class="normalText"><font class="taFont2"id="554"></font></td>
+<td class="tdText">
+<select name="username"></select>
+</td>
+</tr>
+<tr>
+<td width="250"class="normalText"><font class="taFont2"id="543"></font></td>
+<td id="userOldPswd_id"class="normalText"style="width:250px">
+<input type="password"size="15"maxlength="20"id="userOldPswdID"name="userOldPswd"value=""oncontextmenu="return false"oncopy="return false"oncut="return false">
+</td>
+<td id="disp_userOldPswd_id"class="normalText"style="width:250px">
+<input type="text"size="15"maxlength="20"id="disp_userOldPswdID"name="disp_userOldPswd"value=""oncontextmenu="return false"oncopy="return false"oncut="return false">
+</td>
+<td style="font-size:12px!important;"id="userOldPswd_show"><div class="show_psk">
+<font style="color:#6400aa"onclick="show_userOldPswd()"id="120010"> </font></div></td>
+<td style="font-size:12px!important;"id="disp_userOldPswd_show"><div class="show_psk">
+<font style="color:#6400aa"onclick="show_userOldPswd_hide()"id="120011"></font></div></td>
+</tr>
+<tr>
+<td class="normalText"><font class="taFont2"id="544"></font></td>
+<td id="userNewPswd_id"class="normalText"style="width:250px">
+<input type="password"size="20"maxlength="16"name="userNewPswd"id="userNewPswdID"value=""onkeyup="pwStrengthPassword()"onBlur="pwStrengthPassword()"oncontextmenu="return false"oncopy="return false"oncut="return false">
+</td>
+<td id="disp_userNewPswd_id"class="normalText"style="width:250px">
+<input type="text"size="20"maxlength="16"name="disp_userNewPswd"id="disp_userNewPswdID"value=""onkeyup="pwStrengthPassword()"onBlur="pwStrengthPassword()"oncontextmenu="return false"oncopy="return false"oncut="return false">
+</td>
+<td style="font-size:12px!important;"id="userNewPswd_show"><div class="show_psk">
+<font style="color:#6400aa"onclick="show_userNewPswd()"id="120010"></font></div></td>
+<td style="font-size:12px!important;"id="disp_userNewPswd_show"><div class="show_psk">
+<font style="color:#6400aa"onclick="show_userNewPswd_hide()"id="120011"></font></div></td>
+</tr>
+</table>
+<table width="150"height="12px"border="0"cellspacing="2"style="margin-left:265px;">
+<tr>
+<td width="15%"height="100%"><div id="strength_1"style="width:100%; height:30%; background-color:#C4C4C4"></div></td>
+<td width="15%"height="100%"><div id="strength_2"style="width:100%; height:30%; background-color:#C4C4C4"></div></td>
+<td width="15%"height="100%"><div id="strength_3"style="width:100%; height:30%; background-color:#C4C4C4"></div></td>
+<td width="15%"height="100%"><div id="strength_4"style="width:100%; height:30%; background-color:#C4C4C4"></div></td>
+<td width="15%"height="100%"><div id="strength_5"style="width:100%; height:30%; background-color:#C4C4C4"></div></td>
+<td width="25%"height="100%"><span class="taFont3"id="strength_text">Invalid</span></td>
+</tr>
+</table> <br/>
+<table class="vox20_table_nbl_ta"border="0"cellspacing="1"cellpadding="5"style="margin-left:0px;">
+<tr>
+<td width="250"class="normalText"><font class="taFont2"id="545"></font></td>
+<td id="userConPswd_id"class="normalText"style="width:250px">
+<input type="password"size="20"maxlength="16"id="userConPswdID"name="userConPswd"value=""oncontextmenu="return false"oncopy="return false"oncut="return false">
+</td>
+<td id="disp_userConPswd_id"class="normalText"style="width:250px">
+<input type="text"size="20"maxlength="16"id="disp_userConPswdID"name="disp_userConPswd"value=""oncontextmenu="return false"oncopy="return false"oncut="return false">
+</td>
+<td style="font-size:12px!important;"id="userConPswd_show"><div class="show_psk">
+<font style="color:#6400aa"onclick="show_userConPswd()"id="120010"> </font></div></td>
+<td style="font-size:12px!important;"id="disp_userConPswd_show"><div class="show_psk">
+<font style="color:#6400aa"onclick="show_userConPswd_hide()"id="120011"></font></div></td>
+</tr>
+</table>
+<div id='result_loaing'></div>
+</td>
+</tr>
+</table>
+<table width="100%"border="0"cellspacing="0"cellpadding="0">
+<tr>
+<td width="250"></td>
+<td id="submit_disabled_id">
+<input type="button"class="tapurple"onClick="evaltF()"name="save"id="100001"disabled="true">&nbsp;
+</td>
+<td id="submit_enabled_id">
+<input type="button"class="tapurple"onClick="evaltF()"name="save"id="100001">&nbsp;
+</td>
+</tr>
+</table>
+</form>
+<script>ShowPageTail();</script>
+<img title=spacer src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7MTk4NTEwNjgzNA==" border=0>
+</body>
+</html>

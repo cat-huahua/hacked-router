@@ -1,0 +1,700 @@
+<!DOCTYPE html>
+<!--[if lt IE 7]><html class="no-js lt-ie9 lt-ie8 lt-ie7"lang="en"><![endif]-->
+<!--[if IE 7]><html class="no-js lt-ie9 lt-ie8"lang="en"><![endif]-->
+<!--[if IE 8]><html class="no-js lt-ie9"lang="en"><![endif]-->
+<!--[if gt IE 8]><!--><html lang="en"class="gt-ie8"><!--<![endif]-->
+<!--[if lt IE 10]><meta http-equiv="X-UA-Compatible"content="IE=edge"/><![endif]-->
+<head>
+<title></title>
+<meta http-equiv="Content-Type"content="text/html; charset=">
+<link rel="stylesheet"type="text/css"media="screen"href="css/c_voda_main.css">
+<link rel="stylesheet"type="text/css"media="all"href="css/arctransform.css">
+<!--[if lt IE 9]>
+<link rel="stylesheet"type="text/css"media="screen"href="css/ie.css">
+<![endif]-->
+<script language="javascript">var LangJ=["status","tl_sys_fw"];var CGIs=["toplogy_info_and_discs","st","internet_cfg"];</script>
+<script type="text/javascript"src="js/init_data.js"></script>
+<script language="javascript"src="js/global.js"></script>
+<script language="javascript"src="js/routine.js"></script>
+<script type="text/javascript"src="js/jquery-1.8.3.min.js"></script>
+<script type="text/javascript"src="js/jquery.arctransform.js"></script>
+<style>.progressbar-fw_all{
+background:#e60050;/*Old browsers*/
+width:100%;
+height:27px;
+float:left;
+display:block;
+z-index:100;
+border:solid 1px white;/*#0071A6;*/
+overflow:hidden;
+display:inline-block;
+vertical-align:middle;}
+</style>
+<script language="JavaScript">
+function decode_json(enc_str)
+{
+return $.parseJSON(decode(enc_str))}
+var setTimeoutFlag;
+function Optimise_msg(i){
+if(toplogy_info.nodes[i].device_name!="")
+device_name="Optimise"+" "+toplogy_info.nodes[i].device_name;
+else
+device_name="Optimise"+" "+"Wi-Fi Disc "+i;
+msgbox(0,device_name,'<br>In some situations, a disc can perform better when connected using Wi-Fi instead of Ethernet. <br><br>Your system can run a series of tests to decide the best connection type.<br><br>Press the optimise button below to start a test. The disc will temporarily lose connection.<br><br>','Optimising_msg('+i+')',1,1);}
+function Optimising_msg(i){
+if(toplogy_info.nodes[i].device_name!="")
+device_name="Optimising"+" "+toplogy_info.nodes[i].device_name;
+else
+device_name="Optimising"+" "+"Wi-Fi Disc "+i;
+msgbox(1,device_name,getLangM('406'),'close_Optimise_msg()',1,1);
+getOptimisingStatus(i);
+check_Optimising();}
+function close_Optimise_msg(){
+clearTimeout(setTimeoutFlag);
+window.location.reload();}
+function do_nothing(){}
+function do_reload(){
+window.location.reload();}
+var t=0;
+function check_Optimising(){
+$.getScript('cgi/check_optimising.js',function(){
+if(optimising==1)
+{
+check_Optimising_msg_wifi();
+return true;}
+else if(optimising==2)
+{
+check_Optimising_msg_ether();
+return true;}
+else
+{
+t=t+1;
+if(t<6){
+setTimeout(function(){
+check_Optimising();},1000*2);
+return;}
+else
+{
+check_Optimising_msg_ether();
+return true;}}}).fail(function(){
+setTimeout(function(){
+check_Optimising();},1000*2);
+return;});}
+function check_Optimising_msg_wifi(){
+remove();
+msgbox(2,device_name,getLangM('407'),'do_reload()',1,1);}
+function check_Optimising_msg_ether(){
+remove();
+msgbox(2,device_name,getLangM('408'),'do_reload()',1,1);}
+function getOptimisingStatus(i){
+var f=document.tF1;
+var httoken_val=ArcBase._t();
+var data_tmp=0;
+var re_mac;
+var dev_name;
+data_tmp=toplogy_info.nodes[0].device_ip;
+re_mac=toplogy_info.nodes[i].device_id;
+if(toplogy_info.nodes[i].device_name!="")
+dev_name=toplogy_info.nodes[i].device_name;
+else
+dev_name="Wi-Fi Disc "+i;
+$.ajax({
+type:"POST",
+url:"/cgi-bin/toplogy.cgi",
+dataType:"text",
+data:{httoken:httoken_val,
+cmd:"getdiscoptimising",
+data:data_tmp,
+mac:re_mac,
+name:dev_name}}).done(function(data){
+if(data=="ok"){
+return true;}else{
+alert("slive  msg send error.");
+return false;}});}
+window.getHeight=function(){
+if(window.innerHeight!=undefined){
+return window.innerHeight;}
+else{
+var B=document.body,D=document.documentElement;
+return Math.min(D.clientHeight,B.clientHeight);}}
+window.getWidth=function(){
+if(window.innerWidth!=undefined){
+return window.innerWidth;}
+else{
+var B=document.body,D=document.documentElement;
+return Math.min(D.clientWidth,B.clientWidth);}}
+function msgbox(flag,title,content,func,cancel,focus){
+create_mask();
+var temp="<div style=\"width:400px;border: 0px solid #37B6D1;background-color: #fff; padding:0px 15px 0px 15px; \" >"
+if(title!=null){temp+="<div style=\"line-height:25px;text-align:center;color:#666666; padding:0px 5px;font-size:14pt;\">"+title+"</div>"}
+if(flag==0){
+temp+="<table  cellspacing=\"0\" border=\"0\"><tr><td style=\" padding:0px 0px 0px 0px; \"></td>"
++"<td ><div style=\"background-color: #fff; color:#666666;font-weight:normal;font-size: 12pt;font-family:Calibri; text-align:center;\">"+content
++"</div></td></tr></table>"
++"<div style=\"text-align:center; padding:0px 0px 6px;background-color: #fff;\"><input type='button' class='tapurple' value='Optimise'id=\"msgconfirmb\"   onclick=\"remove();"+func+";\">";
+if(null!=cancel){temp+="&nbsp;&nbsp;&nbsp;<input type='button' class='tapurple' value='Cancel'  id=\"msgcancelb\"   onClick='remove()'>";}
+temp+="</div></div>";
+create_msgbox(400,200,temp);
+if(focus==0||focus=="0"||null==focus){document.getElementById("msgconfirmb").focus();}
+else if(focus==1||focus=="1"){document.getElementById("msgcancelb").focus();}
+do_arcTrans('#msgbox');}
+else if(flag==1)
+{
+temp+="<br><span><span class='progresspanel-fw' id='progresspanel'><div class='progressbar-fw' id='progressbar'></div></span><br>";
+temp+="<table  cellspacing=\"0\" border=\"0\"><tr><td style=\" padding:0px 0px 0px 0px; \"></td>"
++"<td ><div style=\"background-color: #fff; color:#666666;font-weight:normal;font-size: 12pt;font-family:Calibri; text-align:center;\">"+content
++"</div></td></tr></table>"
++"<div style=\"text-align:center; padding:0px 0px 6px;background-color: #fff;\"><input type='button' class='tapurple' value='close'id=\"msgconfirmb\"   onclick=\"remove();"+func+";\">";
+if(null!=cancel){temp+="&nbsp;&nbsp;&nbsp;<input type='hidden'  class='tapurple' value='Cancel'  id=\"msgcancelb\"   onClick='remove()'>";}
+temp+="</div></div>";
+create_msgbox(400,200,temp);
+ShowProgress(10,function(){do_nothing()});
+if(focus==0||focus=="0"||null==focus){document.getElementById("msgconfirmb").focus();}
+else if(focus==1||focus=="1"){document.getElementById("msgcancelb").focus();}
+do_arcTrans('#msgbox');}
+else if(flag==2){
+temp+="<br><span><span class='progresspanel-fw' id='progresspanel'><div class='progressbar-fw_all' id='progressbar'></div></span><br>";
+temp+="<table  cellspacing=\"0\" border=\"0\"><tr><td style=\" padding:0px 0px 0px 0px; \"></td>"
++"<td ><div style=\"background-color: #fff; color:#666666;font-weight:normal;font-size: 12pt;font-family:Calibri; text-align:center;\">"+content
++"</div></td></tr></table>"
++"<div style=\"text-align:center; padding:0px 0px 6px;background-color: #fff;\"><input type='button' class='tapurple' value='close'id=\"msgconfirmb\"   onclick=\"remove();"+func+";\">";
+if(null!=cancel){temp+="&nbsp;&nbsp;&nbsp;<input type='hidden'  class='tapurple' value='Cancel'  id=\"msgcancelb\"   onClick='remove()'>";}
+temp+="</div></div>";
+create_msgbox(400,200,temp);
+if(focus==0||focus=="0"||null==focus){document.getElementById("msgconfirmb").focus();}
+else if(focus==1||focus=="1"){document.getElementById("msgcancelb").focus();}
+do_arcTrans('#msgbox');}}
+function get_width(){
+return(window.getWidth()+document.body.scrollLeft);}
+function get_height(){
+return(window.getHeight()+document.body.scrollTop);}
+function get_left(w){
+var bw=document.body.clientWidth;
+var bh=document.body.clientHeight;
+w=parseFloat(w);
+return(bw/2-w/2+document.body.scrollLeft);}
+function get_top(h){
+var bw=document.body.clientWidth;
+var bh=document.body.clientHeight;
+h=parseFloat(h);
+return(bh/2-h/2+document.body.scrollTop);}
+function create_mask(){
+var mask=document.createElement("div");
+mask.id="mask";
+mask.style.position="absolute";
+mask.style.filter="progid:DXImageTransform.Microsoft.Alpha(style=4,opacity=25)";
+mask.style.opacity=0.4;
+mask.style.background="white";
+mask.style.top="0px";
+mask.style.left="0px";
+mask.style.width=get_width()+'px';
+mask.style.height=get_height()+'px';
+mask.style.zIndex=1000;
+document.body.appendChild(mask);}
+function create_msgbox(w,h,t){
+var box=document.createElement("div");
+box.id="msgbox";
+box.style.position="absolute";
+box.style.width=w;
+box.style.height=h;
+box.style.overflow="visible";
+box.innerHTML=t;
+box.style.zIndex=1001;
+box.style.left=window.getWidth()/3-w/2+'px';
+document.body.appendChild(box);
+box.style.top=window.getHeight()/2.5-box.offsetHeight/2+'px';
+re_pos();}
+function re_mask(){
+var mask=document.getElementById("mask");
+if(null==mask)return;
+mask.style.width=get_width()+"px";
+mask.style.height=get_height()+"px";}
+function re_pos(){
+var box=document.getElementById("msgbox");
+if(null!=box){
+var w=box.style.width;
+var h=box.style.height;
+box.style.left=get_left(w)+"px";
+box.style.top=get_top(h)+"px";}}
+function remove(){
+var mask=document.getElementById("mask");
+var msgbox=document.getElementById("msgbox");
+if(null==mask&&null==msgbox)return;
+document.body.removeChild(mask);
+document.body.removeChild(msgbox);}
+function re_show(){
+re_pos();
+re_mask();}
+function load_func(){
+window.onresize=re_show;
+window.onscroll=re_show;}
+function timeStamp(second_time){
+if(parseInt(second_time)>1)
+var time=parseInt(second_time)+" secs";
+else
+var time=parseInt(second_time)+" sec";
+if(parseInt(second_time)>60){
+var second=parseInt(second_time)%60;
+var min=parseInt(second_time/60);
+if(second>1)
+var show_second=" secs";
+else
+var show_second=" sec";
+if(min>1)
+var show_min=" mins";
+else
+var show_min=" min";
+time=min+show_min+", "+second+show_second;
+if(min>60){
+min=parseInt(second_time/60)%60;
+var hour=parseInt(parseInt(second_time/60)/60);
+if(min>1)
+var show_min=" mins";
+else
+var show_min=" min";
+if(hour>1)
+var show_hour=" hours";
+else
+var show_hour=" hour";
+time=hour+show_hour+", "+min+show_min+", "+second+show_second;
+if(hour>24){
+hour=parseInt(parseInt(second_time/60)/60)%24;
+var day=parseInt(parseInt(parseInt(second_time/60)/60)/24);
+if(hour>1)
+var show_hour=" hours";
+else
+var show_hour=" hour";
+if(day>1)
+var show_day=" days";
+else
+var show_day=" day";
+time=day+show_day+", "+hour+show_hour+", "+min+show_min+", "+second+show_second;}}}
+return time;}
+function goID(){
+var showval=GetCookie("id");
+console.log("id="+showval);
+if((showval!="")&&(showval!="0"))
+window.location.href="#IDdevice_name"+showval;}
+function JumptoUpgrade(ip)
+{
+var url="";
+if(ip!="")
+{
+url="https://"+ip+"/firmware_upgrade_single.htm";}
+window.open(url);}
+function showDiscsStatus(){
+for(var i in toplogy_info.nodes)
+{
+var connect_ps;
+if(i==0){
+if(toplogy_info.nodes[i].device_name!="")
+$('#device_name'+i).text(toplogy_info.nodes[i].device_name+"(Primary)");
+else
+$('#device_name'+i).text("Wi-Fi Disc "+i+"(Primary)");
+setIdVal("sw_ver"+i,toplogy_info.nodes[i].sw_ver);
+setIdVal("sn"+i,toplogy_info.nodes[i].sn);
+setIdVal("device_mac"+i,toplogy_info.nodes[i].device_id);
+setIdVal("data_usage"+i,"");}
+else if(i>0){
+if(toplogy_info.nodes[i].device_name!="")
+$('#device_name'+i).text(toplogy_info.nodes[i].device_name);
+else
+$('#device_name'+i).text("Wi-Fi Disc "+i);
+setIdVal("sw_ver"+i,toplogy_info.nodes[i].sw_ver);
+setIdVal("sn"+i,toplogy_info.nodes[i].sn);
+setIdVal("device_mac"+i,toplogy_info.nodes[i].device_id);}}
+for(var j in toplogy_info.nodes){
+if(j>0){
+var connectrssi=toplogy_info.nodes[j].connect_rssi;
+connectrssi="-"+connectrssi.substring(1,connectrssi.length);
+setIdVal("rssi"+j,connectrssi+"dBm");}}}
+function write_info_table(){
+var i=0;
+var tmp;
+var ap_image="ap_80_2x2.png";
+if(toplogy_info.nodes[i].model_name=="WE420223-99")
+{
+ap_image="ap_80_2x2.png";}
+else
+{
+ap_image="ap_80_4x4.png"}
+tmp='<tr><td valign="top">\
+  <br><br>\
+  <table width="80%" class="vox20_table_nbl" border="0" cellspacing="0" cellpadding="5" align="left" style="margin-left: 10px;margin-bottom:20px;">\
+  <tr>\
+  <td><p style="margin-top:0px;margin-left:0px;"><font class="taFont1" id="device_name'+i+'"></font></p></td>';
+if(toplogy_info.nodes[i].connect_type=='Ether')
+{
+tmp+='<td><div style="position:relative;top:-70px;height:60px;weight:80px;z-index:-1;moz-user-select: -moz-none;-moz-user-select:none;-o-user-select:none;-khtml-user-select:none;-webkit-user-select:none;-ms-user-select:none;user-select:none;">\
+   <img src="images/'+ap_image+'" ></div></td>';}
+else if(toplogy_info.nodes[i].connect_rssi[0]=='3')
+{
+tmp+='<td><div style="position:relative;top:-70px;height:60px;weight:80px;z-index:-1;moz-user-select: -moz-none;-moz-user-select:none;-o-user-select:none;-khtml-user-select:none;-webkit-user-select:none;-ms-user-select:none;user-select:none;">\
+   <img src="images/'+ap_image+'" ></div></td>';}
+else if(toplogy_info.nodes[i].connect_rssi[0]=='2')
+{
+tmp+='<td><div style="position:relative;top:-70px;height:60px;weight:80px;z-index:-1;moz-user-select: -moz-none;-moz-user-select:none;-o-user-select:none;-khtml-user-select:none;-webkit-user-select:none;-ms-user-select:none;user-select:none;">\
+   <img src="images/'+ap_image+'" ></div></td>';}
+else
+{
+tmp+='<td><div style="position:relative;top:-70px;height:60px;weight:80px;z-index:-1;moz-user-select: -moz-none;-moz-user-select:none;-o-user-select:none;-khtml-user-select:none;-webkit-user-select:none;-ms-user-select:none;user-select:none;">\
+   <img src="images/'+ap_image+'" ></div></td>';}
+tmp+='</tr>\
+  <tr>\
+  <td width="300"><b><font  class="taFont2">'+getLangM('137')+'</font>: </b></td>\
+  <td><font class="taFont2" id="sw_ver'+i+'"></font></td>\
+  </tr>\
+  <tr>\
+  <td><b><font class="taFont2" >'+getLangM('144')+'</font>:</b> </td>\
+  <td><font class="taFont2" id="sn'+i+'"></font></td>\
+  </tr>\
+  <tr>\
+  <td><b><font class="taFont2" >'+getLangM('147')+'</font>:</b></td>\
+  <td><font class="taFont2" id="device_mac'+i+'"></font></td>\
+  </tr>\
+  <tr>\
+  <td><b><font class="taFont2" >'+getLangM('417')+'</font>: </b></td>\
+  <td><input type="button" class="tapurple" onClick=JumptoUpgrade(\''+toplogy_info.nodes[i].device_ip+'\') name="upgrade"'+i+' value="Upgrade">&nbsp;</td>\
+  </tr>\
+  </table>\
+  </td></tr>';
+$('#info_table').append(tmp);
+for(var i=1;i<toplogy_info.nodes.length;i++)
+{
+var tmp;
+tmp='<tr><td valign="top"><a name="IDdevice_name'+i+'" id="IDdevice_name'+i+'"></a>\
+  <br><br>\
+  <table width="80%" class="vox20_table_nbl" border="0" cellspacing="0" cellpadding="5" align="left" style="margin-left: 10px;margin-bottom:20px;">\
+  <tr>\
+  <td>\
+  <p style="margin-top:0px;margin-left:0px;"><font class="taFont1" id="device_name'+i+'"></font></p></td>';
+if(toplogy_info.nodes[i].model_name=="WE420223-99")
+{
+ap_image="ap_80_2x2.png";}
+else
+{
+ap_image="ap_80_4x4.png"}
+if(toplogy_info.nodes[i].connect_type=='Ether')
+{
+tmp+='<td><div style="position:relative;top:-70px;height:60px;weight:80px;z-index:-1;moz-user-select: -moz-none;-moz-user-select:none;-o-user-select:none;-khtml-user-select:none;-webkit-user-select:none;-ms-user-select:none;user-select:none;">\
+   <img src="images/'+ap_image+'" ></div></td>';}
+else if(toplogy_info.nodes[i].connect_rssi[0]=='3')
+{
+tmp+='<td><div style="position:relative;top:-70px;height:60px;weight:80px;z-index:-1;moz-user-select: -moz-none;-moz-user-select:none;-o-user-select:none;-khtml-user-select:none;-webkit-user-select:none;-ms-user-select:none;user-select:none;">\
+   <img src="images/'+ap_image+'" ></div></td>';}
+else if(toplogy_info.nodes[i].connect_rssi[0]=='2')
+{
+tmp+='<td><div style="position:relative;top:-70px;height:60px;weight:80px;z-index:-1;moz-user-select: -moz-none;-moz-user-select:none;-o-user-select:none;-khtml-user-select:none;-webkit-user-select:none;-ms-user-select:none;user-select:none;">\
+   <img src="images/'+ap_image+'" ></div></td>';}
+else
+{
+tmp+='<td><div style="position:relative;top:-70px;height:60px;weight:80px;z-index:-1;moz-user-select: -moz-none;-moz-user-select:none;-o-user-select:none;-khtml-user-select:none;-webkit-user-select:none;-ms-user-select:none;user-select:none;">\
+   <img src="images/'+ap_image+'" ></div></td>';}
+tmp+='</tr>\
+  <tr>\
+  <td width="300"><b><font  class="taFont2">'+getLangM('137')+'</font>: </b></td>\
+  <td><font class="taFont2" id="sw_ver'+i+'"></font></td>\
+  </tr>\
+  <tr>\
+  <td><b><font class="taFont2" >'+getLangM('144')+'</font>:</b> </td>\
+  <td><font class="taFont2" id="sn'+i+'"></font></td>\
+  </tr>';
+if(toplogy_info.nodes[i].connect_type=='Ether')
+{
+tmp+='<tr>\
+  <td><b><font class="taFont2" >'+getLangM('147')+'</font>:</b></td>\
+  <td><font class="taFont2" id="device_mac'+i+'"></font>\
+  &nbsp;\
+  &nbsp;\
+  &nbsp;\
+  </td>\
+  </tr>\
+  <tr>\
+  <td><b><font class="taFont2" >'+getLangM('417')+'</font>: </b></td>\
+  <td><input type="button" class="tapurple" onClick=JumptoUpgrade(\''+toplogy_info.nodes[i].device_ip+'\') name="upgrade"'+i+' value="Upgrade">&nbsp;</td>\
+  </tr>\
+  </table>\
+  </td></tr>';}
+else{
+tmp+='<tr>\
+  <td><b><font class="taFont2" >'+getLangM('147')+'</font>:</b></td>\
+  <td><font class="taFont2" id="device_mac'+i+'"></font></td>\
+  </tr>\
+  <tr>\
+  <td><b><font class="taFont2" >'+getLangM('418')+'</font>: </b></td>\
+  <td><font class="taFont2" id="rssi'+i+'"></font></td>\
+  </tr>\
+  <tr>\
+  <td><b><font class="taFont2" >'+getLangM('417')+'</font>: </b></td>\
+  <td><input type="button" class="tapurple" onClick=JumptoUpgrade(\''+toplogy_info.nodes[i].device_ip+'\') name="upgrade"'+i+' value="Upgrade">&nbsp;</td>\
+  </tr>\
+  </table>\
+  </td></tr>';}
+$('#info_table').append(tmp);}}
+function init(){
+var f=document.tF0;
+toplogy_info=decode_json(toplogy_info);
+write_info_table();
+showDiscsStatus();
+top.G_menu_title="Access Points";
+HiddenObject("notes1");
+HiddenObject("notes2");
+HiddenObject("notes3");
+HiddenObject("notes4");
+HiddenObject("autofw_enable_id");
+HiddenObject("checkfw_disabledID");
+init_check_fw_status();
+if(G_top==1){addFieldValue(f,"devtag",1);}
+setIdVal("fw_version",runtime_version);
+setIdVal("last_version","");
+ShowMenu();
+goID();
+top.frames["leftFrame"].selectMenu(13);}
+var g_progress=0;
+var fmw_prg=[-1,-1,-1,-1,-1,-1,-1-1];
+var fake_cnt=[0,0,0,0,0,0,0,0];
+var fmw_wait=120;
+var only_one=0;
+window.getHeight=function(){
+if(window.innerHeight!=undefined){
+return window.innerHeight;}
+else{
+var B=document.body,D=document.documentElement;
+return Math.min(D.clientHeight,B.clientHeight);}}
+window.getWidth=function(){
+if(window.innerWidth!=undefined){
+return window.innerWidth;}
+else{
+var B=document.body,D=document.documentElement;
+return Math.min(D.clientWidth,B.clientWidth);}}
+function msgbox(title,content,func,cancel,focus){
+create_mask();
+var temp="<div style=\"width:400px;border: 0px solid #37B6D1;background-color: #fff; padding:0px 15px 0px 15px; \" ><form id='frm_msg'>"
+if(title!=null){temp+="<div style=\"line-height:25px; padding:0px 5px; background-color: #37B6D1;\">"+title+"</div>"}
+temp+="<table  cellspacing=\"0\" border=\"0\"><tr><td style=\" padding:0px 0px 0px 0px; \"></td>"
++"<td colspan='2'><div style=\"background-color: #fff; color:#666666;font-weight:normal;font-size: 12pt;font-family:Calibri; text-align:center;\">"
++"<br><br>You can apply the update immediately or schedule the update for later. Please select below.<br><br>"
++"</div></td></tr>"
++"<tr><td style=\" padding:0px 0px 0px 0px; \"></td>"
++"<td><div style=\"background-color: #fff; color:#666666;font-weight:normal;font-size: 12pt;font-family:Calibri; text-align:center;\">Update:</div></td>"
++"<td>"
++" <select name='sel_time' id='sel_time'>"
++" <option value='-1'>Immediately</option>"
++" <option value='0'>0:00AM</option>"
++" <option value='1'>1:00AM</option>"
++" <option value='2'>2:00AM</option>"
++" <option value='3'>3:00AM</option>"
++" <option value='4'>4:00AM</option>"
++" <option value='5'>5:00AM</option>"
++" <option value='6'>6:00AM</option>"
++" <option value='7'>7:00AM</option>"
++" <option value='8'>8:00AM</option>"
++" <option value='9'>9:00AM</option>"
++" <option value='10'>10:00AM</option>"
++" <option value='11'>11:00AM</option>"
++" <option value='12'>12:00PM</option>"
++" <option value='13'>1:00PM</option>"
++" <option value='14'>2:00PM</option>"
++" <option value='15'>3:00PM</option>"
++" <option value='16'>4:00PM</option>"
++" <option value='17'>5:00PM</option>"
++" <option value='18'>6:00PM</option>"
++" <option value='19'>7:00PM</option>"
++" <option value='20'>8:00PM</option>"
++" <option value='21'>9:00PM</option>"
++" <option value='22'>10:00PM</option>"
++" <option value='23'>11:00PM</option>"
++" </select>"
++"</td></tr>"
++"<tr><td>&nbsp;&nbsp;"
++"</td></tr></table>"
++"<div style=\"text-align:center; padding:0px 0px 6px;background-color: #fff;\"><input type='button' class='btpurple' value='Update' id=\"msgconfirmb\"   onclick='"+func+";remove();'>";
+if(null!=cancel){temp+="&nbsp;&nbsp;&nbsp;<input type='button' class='btpurple' value='Cancel'  id=\"msgcancelb\"   onClick='remove()'>";}
+temp+="</div></form></div>";
+create_msgbox(400,200,temp);
+if(focus==0||focus=="0"||null==focus){document.getElementById("msgconfirmb").focus();}
+else if(focus==1||focus=="1"){document.getElementById("msgcancelb").focus();}
+do_arcTrans('#frm_msg');}
+function get_width(){
+return(window.getWidth()+document.body.scrollLeft);}
+function get_height(){
+return(window.getHeight()+document.body.scrollTop);}
+function get_left(w){
+var bw=document.body.clientWidth;
+var bh=document.body.clientHeight;
+w=parseFloat(w);
+return(bw/2-w/2+document.body.scrollLeft);}
+function get_top(h){
+var bw=document.body.clientWidth;
+var bh=document.body.clientHeight;
+h=parseFloat(h);
+return(bh/2-h/2+document.body.scrollTop);}
+function create_mask(){
+var mask=document.createElement("div");
+mask.id="mask";
+mask.style.position="absolute";
+mask.style.filter="progid:DXImageTransform.Microsoft.Alpha(style=4,opacity=25)";
+mask.style.opacity=0.4;
+mask.style.background="white";
+mask.style.top="0px";
+mask.style.left="0px";
+mask.style.width=get_width()+'px';
+mask.style.height=get_height()+50+'px';
+mask.style.zIndex=1000;
+document.body.appendChild(mask);}
+function create_msgbox(w,h,t){
+var box=document.createElement("div");
+box.id="msgbox";
+box.style.position="absolute";
+box.style.width=w;
+box.style.height=h;
+box.style.overflow="visible";
+box.innerHTML=t;
+box.style.zIndex=1001;
+box.style.left=window.getWidth()/3-w/2+'px';
+document.body.appendChild(box);
+box.style.top=window.getHeight()/2.5-box.offsetHeight/2+'px';
+re_pos();}
+function re_mask(){
+var mask=document.getElementById("mask");
+if(null==mask)return;
+mask.style.width=get_width()+"px";
+mask.style.height=get_height()+"px";}
+function re_pos(){
+var box=document.getElementById("msgbox");
+if(null!=box){
+var w=box.style.width;
+var h=box.style.height;
+box.style.left=get_left(w)+"px";
+box.style.top=get_top(h)+"px";}}
+function remove(){
+var mask=document.getElementById("mask");
+var msgbox=document.getElementById("msgbox");
+if(null==mask&&null==msgbox)return;
+document.body.removeChild(mask);
+document.body.removeChild(msgbox);}
+function re_show(){
+re_pos();
+re_mask();}
+function load_func(){
+window.onresize=re_show;
+window.onscroll=re_show;}
+function check_FW_and_jump()
+{
+show_uploadloaing('#uploadloaing');
+$.getScript('cgi/fw_download_prg.js',function(){
+if(FMWLoad.LoadingStatus==0)
+{
+window.top.location.href="fw_upgrade.htm";
+return true;}
+else
+setTimeout(function(){
+check_FW_and_jump();},1000*2);}).fail(function(){
+setTimeout(function(){
+check_FW_and_jump();},1000*2);
+return;});}
+function get_autoFW_version()
+{
+show_uploadloaing('#autofw_uploadloaing');
+$.getScript('cgi/autofw_version.js',function(){
+if(autofw.nowait==0)
+{
+HiddenObject("loading1");
+setIdVal("last_version",autofw.version);
+if(autofw.available==0)
+DisplayObject("notes3");
+else
+{
+if(autofw.version!='')
+{
+DisplayObject("notes2");
+HiddenObject("autofw_disabled_id");
+DisplayObject("autofw_enable_id");}}
+return true;}
+else
+setTimeout(function(){
+get_autoFW_version();},1000*2);}).fail(function(){
+setTimeout(function(){
+get_autoFW_version();},1000*2);
+return;});}
+function doConfirm(){
+if(ConfirmM(440)){
+AlertM(441);
+return true;}
+return false;}
+function show_uploadloaing(dv)
+{
+var m=new Array;
+m.push('<div id="loading1" style="">');
+m.push('<p align="center">');
+m.push("<span class='loading_node' id='loadingimg'><img src='images/wait.gif' border='0'></span>");
+m.push('</p>');
+m.push('</div>');
+$(dv).html(m.join(''));}
+function init_check_fw_status()
+{
+var internetflag=getCfg("internet_enable");
+var uplink_status_flag=getCfg("uplink_status");
+if(internetflag==0||uplink_status_flag!=3)
+{
+DisplayObject("notes4");
+HiddenObject("checkfwID");
+DisplayObject("checkfw_disabledID");}}
+function autofw_check()
+{
+var f=document.webForm3;
+f.action="fwcheck.cgi";
+f.encType="multipart/form-data";
+return subForm({
+frm:f,
+genfrm:0,
+cmd:'',
+uploadtype:0,
+wizard:1,
+wait:2,
+done:function(){get_autoFW_version();}});}
+function autofw_evaltF()
+{
+var f=document.webForm3;
+var time_val=-1;
+f.update_time.value=time_val;
+if(time_val!=-1)
+{
+f.action="upload.cgi";
+f.ENCTYPE='multipart/form-data';
+return subForm({
+frm:f,
+genfrm:0,
+cmd:'',
+uploadtype:1,
+wait:2});}
+else
+{
+if(doConfirm()){
+if(g_progress==0){
+g_progress=1;
+f.action="upload.cgi";
+f.ENCTYPE='multipart/form-data';
+DisplayObject('loading');
+return subForm({
+frm:f,
+genfrm:0,
+cmd:'',
+uploadtype:1,
+wizard:1,
+wait:2,
+done:function(){check_FW_and_jump();}});}
+AlertM(1198);}}
+return false;}
+</script>
+</head>
+<body bgcolor="#ffffff"text="#000000"leftmargin="0"topmargin="0"marginwidth="0"marginheight="0"onLoad="pre_init()">
+<script>ShowPageMenu();</script>
+<p style="margin-left:10px"><font class="taFont4">Access Points Status</font></p>
+<form name="tF0"action="/cgi-bin/statusprocess.exe"method="post"target="OUTfrm">
+<table width="100%"border="0"cellspacing="0"cellpadding="0"align="center"id="info_table">
+</table>
+</form>
+<img title=spacer src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7OTMwOTY3MTY0" border=0>
+</body>
+</html>

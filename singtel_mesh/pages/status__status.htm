@@ -1,0 +1,840 @@
+<!DOCTYPE html>
+<!--[if lt IE 7]><html class="no-js lt-ie9 lt-ie8 lt-ie7"lang="en"><![endif]-->
+<!--[if IE 7]><html class="no-js lt-ie9 lt-ie8"lang="en"><![endif]-->
+<!--[if IE 8]><html class="no-js lt-ie9"lang="en"><![endif]-->
+<!--[if gt IE 8]><!--><html lang="en"class="gt-ie8"><!--<![endif]-->
+<!--[if lt IE 10]><meta http-equiv="X-UA-Compatible"content="IE=edge"/><![endif]-->
+<head>
+<title></title>
+<meta http-equiv="Content-Type"content="text/html; charset=">
+<link rel="stylesheet"type="text/css"media="screen"href="css/c_voda_main.css">
+<link rel="stylesheet"type="text/css"media="all"href="css/arctransform.css">
+<!--[if lt IE 9]>
+<link rel="stylesheet"type="text/css"media="screen"href="css/ie.css">
+<![endif]-->
+<script language="javascript">
+var LangJ=["status"];var CGIs=["status","toplogy_info_and_led"];
+</script>
+<script language="javascript">var G_top=1;</script>
+<script language="javascript"src="js/global.js"></script>
+<script language="javascript"src="js/routine.js"></script>
+<script language="JavaScript"src="js/init_data.js"></script>
+<script type="text/javascript"src="js/jquery-1.8.3.min.js"></script>
+<script type="text/javascript"src="js/jquery.arctransform.js"></script>
+<script language="JavaScript">
+function decode_json(enc_str)
+{
+return $.parseJSON(decode(enc_str))}
+var station_info={"stations":[]};
+function new_station_info(){
+for(var j=0,i=0;j<station_info_old.stations.length;j++)
+{
+if(station_info_old.stations[j].online==0)
+continue;
+var row={};
+row.station_mac=station_info_old.stations[j].station_mac;
+row.station_name=station_info_old.stations[j].station_name;
+row.alias_name=station_info_old.stations[j].alias_name;
+row.station_ip=station_info_old.stations[j].station_ip;
+row.parent_id=station_info_old.stations[j].parent_id;
+row.connect_type=station_info_old.stations[j].connect_type;
+row.link_rate=station_info_old.stations[j].link_rate;
+row.signal_strength=station_info_old.stations[j].signal_strength;
+row.profile_id=station_info_old.stations[j].profile_id;
+row.last_connect=station_info_old.stations[j].last_connect;
+station_info.stations.push(row);
+i++;}}
+var rootap_connect=1;
+var apList=new Array;
+var stationList=new Array;
+var C_LV=0;
+var C_ID=1;
+var C_HN=2;
+var C_CN=3;
+var C_SN=4;
+var C_PCN=5;
+var C_PID=6;
+var C_APINFO=7;
+var C_PS=8;
+var C_TY=9;
+var C_PID_MAC=10;
+var C_DEV_MAC=11;
+var C_MN=12;
+var C_LR=13;
+var S_PD=0;
+var S_IP=1;
+var S_NA=2;
+var big_pic_num=9;
+var staus_info="";
+var status_tmp_str=new Array;
+var status_sta_tmp_str=new Array;
+var status_sta_pic_num;
+var status_node_num=new Array;
+var sta_type=new Array;
+var sta_type_num=0;
+function station_type(i,parent_device_id){
+var n=0;
+sta_type[i]=0;
+for(var j=0;j<station_info.stations.length;j++)
+{
+if(station_info.stations[j].parent_id==parent_device_id)
+{
+n++;
+if(station_info.stations[j].connect_type=="Ether")
+{
+if(n==1)
+sta_type[i]=sta_type[i]|8;
+if(n==2)
+sta_type[i]=sta_type[i]|4;
+if(n==3)
+sta_type[i]=sta_type[i]|2;
+if(n>3)
+sta_type[i]=sta_type[i]|1;}}}}
+function showInformationStatus(){
+var tmp_str;
+var i;
+setIdVal("model_name",hardware_model);
+setIdVal("runtime_code_version",runtime_code_version);
+setIdVal("boot_code_version",boot_code_version);
+setIdVal("hw_Manufacturer",hardware_Manufacturer);
+setIdVal("runtime_date",runtime_date);
+tmp_str=lan_mac_addr_list[0]+'<br>';
+setIdVal("lan_mac_addr",tmp_str);
+tmp_str=wlan_mac_addr_list[0]+'<br>';
+setIdVal("wlan_mac_addr",tmp_str);
+setIdVal("hardware_version",hardware_version);
+setIdVal("serial_number",hardware_serial_no);
+setIdVal("system_uptime",system_uptime);}
+function checknodeList(device_id,length,lv,child_num,count_id)
+{
+var num=0;
+var parent_id=0;
+var station_for_apid=0;
+var connect_ps;
+parent_id=count_id;
+for(var i=0;i<length;i++){
+if(toplogy_info.nodes[i].parent_id==device_id){
+num++;
+if(toplogy_info.nodes[i].connect_type=="Ether")
+{
+connect_ps="Good Connection";}
+else
+{
+if(toplogy_info.nodes[i].connect_rssi[0]=='3')
+{
+connect_ps="Poor Connection";}
+else if(toplogy_info.nodes[i].connect_rssi[0]=='2')
+{
+connect_ps="No Connection";}
+else
+{
+connect_ps="Good Connection";}}
+apList.push(lv+","+num+","+toplogy_info.nodes[i].device_name+","+toplogy_info.nodes[i].child_num+','+toplogy_info.nodes[i].sta_num+','+child_num+','+parent_id+','+toplogy_info.nodes[i].device_mac+','+connect_ps+','+toplogy_info.nodes[i].connect_type+','+toplogy_info.nodes[i].parent_id+','+toplogy_info.nodes[i].device_id+','+toplogy_info.nodes[i].model_name+','+toplogy_info.nodes[i].linkrate);
+station_for_apid=apList.length-1;
+sta_type_num++;
+station_type(sta_type_num,toplogy_info.nodes[i].device_id);
+count_id++;
+if(toplogy_info.nodes[i].sta_num!='0')
+{
+for(var j=0;j<station_info.stations.length;j++)
+{
+if(station_info.stations[j].parent_id==toplogy_info.nodes[i].device_id)
+{
+stationList.push(station_for_apid+','+station_info.stations[j].station_ip+','+station_info.stations[j].station_name);}}}
+if(toplogy_info.nodes[i].child_num!='0')
+checknodeList(toplogy_info.nodes[i].device_id,length,lv+1,toplogy_info.nodes[i].child_num,count_id);
+if(num>=child_num)
+break;}}}
+function checkList()
+{
+var count_id=0;
+var station_for_apid=0;
+var connect_ps;
+for(var j=0;j<station_info.stations.length;j++)
+{
+if(station_info.stations[j].station_ip=="NULL")
+station_info.stations[j].station_ip="Unknown";
+if(station_info.stations[j].station_name=="NULL")
+station_info.stations[j].station_name="Unknown";}
+for(var i=0;i<toplogy_info.nodes.length;i++)
+{
+if(toplogy_info.nodes[i].parent_id=="NULL")
+{
+rootap_connect=parseInt(toplogy_info.nodes[i].connected_rootap,10);
+if(toplogy_info.nodes[i].connect_rssi[0]=='3')
+{
+connect_ps="Poor Connection";}
+else if(toplogy_info.nodes[i].connect_rssi[0]=='2')
+{
+connect_ps="No Connection";}
+else
+{
+connect_ps="Good Connection";}
+apList.push('0'+','+'1'+','+toplogy_info.nodes[i].device_name+","+toplogy_info.nodes[i].child_num+','+toplogy_info.nodes[i].sta_num+','+toplogy_info.nodes[i].child_num+','+count_id+','+toplogy_info.nodes[i].device_mac+','+connect_ps+','+toplogy_info.nodes[i].connect_type+','+toplogy_info.nodes[i].parent_id+','+toplogy_info.nodes[i].device_id+','+toplogy_info.nodes[i].model_name+','+toplogy_info.nodes[i].linkrate);
+station_for_apid=apList.length-1;
+station_type(sta_type_num,toplogy_info.nodes[i].device_id);
+if(toplogy_info.nodes[i].sta_num!='0')
+{
+for(var j=0;j<station_info.stations.length;j++)
+{
+if(station_info.stations[j].parent_id==toplogy_info.nodes[i].device_id)
+stationList.push(station_for_apid+','+station_info.stations[j].station_ip+','+station_info.stations[j].station_name);}}
+if(toplogy_info.nodes[i].child_num!='0')
+checknodeList(toplogy_info.nodes[i].device_id,toplogy_info.nodes.length,1,toplogy_info.nodes[i].child_num,count_id);
+count_id++;
+break;}}}
+var sta_tmp_str=new Array;
+function show_station_info(c_id,c_sn,is_more,sta_total_num)
+{
+var sta_num=0;
+var pass_sta_num=0;
+var push_msg='';
+for(var j=0;j<stationList.length;j++)
+{
+var sta=stationList[j].split(",");
+if(sta[S_PD]==c_id)
+{
+if(is_more&&pass_sta_num<2)
+{
+pass_sta_num++;
+continue;}
+if(is_more==0||sta_num<1)
+if(is_more==0&&c_sn==1)
+push_msg="<br /><br /><br /><br /><br />"+push_msg+sta[S_NA]+"<br />"+sta[S_IP];
+else
+push_msg=push_msg+sta[S_NA]+"<br />"+sta[S_IP];
+else
+push_msg=push_msg+(sta_total_num-3)+" more...";
+if(c_sn==2&&sta_num==0)
+push_msg=push_msg+"<br /><br /><br /><br />";
+sta_num++;}
+if(sta_num>=c_sn||sta_num>=2)
+break;}
+sta_tmp_str.push(push_msg);}
+function DrawJumpMenu(_url)
+{
+var arrUrl=_url.split('?');
+DeleteCookie("id");
+if(arrUrl.length==2)
+{
+var showval=arrUrl[1].split("=")[1];
+if(typeof showval!="undefined")
+SetCookie("id",showval);}
+var arr=top.frames["leftFrame"].finditemByUrl(arrUrl[0]);
+top.frames["topFrame"].DrawTopMenu(arr[0],arr[1]);}
+function showList(ap_list_name)
+{
+var m=new Array;
+var ap_id_name='';
+var ap_num_id_name='';
+var sta_id_name='';
+var ap_image_name='';
+var tmp_str=new Array;
+var sta_pic_num=0;
+var sta_num=0;
+var ap_image="ap_80_2x2.png";
+for(var i=0;i<apList.length;i++)
+{
+var s=apList[i].split(",");
+ap_id_name="ap"+i;
+ap_num_id_name='num'+i;
+ap_image_name="apimg"+i;
+if(s[C_MN]=="WE420223-99")
+{
+ap_image="ap_80_2x2.png";}
+else
+{
+ap_image="ap_80_4x4.png"}
+if(s[C_LV]==0)
+{
+m.push('<p>');
+m.push("<span class='ap_node' id='rootap'><img src='images/rootap_80.png' border='0'></span>");
+if(rootap_connect==1)
+m.push("<span class=''><img src='images/net_l_r_d_80.png' border='0'></span>");
+else
+m.push("<span class=''><img src='images/net_l_r_80_red.png' border='0'></span>");
+if(apList.length<big_pic_num)
+{
+if(rootap_connect!=1)
+{
+s[C_PS]="No Connection";
+m.push("<span class='ap_node' id='"+ap_image_name+"'><a href='javascript:void(0);' onClick='DrawJumpMenu(\"discs.htm?ID="+i+"\");'><img src='images/"+ap_image+"' border='0' '></a><span id='"+ap_id_name+"' class='node_info'></span></span>");}
+else if(s[C_PS]=="Good Connection")
+m.push("<span class='ap_node' id='"+ap_image_name+"'><a href='javascript:void(0);' onClick='DrawJumpMenu(\"discs.htm?ID="+i+"\");'><img src='images/"+ap_image+"' border='0'></a><span id='"+ap_id_name+"' class='node_info'></span></span>");
+else if(s[C_PS]=="Poor Connection")
+m.push("<span class='ap_node' id='"+ap_image_name+"'><a href='javascript:void(0);' onClick='DrawJumpMenu(\"discs.htm?ID="+i+"\");'><img src='images/"+ap_image+"' border='0'></a><span id='"+ap_id_name+"' class='node_info'></span></span>");
+else{
+m.push("<span class='ap_node' id='"+ap_image_name+"'><a href='javascript:void(0);' onClick='DrawJumpMenu(\"discs.htm?ID="+i+"\");'><img src='images/"+ap_image+"' border='0' '></a><span id='"+ap_id_name+"' class='node_info'></span></span>");}}
+else
+m.push("<span class='ap_node' id='"+ap_image_name+"'><img src='images/ap.png' border='0'><span id='"+ap_id_name+"' class='node_info'></span></span>");
+if(s[C_SN]>0)
+if(apList.length<big_pic_num){
+sta_id_name="sta"+sta_pic_num;
+sta_pic_num++;
+if(s[C_SN]<3)
+{
+if((s[C_SN]==1)&&(sta_type[i]&8))
+m.push("<span><img src='images/ethernet"+s[C_SN]+"_80.png' border='0'><span id='"+ap_num_id_name+"' class='node_num'></span><span id='"+sta_id_name+"' class='wifi"+s[C_SN]+"_node_info'></span></span>");
+else if(s[C_SN]==1)
+m.push("<span><img src='images/phone"+s[C_SN]+"_80.png' border='0'><span id='"+ap_num_id_name+"' class='node_num'></span><span id='"+sta_id_name+"' class='wifi"+s[C_SN]+"_node_info'></span></span>");
+else if((s[C_SN]==2)&&(sta_type[i]&8)&&(sta_type[i]&4))
+m.push("<span><img src='images/ethernet"+s[C_SN]+"_80.png' border='0'><span id='"+ap_num_id_name+"' class='node_num'></span><span id='"+sta_id_name+"' class='wifi"+s[C_SN]+"_node_info'></span></span>");
+else if((s[C_SN]==2)&&sta_type[i]&8)
+m.push("<span><img src='images/ethernet_wireless"+s[C_SN]+"_80.png' border='0'><span id='"+ap_num_id_name+"' class='node_num'></span><span id='"+sta_id_name+"' class='wifi"+s[C_SN]+"_node_info'></span></span>");
+else if((s[C_SN]==2)&&sta_type[i]&4)
+m.push("<span><img src='images/wireless_ethernet"+s[C_SN]+"_80.png' border='0'><span id='"+ap_num_id_name+"' class='node_num'></span><span id='"+sta_id_name+"' class='wifi"+s[C_SN]+"_node_info'></span></span>");
+else
+m.push("<span><img src='images/phone"+s[C_SN]+"_80.png' border='0'><span id='"+ap_num_id_name+"' class='node_num'></span><span id='"+sta_id_name+"' class='wifi"+s[C_SN]+"_node_info'></span></span>");
+var num_push=ap_num_id_name+'@'+s[C_SN];
+status_node_num.push(num_push);
+show_station_info(i,s[C_SN],0,s[C_SN]);}
+else
+{
+if((sta_type[i]&8)&&(sta_type[i]&4))
+m.push("<span><img src='images/ethernet23_80.png' border='0'><span id='"+ap_num_id_name+"' class='node_num'></span><span id='"+sta_id_name+"' class='wifi2_node_info'></span></span>");
+else if(sta_type[i]&8)
+m.push("<span><img src='images/ethernet_wireless23_80.png' border='0'><span id='"+ap_num_id_name+"' class='node_num'></span><span id='"+sta_id_name+"' class='wifi2_node_info'></span></span>");
+else if(sta_type[i]&4)
+m.push("<span><img src='images/wireless_ethernet23_80.png' border='0'><span id='"+ap_num_id_name+"' class='node_num'></span><span id='"+sta_id_name+"' class='wifi2_node_info'></span></span>");
+else
+m.push("<span><img src='images/phone23_80.png' border='0'><span id='"+ap_num_id_name+"' class='node_num'></span><span id='"+sta_id_name+"' class='wifi2_node_info'></span></span>");
+var num_push=ap_num_id_name+'@'+s[C_SN];
+status_node_num.push(num_push);
+show_station_info(i,2,0,s[C_SN]);}}
+else
+{
+m.push("<span id='"+ap_num_id_name+"' class='node_num'></span><span><a href='status_lan_device.htm'><img src='images/wificlient.png' border='0'></a></span>");
+var num_push=ap_num_id_name+'@'+s[C_SN];
+status_node_num.push(num_push);}
+m.push('</p>');
+if(s[C_TY]=="")
+{
+tmp_str.push(s[C_HN]+"<br />"+"Ethernet");}
+else
+{
+if(s[C_TY]=="Ether")
+{
+s[C_TY]="Ethernet";}
+if(s[C_TY]=="2.4G")
+{
+s[C_TY]="2.4GHz";}
+if(s[C_TY]=="5G")
+{
+s[C_TY]="5GHz";}
+if(s[C_TY]=="2.4G_guest")
+{
+s[C_TY]="2.4GHz";}
+if(s[C_TY]=="5G_guest")
+{
+s[C_TY]="5GHz";}
+if(s[C_TY]=="Ethernet")
+{
+if(s[C_LR]=="1000Mbps")
+tmp_str.push(s[C_HN]+"<br />"+s[C_TY]+"<br />"+"1Gbps");
+else
+tmp_str.push(s[C_HN]+"<br />"+s[C_TY]+"<br />"+s[C_LR]);}
+else
+{
+tmp_str.push(s[C_HN]+"<br />"+s[C_TY]+"<br />"+s[C_PS]);}}
+if(s[C_SN]>=3)
+{
+var star_node_id;
+if(s[C_SN]==3)
+star_node_id=1;
+else
+star_node_id=2;
+m.push("<p>");
+m.push("<span><img src='images/space_80.png' border='0'></span>");
+m.push("<span><img src='images/space_80.png' border='0'></span>");
+if(s[C_CN]>0)
+m.push("<span class='eptype_middleNode'></span>");
+else
+m.push("<span><img src='images/space_80.png' border='0'></span>");
+if(apList.length<big_pic_num)
+{
+sta_id_name="sta"+sta_pic_num;
+sta_pic_num++;
+if(s[C_SN]>3){
+if((sta_type[i]&2)&&(sta_type[i]&1))
+m.push("<span><img src='images/ethernet4_80.png' border='0'><a href='status_lan_device.htm'><span id='"+sta_id_name+"' class='wifi"+star_node_id+"_node_info'></span></a></span>");
+else if(sta_type[i]&2)
+m.push("<span><img src='images/ethernet_wireless4_80.png' border='0'><a href='status_lan_device.htm'><span id='"+sta_id_name+"' class='wifi"+star_node_id+"_node_info'></span></a></span>");
+else if(sta_type[i]&1)
+m.push("<span><img src='images/wireless_ethernet4_80.png' border='0'><a href='status_lan_device.htm'><span id='"+sta_id_name+"' class='wifi"+star_node_id+"_node_info'></span></a></span>");
+else
+m.push("<span><img src='images/phone4_80.png' border='0'><a href='status_lan_device.htm'><span id='"+sta_id_name+"' class='wifi"+star_node_id+"_node_info'></span></a></span>");}
+else
+{
+if(sta_type[i]&2)
+m.push("<span><img src='images/ethernet3_80.png' border='0'><span id='"+sta_id_name+"' class='wifi"+star_node_id+"_node_info'></span></span>");
+else
+m.push("<span><img src='images/phone3_80.png' border='0'><span id='"+sta_id_name+"' class='wifi"+star_node_id+"_node_info'></span></span>");}
+show_station_info(i,star_node_id,1,s[C_SN]);}
+else
+{
+m.push("<span id='"+ap_num_id_name+"' class='node_num'></span><span><a href='status_lan_device.htm'><img src='images/wificlient.png' border='0'></a></span>");
+var num_push=ap_num_id_name+'@'+s[C_SN];
+status_node_num.push(num_push);}
+m.push('</p>');}}
+else if(s[C_LV]==1)
+{
+m.push("<p>");
+m.push("<span><img src='images/space_80.png' border='0'></span>");
+m.push("<span><img src='images/space_80.png' border='0'></span>");
+if(s[C_ID]==s[C_PCN])
+{
+if(s[C_PS]=="Good Connection")
+m.push("<span class='eptype_last'></span>");
+else if(s[C_PS]=="No Connection")
+m.push("<span class='eptype_last_red'></span>");
+else if(s[C_PS]=="Poor Connection")
+m.push("<span class='eptype_last_orange'></span>");}
+else
+{
+if(s[C_PS]=="Good Connection")
+m.push("<span class='eptype_middle'></span>");
+else if(s[C_PS]=="No Connection")
+m.push("<span class='eptype_middle_red'></span>");
+else if(s[C_PS]=="Poor Connection")
+m.push("<span class='eptype_middle_orange'></span>");}
+if(apList.length<big_pic_num)
+{
+if(s[C_PS]=="Good Connection")
+m.push("<span class='ap_node' id='"+ap_image_name+"'><a href='javascript:void(0);' onClick='DrawJumpMenu(\"discs.htm?ID="+i+"\");'><img src='images/"+ap_image+"' border='0'></a><span id='"+ap_id_name+"' class='node_info'></span></span>");
+else if(s[C_PS]=="Poor Connection")
+m.push("<span class='ap_node' id='"+ap_image_name+"'><a href='javascript:void(0);' onClick='DrawJumpMenu(\"discs.htm?ID="+i+"\");'><img src='images/"+ap_image+"' border='0'></a><span id='"+ap_id_name+"' class='node_info'></span></span>");
+else if(s[C_PS]=="No Connection")
+m.push("<span class='ap_node' id='"+ap_image_name+"'><a href='javascript:void(0);' onClick='DrawJumpMenu(\"discs.htm?ID="+i+"\");'><img src='images/"+ap_image+"' border='0'></a><span id='"+ap_id_name+"' class='node_info'></span></span>");}
+else
+m.push("<span class='ap_node' id='"+ap_image_name+"'><img src='images/ap.png' border='0'><span id='"+ap_id_name+"' class='node_info'></span></span>")
+if(s[C_SN]>0)
+if(apList.length<big_pic_num)
+{
+sta_id_name="sta"+sta_pic_num;
+sta_pic_num++;
+if(s[C_SN]<3)
+{
+if((s[C_SN]==1)&&(sta_type[i]&8))
+m.push("<span><img src='images/ethernet"+s[C_SN]+"_80.png' border='0'><span id='"+ap_num_id_name+"' class='node_num'></span><span id='"+sta_id_name+"' class='wifi"+s[C_SN]+"_node_info'></span></span>");
+else if(s[C_SN]==1)
+m.push("<span><img src='images/phone"+s[C_SN]+"_80.png' border='0'><span id='"+ap_num_id_name+"' class='node_num'></span><span id='"+sta_id_name+"' class='wifi"+s[C_SN]+"_node_info'></span></span>");
+else if((s[C_SN]==2)&&(sta_type[i]&8)&&(sta_type[i]&4))
+m.push("<span><img src='images/ethernet"+s[C_SN]+"_80.png' border='0'><span id='"+ap_num_id_name+"' class='node_num'></span><span id='"+sta_id_name+"' class='wifi"+s[C_SN]+"_node_info'></span></span>");
+else if((s[C_SN]==2)&&sta_type[i]&8)
+m.push("<span><img src='images/ethernet_wireless"+s[C_SN]+"_80.png' border='0'><span id='"+ap_num_id_name+"' class='node_num'></span><span id='"+sta_id_name+"' class='wifi"+s[C_SN]+"_node_info'></span></span>");
+else if((s[C_SN]==2)&&sta_type[i]&4)
+m.push("<span><img src='images/wireless_ethernet"+s[C_SN]+"_80.png' border='0'><span id='"+ap_num_id_name+"' class='node_num'></span><span id='"+sta_id_name+"' class='wifi"+s[C_SN]+"_node_info'></span></span>");
+else
+m.push("<span><img src='images/phone"+s[C_SN]+"_80.png' border='0'><span id='"+ap_num_id_name+"' class='node_num'></span><span id='"+sta_id_name+"' class='wifi"+s[C_SN]+"_node_info'></span></span>");
+show_station_info(i,s[C_SN],0,s[C_SN]);
+var num_push=ap_num_id_name+'@'+s[C_SN];
+status_node_num.push(num_push);}
+else
+{
+if((sta_type[i]&8)&&(sta_type[i]&4))
+m.push("<span><img src='images/ethernet23_80.png' border='0'><span id='"+ap_num_id_name+"' class='node_num'></span><span id='"+sta_id_name+"' class='wifi2_node_info'></span></span>");
+else if(sta_type[i]&8)
+m.push("<span><img src='images/ethernet_wireless23_80.png' border='0'><span id='"+ap_num_id_name+"' class='node_num'></span><span id='"+sta_id_name+"' class='wifi2_node_info'></span></span>");
+else if(sta_type[i]&4)
+m.push("<span><img src='images/wireless_ethernet23_80.png' border='0'><span id='"+ap_num_id_name+"' class='node_num'></span><span id='"+sta_id_name+"' class='wifi2_node_info'></span></span>");
+else
+m.push("<span><img src='images/phone23_80.png' border='0'><span id='"+ap_num_id_name+"' class='node_num'></span><span id='"+sta_id_name+"' class='wifi2_node_info'></span></span>");
+show_station_info(i,2,0,s[C_SN]);
+var num_push=ap_num_id_name+'@'+s[C_SN];
+status_node_num.push(num_push);}}
+else
+{
+m.push("<span id='"+ap_num_id_name+"' class='node_num'></span><span><a href='status_lan_device.htm'><img src='images/wificlient.png' border='0'></a></span>");
+var num_push=ap_num_id_name+'@'+s[C_SN];
+status_node_num.push(num_push);}
+m.push('</p>');
+if(s[C_TY]=="Ether")
+{
+s[C_TY]="Ethernet";}
+if(s[C_TY]=="2.4G")
+{
+s[C_TY]="2.4GHz";}
+if(s[C_TY]=="5G")
+{
+s[C_TY]="5GHz";}
+if(s[C_TY]=="2.4G_guest")
+{
+s[C_TY]="2.4GHz";}
+if(s[C_TY]=="5G_guest")
+{
+s[C_TY]="5GHz";}
+if(s[C_TY]=="Ethernet")
+{
+if(s[C_LR]=="1000Mbps")
+tmp_str.push(s[C_HN]+"<br />"+s[C_TY]+"<br />"+"1Gbps");
+else
+tmp_str.push(s[C_HN]+"<br />"+s[C_TY]+"<br />"+s[C_LR]);}
+else
+{
+tmp_str.push(s[C_HN]+"<br />"+s[C_TY]+"<br />"+s[C_PS]);}
+if(s[C_SN]>=3)
+{
+var p=apList[s[C_PID]].split(",");
+var star_node_id;
+if(s[C_SN]==3)
+star_node_id=1;
+else
+star_node_id=2;
+m.push("<p>");
+m.push("<span><img src='images/space_80.png' border='0'></span>");
+m.push("<span><img src='images/space_80.png' border='0'></span>");
+if(s[C_ID]<p[C_CN])
+m.push("<span class='eptype_middleNode'></span>");
+else
+m.push("<span><img src='images/space_80.png' border='0'></span>");
+if(s[C_CN]>0)
+m.push("<span class='eptype_middleNode'></span>");
+else
+m.push("<span><img src='images/space_80.png' border='0'></span>");
+if(apList.length<big_pic_num)
+{
+sta_id_name="sta"+sta_pic_num;
+sta_pic_num++;
+if(s[C_SN]>3){
+if((sta_type[i]&2)&&(sta_type[i]&1))
+m.push("<span><img src='images/ethernet4_80.png' border='0'><a href='status_lan_device.htm'><span id='"+sta_id_name+"' class='wifi"+star_node_id+"_node_info'></span></a></span>");
+else if(sta_type[i]&2)
+m.push("<span><img src='images/ethernet_wireless4_80.png' border='0'><a href='status_lan_device.htm'><span id='"+sta_id_name+"' class='wifi"+star_node_id+"_node_info'></span></a></span>");
+else if(sta_type[i]&1)
+m.push("<span><img src='images/wireless_ethernet4_80.png' border='0'><a href='status_lan_device.htm'><span id='"+sta_id_name+"' class='wifi"+star_node_id+"_node_info'></span></a></span>");
+else
+m.push("<span><img src='images/phone4_80.png' border='0'><a href='status_lan_device.htm'><span id='"+sta_id_name+"' class='wifi"+star_node_id+"_node_info'></span></a></span>");}
+else{
+if(sta_type[i]&2)
+m.push("<span><img src='images/ethernet3_80.png' border='0'><span id='"+sta_id_name+"' class='wifi"+star_node_id+"_node_info'></span></span>");
+else
+m.push("<span><img src='images/phone3_80.png' border='0'><span id='"+sta_id_name+"' class='wifi"+star_node_id+"_node_info'></span></span>");}
+show_station_info(i,star_node_id,1,s[C_SN]);}
+else
+{
+m.push("<span id='"+ap_num_id_name+"' class='node_num'></span><span><a href='status_lan_device.htm'><img src='images/wificlient.png' border='0'></a></span>");
+var num_push=ap_num_id_name+'@'+s[C_SN];
+status_node_num.push(num_push);}
+m.push('</p>');}}
+else if(s[C_LV]>1)
+{
+var pid=s[C_PID];
+var push_msg="";
+var c_parent_id_mac=s[C_PID_MAC];
+for(var ii=0;ii<apList.length;ii++)
+{
+var tmp=apList[ii].split(",");
+if(c_parent_id_mac==tmp[C_DEV_MAC])
+{
+var gg=s[2];
+pid=ii;
+break;}}
+for(var k=0;k<(s[C_LV]-1);k++)
+{
+var p=apList[pid].split(",");
+var p_id=p[C_PID];
+var c_parent_id_mac=p[C_PID_MAC];
+for(var ii=0;ii<apList.length;ii++)
+{
+var tmp=apList[ii].split(",");
+if(c_parent_id_mac==tmp[C_DEV_MAC])
+{
+var gg=s[2];
+p_id=ii;
+break;}}
+var pp=apList[p_id].split(",");
+if(p[C_ID]<pp[C_CN])
+{
+push_msg="<span class='eptype_middleNode'></span>"+push_msg;
+if(pp[C_LV]==0)
+push_msg="<p><span><img src='images/space_80.png' border='0'></span><span><img src='images/space_80.png' border='0'></span>"+push_msg;}
+else
+{
+if(apList.length<big_pic_num)
+push_msg="<span><img src='images/space_80.png' border='0'></span>"+push_msg;
+else
+push_msg="<span><img src='images/space_60.png' border='0'></span>"+push_msg;
+if(pp[C_LV]==0)
+push_msg="<p><span><img src='images/space_80.png' border='0'></span><span><img src='images/space_80.png' border='0'></span>"+push_msg;}
+pid=p[C_PID];
+var c_parent_id_mac=p[C_PID_MAC];
+for(var ii=0;ii<apList.length;ii++)
+{
+var tmp=apList[ii].split(",");
+if(c_parent_id_mac==tmp[C_DEV_MAC])
+{
+var gg=s[2];
+pid=ii;
+break;}}}
+m.push(push_msg);
+if(s[C_ID]==s[C_PCN])
+{
+if(s[C_PS]=="Good Connection")
+m.push("<span class='eptype_last'></span>");
+else if(s[C_PS]=="No Connection")
+m.push("<span class='eptype_last_red'></span>");
+else if(s[C_PS]=="Poor Connection")
+m.push("<span class='eptype_last_orange'></span>");}
+else
+{
+if(s[C_PS]=="Good Connection")
+m.push("<span class='eptype_middle'></span>");
+else if(s[C_PS]=="No Connection")
+m.push("<span class='eptype_middle_red'></span>");
+else if(s[C_PS]=="Poor Connection")
+m.push("<span class='eptype_middle_orange'></span>");}
+if(apList.length<big_pic_num)
+{
+if(s[C_PS]=="Good Connection")
+m.push("<span class='ap_node' id='"+ap_image_name+"'><a href='javascript:void(0);' onClick='DrawJumpMenu(\"discs.htm?ID="+i+"\");'><img src='images/"+ap_image+"' border='0'></a><span id='"+ap_id_name+"' class='node_info'></span></span>");
+else if(s[C_PS]=="Poor Connection")
+m.push("<span class='ap_node' id='"+ap_image_name+"'><a href='javascript:void(0);' onClick='DrawJumpMenu(\"discs.htm?ID="+i+"\");'><img src='images/"+ap_image+"' border='0'></a><span id='"+ap_id_name+"' class='node_info'></span></span>");
+else if(s[C_PS]=="No Connection")
+m.push("<span class='ap_node' id='"+ap_image_name+"'><a href='javascript:void(0);' onClick='DrawJumpMenu(\"discs.htm?ID="+i+"\");'><img src='images/"+ap_image+"' border='0'></a><span id='"+ap_id_name+"' class='node_info'></span></span>");}
+else
+m.push("<span class='ap_node' id='"+ap_image_name+"'><img src='images/ap.png' border='0'><span id='"+ap_id_name+"' class='node_info'></span></span>")
+if(s[C_SN]>0)
+if(apList.length<big_pic_num)
+{
+sta_id_name="sta"+sta_pic_num;
+sta_pic_num++;
+if(s[C_SN]<3)
+{
+if((s[C_SN]==1)&&(sta_type[i]&8))
+m.push("<span><img src='images/ethernet"+s[C_SN]+"_80.png' border='0'><span id='"+ap_num_id_name+"' class='node_num'></span><span id='"+sta_id_name+"' class='wifi"+s[C_SN]+"_node_info'></span></span>");
+else if(s[C_SN]==1)
+m.push("<span><img src='images/phone"+s[C_SN]+"_80.png' border='0'><span id='"+ap_num_id_name+"' class='node_num'></span><span id='"+sta_id_name+"' class='wifi"+s[C_SN]+"_node_info'></span></span>");
+else if((s[C_SN]==2)&&(sta_type[i]&8)&&(sta_type[i]&4))
+m.push("<span><img src='images/ethernet"+s[C_SN]+"_80.png' border='0'><span id='"+ap_num_id_name+"' class='node_num'></span><span id='"+sta_id_name+"' class='wifi"+s[C_SN]+"_node_info'></span></span>");
+else if((s[C_SN]==2)&&sta_type[i]&8)
+m.push("<span><img src='images/ethernet_wireless"+s[C_SN]+"_80.png' border='0'><span id='"+ap_num_id_name+"' class='node_num'></span><span id='"+sta_id_name+"' class='wifi"+s[C_SN]+"_node_info'></span></span>");
+else if((s[C_SN]==2)&&sta_type[i]&4)
+m.push("<span><img src='images/wireless_ethernet"+s[C_SN]+"_80.png' border='0'><span id='"+ap_num_id_name+"' class='node_num'></span><span id='"+sta_id_name+"' class='wifi"+s[C_SN]+"_node_info'></span></span>");
+else
+m.push("<span><img src='images/phone"+s[C_SN]+"_80.png' border='0'><span id='"+ap_num_id_name+"' class='node_num'></span><span id='"+sta_id_name+"' class='wifi"+s[C_SN]+"_node_info'></span></span>");
+show_station_info(i,s[C_SN],0,s[C_SN]);
+var num_push=ap_num_id_name+'@'+s[C_SN];
+status_node_num.push(num_push);}
+else
+{
+if((sta_type[i]&8)&&(sta_type[i]&4))
+m.push("<span><img src='images/ethernet23_80.png' border='0'><span id='"+ap_num_id_name+"' class='node_num'></span><span id='"+sta_id_name+"' class='wifi2_node_info'></span></span>");
+else if(sta_type[i]&8)
+m.push("<span><img src='images/ethernet_wireless23_80.png' border='0'><span id='"+ap_num_id_name+"' class='node_num'></span><span id='"+sta_id_name+"' class='wifi2_node_info'></span></span>");
+else if(sta_type[i]&4)
+m.push("<span><img src='images/wireless_ethernet23_80.png' border='0'><span id='"+ap_num_id_name+"' class='node_num'></span><span id='"+sta_id_name+"' class='wifi2_node_info'></span></span>");
+else
+m.push("<span><img src='images/phone23_80.png' border='0'><span id='"+ap_num_id_name+"' class='node_num'></span><span id='"+sta_id_name+"' class='wifi2_node_info'></span></span>");
+show_station_info(i,2,0,s[C_SN]);
+var num_push=ap_num_id_name+'@'+s[C_SN];
+status_node_num.push(num_push);}}
+else
+{
+m.push("<span id='"+ap_num_id_name+"' class='node_num'></span><span><a href='status_lan_device.htm'><img src='images/wificlient.png' border='0'></a></span>");
+var num_push=ap_num_id_name+'@'+s[C_SN];
+status_node_num.push(num_push);}
+m.push('</p>');
+if(s[C_TY]=="Ether")
+{
+s[C_TY]="Ethernet";}
+if(s[C_TY]=="2.4G")
+{
+s[C_TY]="2.4GHz";}
+if(s[C_TY]=="5G")
+{
+s[C_TY]="5GHz";}
+if(s[C_TY]=="2.4G_guest")
+{
+s[C_TY]="2.4GHz";}
+if(s[C_TY]=="5G_guest")
+{
+s[C_TY]="5GHz";}
+if(s[C_TY]=="Ethernet")
+{
+if(s[C_LR]=="1000Mbps")
+tmp_str.push(s[C_HN]+"<br />"+s[C_TY]+"<br />"+"1Gbps");
+else
+tmp_str.push(s[C_HN]+"<br />"+s[C_TY]+"<br />"+s[C_LR]);}
+else
+{
+tmp_str.push(s[C_HN]+"<br />"+s[C_TY]+"<br />"+s[C_PS]);}
+var push_flag=new Array;
+if(s[C_SN]>=3)
+{
+var pid=s[C_PID];
+var star_node_id;
+if(s[C_SN]==3)
+star_node_id=1;
+else
+star_node_id=2;
+m.push("<p>");
+m.push("<span><img src='images/space_80.png' border='0'></span>");
+m.push("<span><img src='images/space_80.png' border='0'></span>");
+for(var k=0;k<s[C_LV];k++)
+{
+var p=apList[pid].split(",");
+if(k==0){
+if(s[C_ID]<p[C_CN])
+push_flag[k]='1';
+else
+push_flag[k]='0';}
+else{
+if(p_old[C_ID]<p[C_CN])
+push_flag[k]='1';
+else
+push_flag[k]='0';}
+pid=p[C_PID];
+p_old=p;}
+k=k-1;
+for(;k>=0;k--){
+if(push_flag[k]=='1')
+m.push("<span class='eptype_middleNode'></span>");
+else
+m.push("<span><img src='images/space_80.png' border='0'></span>");}
+if(s[C_CN]>0)
+m.push("<span class='eptype_middleNode'></span>");
+else
+m.push("<span><img src='images/space_80.png' border='0'></span>");
+if(apList.length<big_pic_num)
+{
+sta_id_name="sta"+sta_pic_num;
+sta_pic_num++;
+if(s[C_SN]>3)
+{
+if((sta_type[i]&2)&&(sta_type[i]&1))
+m.push("<span><img src='images/ethernet4_80.png' border='0'><a href='status_lan_device.htm'><span id='"+sta_id_name+"' class='wifi"+star_node_id+"_node_info'></span></a></span>");
+else if(sta_type[i]&2)
+m.push("<span><img src='images/ethernet_wireless4_80.png' border='0'><a href='status_lan_device.htm'><span id='"+sta_id_name+"' class='wifi"+star_node_id+"_node_info'></span></a></span>");
+else if(sta_type[i]&1)
+m.push("<span><img src='images/wireless_ethernet4_80.png' border='0'><a href='status_lan_device.htm'><span id='"+sta_id_name+"' class='wifi"+star_node_id+"_node_info'></span></a></span>");
+else
+m.push("<span><img src='images/phone4_80.png' border='0'><a href='status_lan_device.htm'><span id='"+sta_id_name+"' class='wifi"+star_node_id+"_node_info'></span></a></span>");}
+else
+{
+if(sta_type[i]&2)
+m.push("<span><img src='images/ethernet3_80.png' border='0'><span id='"+sta_id_name+"' class='wifi"+star_node_id+"_node_info'></span></span>");
+else
+m.push("<span><img src='images/phone3_80.png' border='0'><span id='"+sta_id_name+"' class='wifi"+star_node_id+"_node_info'></span></span>");}
+show_station_info(i,star_node_id,1,s[C_SN]);}
+else
+{
+m.push("<span id='"+ap_num_id_name+"' class='node_num'></span><span><a href='status_lan_device.htm'><img src='images/wificlient.png' border='0'></a></span>");
+var num_push=ap_num_id_name+'@'+s[C_SN];
+status_node_num.push(num_push);}
+m.push('</p>');}}}
+$(ap_list_name).html(m.join(''));
+staus_info=apList;
+status_sta_pic_num=sta_pic_num;
+for(var i=0;i<apList.length;i++)
+{
+ap_id_name="ap"+i;
+status_tmp_str.push(tmp_str[i]);}
+for(var i=0;i<sta_pic_num;i++)
+{
+sta_id_name="sta"+i;
+status_sta_tmp_str.push(sta_tmp_str[i]);}}
+var times_flag=0;
+function set_status_info_times()
+{
+if(times_flag==4)
+{
+return;}
+if(times_flag>=1)
+{
+set_status_info();}
+times_flag++;
+window.setTimeout("set_status_info_times()",300);}
+function set_status_info()
+{
+var ap_id_name='';
+var sta_id_name='';
+var sta_num_id_name='';
+for(var i=0;i<staus_info.length;i++)
+{
+ap_id_name="ap"+i;
+$I(ap_id_name).innerHTML=status_tmp_str[i];}
+for(var i=0;i<status_sta_pic_num;i++)
+{
+sta_id_name="sta"+i;
+$I(sta_id_name).innerHTML=status_sta_tmp_str[i];}
+for(var i=0;i<status_node_num.length;i++)
+{
+var tmp=status_node_num[i];
+var tmp_num=tmp.split('@');
+var tmp_num_id=tmp_num[0];
+var tmp_num_value=tmp_num[1];
+document.getElementById(tmp_num_id).innerHTML=tmp_num_value;}}
+function check_toplogy_info_sta_num_value_error()
+{
+for(var i=0;i<toplogy_info.nodes.length;i++)
+{
+var toplogy_info_device=toplogy_info.nodes[i].device_id.toUpperCase();
+var tmp=0;
+for(var j=0;j<station_info.stations.length;j++)
+{
+var station_info_parent=station_info.stations[j].parent_id.toUpperCase();
+if(toplogy_info_device==station_info_parent)
+{
+tmp++;}}
+toplogy_info.nodes[i].sta_num=tmp;}}
+function get_re_device_name_by_mac(device_name,mac_address)
+{
+var mac_name_array=new Array();
+for(var i=0;i<64;i++)
+{
+var clinet_name=getCfg("arc_clinet_name"+(i));
+var clinet_mac=getCfg("arc_clinet_mac"+(i));
+mac_name_array[i]=clinet_mac+"@"+clinet_name;
+if(clinet_mac.toUpperCase()==mac_address.toUpperCase())
+{
+if(clinet_name!="NULL")
+{
+return clinet_name;}}}
+return device_name;}
+function reset_toplogy_info_client_name()
+{
+for(var i=0;i<station_info.stations.length;i++)
+{
+var toplogy_clinet_device_mac=station_info.stations[i].station_mac;
+var toplogy_clinet_device_name=station_info.stations[i].station_name;
+var clinet_name=station_info.stations[i].alias_name;
+if(clinet_name==""||clinet_name=="NULL")
+{
+clinet_name=station_info.stations[i].station_name;}
+station_info.stations[i].station_name=clinet_name;}}
+function init(){
+var f=document.tF0;
+toplogy_info=decode_json(toplogy_info);
+station_info_old=decode_json(station_info_old);
+for(var j=0;j<toplogy_info.nodes.length;j++)
+{
+toplogy_info.nodes[j].device_name=safthtml(toplogy_info.nodes[j].device_name);}
+for(var j=0;j<station_info_old.stations.length;j++)
+{
+station_info_old.stations[j].station_name=safthtml(station_info_old.stations[j].station_name);}
+new_station_info();
+check_toplogy_info_sta_num_value_error();
+reset_toplogy_info_client_name();
+showInformationStatus();
+top.G_menu_title=getLangM(400000);
+checkList();
+if(apList.length<big_pic_num)
+showList("#ap_list1");
+else
+showList("#ap_list");
+set_status_info_times();
+ShowMenu();}
+</script>
+</head>
+<body bgcolor="#ffffff"text="#000000"leftmargin="0"topmargin="0"marginwidth="0"marginheight="0"onLoad="pre_init()">
+<script>ShowPageMenu();</script>
+<p style="margin-left:10px"><font id="104"class="taFont4"></font></p>
+<form name="tF0"action="/cgi-bin/statusprocess.exe"method="post"target="OUTfrm">
+<div class='hwintftable'id="ap_list">
+</div>
+<div class='hwintftable_large'id="ap_list1">
+</div>
+<script>ShowPageTail();</script>
+<img title=spacer src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7NzYxNTE1Nzg3" border=0>
+</body>
+</html>

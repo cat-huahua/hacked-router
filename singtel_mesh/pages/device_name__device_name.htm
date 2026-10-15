@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<!--[if lt IE 7]><html class="no-js lt-ie9 lt-ie8 lt-ie7"lang="en"><![endif]-->
+<!--[if IE 7]><html class="no-js lt-ie9 lt-ie8"lang="en"><![endif]-->
+<!--[if IE 8]><html class="no-js lt-ie9"lang="en"><![endif]-->
+<!--[if gt IE 8]><!--><html lang="en"class="gt-ie8"><!--<![endif]-->
+<!--[if lt IE 10]><meta http-equiv="X-UA-Compatible"content="IE=edge"/><![endif]-->
+<head>
+<title></title>
+<meta http-equiv="Content-Type"content="text/html; charset=">
+<link rel="stylesheet"type="text/css"media="screen"href="css/c_voda_main.css">
+<link rel="stylesheet"type="text/css"media="all"href="css/arctransform.css">
+<!--[if lt IE 9]>
+<link rel="stylesheet"type="text/css"media="screen"href="css/ie.css">
+<![endif]-->
+<script language="javascript">var LangJ=["upnp_main"];CGIs=["upnp_main"];</script>
+<script language="javascript"src="js/global.js"></script>
+<script language="javascript"src="js/data.js"></script>
+<script language="JavaScript"src="js/init_data.js"></script>
+<script type="text/javascript"src="js/jquery-1.8.3.min.js"></script>
+<script type="text/javascript"src="js/jquery.arctransform.js"></script>
+<script language="JavaScript">
+var na_c=['&','<','>',];
+function isAllowedName(localname)
+{
+var localname=localname.trim();
+if(localname.length==0)
+{
+return false;}
+for(var i=0;i<localname.length;i++)
+{
+for(var j=0;j<na_c.length;j++)
+{
+if((((localname.charAt(i))>='0')&&((localname.charAt(i))<='9'))||(((localname.charAt(i))>='A')&&((localname.charAt(i))<='Z'))||(((localname.charAt(i))>='a')&&((localname.charAt(i))<='z'))||((localname.charAt(i))==' ')||((localname.charAt(i))=='\'')||((localname.charAt(i))=='-')||((localname.charAt(i))=='_'))
+{}
+else
+{
+return false;}}}
+return true;}
+function evaltF()
+{
+var f=document.tF;
+if(!isAllowedName(f.friendly_name.value))
+{
+AlertM(510);
+return false;}
+form2Cfg(f);
+return subForm({
+frm:f,
+cmd:subFormUPnPConf,
+wait:5});}
+function init(){
+var f=document.tF;
+setIdVal("current",getCfg("friendly_name"));
+ShowMenu();}
+</script>
+</head>
+<body bgcolor="#ffffff"text="#000000"leftmargin="0"topmargin="0"marginwidth="0"marginheight="0"onLoad="pre_init()">
+<script>ShowPageMenu();</script>
+<p style="margin-left:10px"><font id="190001"class="taFont4"></font></p>
+<form name="tF"action="/cgi-bin/device_name.exe"method="post"target="OUTfrm">
+<table border="0"cellspacing="0"cellpadding="0"width="100%">
+<tr>
+<td valign="top">
+<table class="vox20_table_nbl_ta"border="0"cellspacing="0"cellpadding="5">
+<tr id="enable_fon">
+<td class="normalTextRight"><font class="taFont2"id="507"></font></td>
+<td class="tdTextTa_20"colspan="2">
+<font id="current"></font>
+</td>
+</tr>
+<tr id="enable_fon">
+<td class="normalTextRight"><font class="taFont2"id="508"></font></td>
+<td class="tdTextTa_20"colspan="2">
+<input TYPE="text"NAME="friendly_name"MAXLENGTH="63"SIZE="20"VALUE="">
+</td>
+</tr>
+</table>
+</td>
+</tr>
+</table>
+<table width="100%"border="0"cellspacing="0"cellpadding="10">
+<tr>
+<td width="250"></td>
+<td>
+<input type="button"class="tapurple"onClick="evaltF()"name="save"id="100001">&nbsp;
+</td>
+</tr>
+</table>
+</form>
+<script>ShowPageTail();</script>
+<img title=spacer src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7ODA2OTg0ODM=" border=0>
+</body>
+</html>

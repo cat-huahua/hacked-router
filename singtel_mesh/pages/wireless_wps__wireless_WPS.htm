@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<!--[if lt IE 7]><html class="no-js lt-ie9 lt-ie8 lt-ie7"lang="en"><![endif]-->
+<!--[if IE 7]><html class="no-js lt-ie9 lt-ie8"lang="en"><![endif]-->
+<!--[if IE 8]><html class="no-js lt-ie9"lang="en"><![endif]-->
+<!--[if gt IE 8]><!--><html lang="en"class="gt-ie8"><!--<![endif]-->
+<!--[if lt IE 10]><meta http-equiv="X-UA-Compatible"content="IE=edge"/><![endif]-->
+<head>
+<title></title>
+<meta http-equiv="Content-Type"content="text/html; charset=">
+<link rel="stylesheet"type="text/css"media="screen"href="css/c_voda_main.css">
+<link rel="stylesheet"type="text/css"media="all"href="css/arctransform.css">
+<!--[if lt IE 9]>
+<link rel="stylesheet"type="text/css"media="screen"href="css/ie.css">
+<![endif]-->
+<script language="javascript">var LangJ=["wireless_WPS"];CGIs=["toplogy_info","wireless_wps"];</script>
+<script language="javascript"src="js/global.js"></script>
+<script language="javascript"src="js/routine.js"></script>
+<script language="JavaScript"src="js/init_data.js"></script>
+<script type="text/javascript"src="js/jquery-1.8.3.min.js"></script>
+<script type="text/javascript"src="js/jquery.arctransform.js"></script>
+<script language="JavaScript">
+var WSC_Mode=1;
+var PWS_ssid="wlan";
+var PWS_key="";
+var PWS_type=3;
+var PWS_encrType=0;
+var BandID=0;
+function decode_json(enc_str)
+{
+return $.parseJSON(decode(enc_str))}
+function evaltF(){
+var f=document.tF;
+var wps_en=getCfg("wps_enable");
+var wps_en_web=getFieldIntVal(f.wps_enable);
+form2Cfg(f);
+if(BandID==1)
+{
+setCfg("wps_enable_5g",wps_en_web);
+setCfg("wps_enable",wps_en);}
+return subForm({
+frm:f,
+cmd:subFormWiFiWPS,
+wait:2});}
+function show_hide_select(id,flag){
+var disc=document.getElementById(id);
+if(flag!=0)
+disc.style.display='none';
+else
+disc.style.display='block';}
+function startpbc(){
+var f=document.tF;
+var httoken_val=ArcBase._t();
+var select_mac="";
+var wpsenable=getCfg("wps_enable");
+if(wpsenable==0){
+alert(getLangM(860));
+return;}
+var wps_all=getCfg("wps_all");
+if(wps_all!=0)
+select_mac="ALL";
+else
+select_mac=f.disc_option.value;
+$.ajax({
+type:"POST",
+url:"/cgi-bin/do_wps.cgi",
+dataType:"text",
+data:{httoken:httoken_val,
+cmd:"WPS",
+data:select_mac}}).done(function(data){
+if(data=="ok"||data=="ok_wifi"||data=="ok_eth"){
+window.top.location.href="wps_show.htm";}else{
+alert("syncledconfig all  msg send error.");
+return false;}});
+return false;}
+function AddOpt2Rex()
+{
+var f=document.tF;
+var dev_name,dev_mac;
+var wps_status=getCfg("wps_status");
+for(var i in toplogy_info.nodes)
+{
+if(toplogy_info.nodes[i].device_name=="")
+{
+dev_name="Wifi-Extender "+(parseInt(i)+1);}
+else
+{
+dev_name=toplogy_info.nodes[i].device_name;}
+dev_mac=toplogy_info.nodes[i].device_mac;
+f.disc_option.options.add(new Option(dev_name,dev_mac));}}
+function timedelay()
+{
+window.location.reload(true);}
+function init(){
+var f=document.tF;
+toplogy_info=decode_json(toplogy_info);
+station_info=decode_json(station_info);
+station_led_info=decode_json(station_led_info);
+AddOpt2Rex();
+ShowMenu();
+var wps_all=getCfg("wps_all");
+if(wps_all!=0)
+show_hide_select('disc_select',1);
+else
+show_hide_select('disc_select',0);}
+</script>
+</head>
+<body bgcolor="#ffffff"text="#000000"leftmargin="0"topmargin="0"marginwidth="0"marginheight="0"onLoad="pre_init()">
+<script>ShowPageMenu();</script>
+<p style="margin-left:10px"><font id="801"class="taFont4"></font></p>
+<form name="tF"action="/cgi-bin/WPS_applyChanges.exe"method="post"target="OUTfrm">
+<table width="90%"border="0"cellspacing="10"cellpadding="0">
+<tr>
+<td align=top>
+<p class=normalText><font class="taFont2"id="802"></font></p>
+</td>
+</tr>
+<tr>
+<td align=top>
+<p class=normalText><font class="taFont2"id="815"></font></p>
+</td>
+</tr>
+<tr>
+<td valign="top">
+<table width="100%"border="0"cellspacing="1"cellpadding="0"id="disc_select">
+<tr>
+<td width="150"class="normalText"><font class="taFont2"id="859"></font></td>
+<td class="tdText">
+<select name="disc_option"size="1">
+</select>
+</td>
+</tr>
+</table>
+</td>
+</tr>
+<tr>
+<table class="vox20_table_nbl"width="100%"border="0"cellspacing="0"cellpadding="0"align="center"id="disc_option">
+<td colspan=2 align="center"id="pbc_btn">
+<input type="button"class="tapurple"onClick="startpbc()"name="Apply"id="816">
+</td>
+</table>
+</tr>
+</table>
+</form>
+<script>ShowPageTail();</script>
+<img title=spacer src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7MzUzODQyOTU3" border=0>
+</body>
+</html>

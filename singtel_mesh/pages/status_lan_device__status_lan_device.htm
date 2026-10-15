@@ -1,0 +1,710 @@
+<!DOCTYPE html>
+<!--[if lt IE 7]><html class="no-js lt-ie9 lt-ie8 lt-ie7"lang="en"><![endif]-->
+<!--[if IE 7]><html class="no-js lt-ie9 lt-ie8"lang="en"><![endif]-->
+<!--[if IE 8]><html class="no-js lt-ie9"lang="en"><![endif]-->
+<!--[if gt IE 8]><!--><html lang="en"class="gt-ie8"><!--<![endif]-->
+<!--[if lt IE 10]><meta http-equiv="X-UA-Compatible"content="IE=edge"/><![endif]-->
+<head>
+<title></title>
+<meta http-equiv="Content-Type"content="text/html; charset=">
+<link rel="stylesheet"type="text/css"media="screen"href="css/c_voda_main.css">
+<link rel="stylesheet"type="text/css"media="all"href="css/arctransform.css">
+<!--[if lt IE 9]>
+<link rel="stylesheet"type="text/css"media="screen"href="css/ie.css">
+<![endif]-->
+<script language="javascript">var LangJ=["status_lan_device"];var CGIs=["toplogy_info"];</script>
+<script language="javascript">var G_top=1;</script>
+<script language="javascript"src="js/global.js"></script>
+<script language="javascript"src="js/routine.js"></script>
+<script language="JavaScript"src="js/init_data.js"></script>
+<script type="text/javascript"src="js/jquery-1.8.3.min.js"></script>
+<script type="text/javascript"src="js/jquery.arctransform.js"></script>
+<script language="JavaScript">
+$(document).keydown(function(event){
+switch(event.keyCode){
+case 13:return false;}});
+function decode_json(enc_str)
+{
+return $.parseJSON(decode(enc_str))}
+function HiddenObjectDisplay(id){
+if(document.getElementById(id)){
+document.getElementById(id).style.visibility="hidden";}}
+function msgBoxForgetSave(idx)
+{
+var f=document.tF;
+var httoken_val=ArcBase._t();
+var off_num=0;
+var sta_mac;
+sta_mac=station_info.stations[idx].station_mac;
+$.ajax({
+type:"POST",
+url:"/cgi-bin/clean_offline.cgi",
+dataType:"text",
+data:{httoken:httoken_val,
+cmd:"clean_offline",
+mac:sta_mac,}}).done(function(data){
+if(data=="ok"){
+return subForm({
+frm:f,
+next:'status_lan_device.htm',
+uploadtype:0,
+wait:5});}else{
+alert(" forget station error.");
+return false;}});}
+function msgbox2(title,dev_name,func,cancel,focus){
+create_mask();
+var temp="<div style=\"width:400px;border: 0px solid #37B6D1;background-color: #fff; padding:0px 15px 0px 15px; \" >"
+temp+="<table  cellspacing=\"0\" border=\"0\"><tr><td height=20>&nbsp;</td></tr><tr><td style=\" padding:0px 0px 0px 0px; \"></td>"
++"<td ><div style=\"background-color: #fff; color:#333333;font-weight:normal;font-size: 12pt;font-family:Calibri; text-align:left;\">"
++"Are you sure you want to forget "+dev_name+"?"
++"</div></td></tr><tr><td height=20>&nbsp;</td></tr><tr><td style=\" padding:0px 0px 0px 0px; \"></td>"
++"<td ><div style=\"background-color: #fff; color:#333333;font-weight:normal;font-size: 12pt;font-family:Calibri; text-align:left;\">"
++"All data for this device will be removed from the system, including custom name, grouping and access controls.<br><br>"
++"</div></td></tr></table>"
++"<div style=\"text-align:right; padding:0px 0px 6px;background-color: #fff;\"><input type='button' class='btpurple' value='Forget'id=\"msgconfirmb\"   onclick=\"remove();"+func+";\">";
+if(null!=cancel){temp+="&nbsp;<input type='button' class='btpurple' value='Cancel'  id=\"msgcancelb\"   onClick='remove()'>";}
+temp+="</div></div>";
+create_msgbox(400,200,temp);
+if(focus==0||focus=="0"||null==focus){document.getElementById("msgconfirmb").focus();}
+else if(focus==1||focus=="1"){document.getElementById("msgcancelb").focus();}
+do_arcTrans('#msgbox');}
+function initSelect()
+{
+for(var i=0;i<toplogy_info.nodes.length;i++)
+{
+var obj=document.getElementById("selcetRenameID"+i);
+if(toplogy_info.nodes[i].device_name!="")
+obj.options[0]=new Option(toplogy_info.nodes[i].device_name+" (Custom)",toplogy_info.nodes[i].device_name);
+else
+obj.options[0]=new Option('Wi-Fi Extender '+i+" (Custom)",'Wi-Fi Extender '+i);
+obj.options[0].selected=true;
+var csz="#selcetRenameID"+i;
+$(csz).arcTransSelect({force:true});
+document.getElementById("selcetRenameID"+i).selectedIndex=-1;}}
+function ShowRepeter()
+{
+var re_rowcnt=0;
+var c1,c2,c3,c4,c5;
+var pic;
+for(var j=0;j<station_info.stations.length;j++)
+{
+if(station_info.stations[j].station_ip=="NULL")
+station_info.stations[j].station_ip=getLangM('225');
+if(station_info.stations[j].station_name=="NULL")
+station_info.stations[j].station_name=getLangM('225');}
+for(var i=0;i<toplogy_info.nodes.length;i++)
+{
+if(toplogy_info.nodes[i].device_name!="")
+setIdVal("RE"+i,toplogy_info.nodes[i].device_name);
+else
+setIdVal("RE"+i,'Wi-Fi Extender '+i);
+HiddenObject("tr_save"+i);
+HiddenObject("tr_renameselect"+i);
+HiddenObject("tr_save_static_text"+i);
+re_rowcnt=0;
+for(var j=0;j<station_info.stations.length;j++)
+{
+if((station_info.stations[j].parent_id==toplogy_info.nodes[i].device_id)&&(station_info.stations[j].online==1))
+{
+c1=station_info.stations[j].alias_name;
+if(c1==""||c1=="NULL")
+{
+c1=station_info.stations[j].station_name;}
+c2=station_info.stations[j].station_mac;
+c3=station_info.stations[j].connect_type;
+c4=station_info.stations[j].station_ip;
+c5=station_info.stations[j].signal_strength+"dBm";
+if((c3=="2.4G")||(c3=="2.4G_guest"))
+{
+c3="2.4GHz";
+pic="<img src='images/wireless.png' style='height:25px;width:25px;'>";}
+else if((c3=="5G")||(c3=="5G_guest"))
+{
+c3="5GHz";
+pic="<img src='images/wireless.png' style='height:25px;width:25px;'>";}
+else
+{
+c3="-";
+c5="-";
+pic="<img src='images/ethernet.png' style='height:24px;width:22px;'>";}
+var msg_onclick="reDeviceNameRE("+j+")>";
+var msg_rename_img="<input type='image' src='images/rename.png' style='height:10px;width:10px;' onClick="+msg_onclick;
+var msg="<div id=re_device_"+j+">"+"<span id='re_device_span_"+j+"'>"+"<span id='re_device_name'>"+c1+"</span>"+"&nbsp;&nbsp;"+"</sapn>"+"</div>";
+RowCell=[[1,pic],[1,msg],[1,c2],[1,c4],[1,c3],[1,c5],[null,null]];
+re_rowcnt+=Table_add_row("tb_station_info"+i,[[6,re_rowcnt,1],RowCell]);}}
+setIdVal("Numbers"+i,getLangM("224"));
+setIdVal("active_clients_num"+i,re_rowcnt);}
+return;}
+function reNameRE(index)
+{
+HiddenObject("tr_rename"+index);
+HiddenObject("tr_save"+index);
+DisplayObject("tr_renameselect"+index);}
+function reDeviceNameRE(index)
+{
+HiddenObject("re_device_span_"+index);
+var re_msg="#re_device_"+index;
+$(re_msg).append("<span id=\"re_device_span_save_'+index+'\">\
+      <input class=\"\" value=\"\" style=\"width:100px;height:15px\" type=\"text\"  maxlength=\'14\' name=\"saveDeviceNameValue\"/>&nbsp;&nbsp;\
+      <input type=\"image\" src=\"images/rename_save.png\" style=\"height:12px;width:12px;\" onClick=\"saveReDeviceNameRE('+index+')\">\
+        </span>");}
+function saveReDeviceNameRE(index)
+{
+var f=document.tF0;
+var save_re_device_name=f.saveDeviceNameValue.value;
+var mac_address=station_info.stations[index].station_mac;
+if(save_re_device_name=="")
+{
+alert("The device name is empty!");
+return 0;}
+var httoken_val=ArcBase._t();
+var macAddress_Name=mac_address+"?"+save_re_device_name;
+$.ajax({
+type:"POST",
+url:"/cgi-bin/toplogy.cgi",
+dataType:"text",
+data:{httoken:httoken_val,
+cmd:"syncclientdevicename",
+data:macAddress_Name}}).done(function(data){
+if(data=="ok"){
+return subForm({
+next:'status_lan_device.htm',
+uploadtype:0,
+wait:5});}else{
+alert("set and reboot error.");
+return false;}});}
+function doRenameChange(index)
+{
+var select_obj=document.getElementById("selcetRenameID"+index);
+var select_index=select_obj.selectedIndex;
+var default_selsect_value;
+if(select_index==0)
+{
+HiddenObject("tr_rename"+index);
+DisplayObject("tr_save"+index);
+HiddenObject("tr_renameselect"+index);
+default_selsect_value=select_obj.options[select_index].text;
+document.getElementById("RE"+index).textContent=default_selsect_value;}
+else
+{
+HiddenObject("tr_rename"+index);
+HiddenObject("tr_save"+index);
+DisplayObject("tr_save_static_text"+index);
+HiddenObject("tr_renameselect"+index);
+default_selsect_value=select_obj.options[select_index].text;
+setIdVal("REstatic"+index,default_selsect_value);
+DisplayObject("REstatic"+index);}
+select_obj.selectedIndex=-1;}
+function checkNameValue(index)
+{
+var f=document.tF0;
+var wifiName;
+var select_obj=document.getElementById("selcetRenameID"+index);
+var select_index=select_obj.selectedIndex;
+var select_value=select_obj.options[select_index].text;
+if(select_index!=0)
+{
+wifiName=select_obj.options[select_index].text;;}
+else
+{
+if(toplogy_info.nodes.length==1)
+wifiName=f.saveNameValue.value;
+else
+wifiName=f.saveNameValue[index].value;}
+if(wifiName=="")
+{
+alert("2-14 characters are required.");
+document.getElementById("saveNameValue"+index).focus();
+document.getElementById("saveNameValue"+index).value="";
+return true;}
+if(wifiName.length<2)
+{
+alert("2-14 characters are required.");
+document.getElementById("saveNameValue"+index).focus();
+document.getElementById("saveNameValue"+index).value="";
+return true;}
+if(wifiName.length>14)
+{
+alert("2-14 characters are required.");
+document.getElementById("saveNameValue"+index).focus();
+document.getElementById("saveNameValue"+index).value="";
+return true;}
+for(var i=0;i<wifiName.length;i++)
+{
+if((((wifiName.charAt(i))>='0')&&((wifiName.charAt(i))<='9'))||(((wifiName.charAt(i))>='A')&&((wifiName.charAt(i))<='Z'))||(((wifiName.charAt(i))>='a')&&((wifiName.charAt(i))<='z'))||((wifiName.charAt(i))==' ')||((wifiName.charAt(i))=='\'')||((wifiName.charAt(i))=='-')||((wifiName.charAt(i))=='_'))
+{}
+else
+{
+AlertM("233");
+document.getElementById("saveNameValue"+index).focus();
+document.getElementById("saveNameValue"+index).value="";
+return true;}
+if((wifiName.charAt(i))=='?')
+{
+alert("\'?\' is not allowed in the disc name.");
+document.getElementById("saveNameValue"+index).focus();
+document.getElementById("saveNameValue"+index).value="";
+return true;}}
+for(var i=0;i<toplogy_info.nodes.length;i++)
+{
+if(i==index)
+continue;
+if(wifiName==toplogy_info.nodes[i].device_name)
+{
+alert("Your selected name already exists. Please re-enter it.");
+if(select_index!=0)
+{
+HiddenObject("tr_save_static_text"+index);
+HiddenObject("REstatic"+index);
+reNameRE(index);}
+return true;}}
+return false;}
+function saveNameRE(index){
+if(checkNameValue(index)!=true)
+{
+var f=document.tF0;
+var httoken_val=ArcBase._t();
+var device_mac=toplogy_info.nodes[index].device_mac;
+var wifiExtName=device_mac+"?$[+";
+var select_obj=document.getElementById("selcetRenameID"+index);
+var select_index=select_obj.selectedIndex;
+if(select_index!=0)
+{
+wifiExtName+=select_obj.options[select_index].text;;}
+else
+{
+if(toplogy_info.nodes.length==1)
+wifiExtName+=f.saveNameValue.value;
+else
+wifiExtName+=f.saveNameValue[index].value;}
+$.ajax({
+type:"POST",
+url:"/cgi-bin/toplogy.cgi",
+dataType:"text",
+data:{httoken:httoken_val,
+cmd:"syncdevicename",
+data:wifiExtName}}).done(function(data){
+if(data=="ok"){
+return subForm({
+next:'status_lan_device.htm',
+uploadtype:0,
+wait:5});}else{
+alert("set and reboot error.");
+return false;}});}}
+function write_device_table()
+{
+for(var i=0;i<toplogy_info.nodes.length;i++)
+{
+$('#tb_all_device').append('\
+  <tr id="tr_rename'+i+'">\
+   <td width="12%"><nobr><font class=taFont1 id="RE'+i+'"></font></nobr></td>\
+   <td width="88%"><input type="image" src="images/rename.png" style="height:16px;width:16px;" class="" onClick="reNameRE('+i+')" name="renameButton" id="215"></td>\
+  </tr>\
+  <tr id="tr_renameselect'+i+'">\
+   <td class="tdTextTa_20_normal" width="12%" >\
+    <select id="selcetRenameID'+i+'" size="1" onChange="doRenameChange('+i+')">\
+     <option value="TA_WiFi_AP(Custom)">Wi-Fi AP A</option>\
+     <option value="Hallway">Hallway</option>\
+     <option value="Lounge">Lounge</option>\
+     <option value="Study">Study</option>\
+     <option value="Bedroom">Bedroom</option>\
+     <option value="Kitchen">Kitchen</option>\
+    </select>\
+   </td>\
+   <td id="td_select_id'+i+'" width="88%"><font class=taFont2 id="RE'+i+'"></font></td>\
+  </tr>\
+  <tr id="tr_save'+i+'">\
+   <td class="normalText" width="12%">\
+    <input value="" type="text"  maxlength=\'14\' id="saveNameValue'+i+'" name="saveNameValue"/>\
+   </td>\
+   <td width="88%"> <input type="image" src="images/rename_save.png" style="height:16px;width:16px;" onClick="saveNameRE('+i+')" name="saveButton" id="216"></td>\
+  </tr>\
+  <tr id="tr_save_static_text'+i+'">\
+   <td width="12%"><font class=taFont2 id="REstatic'+i+'"></font></td>\
+   <td width="88%"> <input type="image" src="images/rename_save.png" style="height:16px;width:16px;" onClick="saveNameRE('+i+')" name="saveButton" id="216"></td>\
+  </tr>\
+  <tr>\
+   <td colspan="2" valign="top">\
+    <font id="Numbers'+i+'" class=taFont2></font><font class=taFont2 id="active_clients_num'+i+'"></font>\
+    <table class="vox20_tablec" width=80% cellspacing=1 cellpadding=5 border=0 id="tb_station_info'+i+'">\
+     <tr>\
+      <td width=10% nowrap ><font class=taFontBold2></font></td>\
+      <td width=20% nowrap ><font id="202" class=taFontBold2></font></td>\
+      <td width=20% nowrap ><font id="203" class=taFontBold2></font></td>\
+      <td width=20% nowrap ><font id="207" class=taFontBold2></font></td>\
+      <td width=20% nowrap ><font id="205" class=taFontBold2></font></td>\
+      <td width=20% nowrap ><font id="208" class=taFontBold2></font></td>\
+     </tr>\
+    </table>\
+   </td>\
+  </tr>');}}
+window.getHeight=function()
+{
+if(window.innerHeight!=undefined)
+{
+return window.innerHeight;}
+else
+{
+var B=document.body,D=document.documentElement;
+return Math.min(D.clientHeight,B.clientHeight);}}
+window.getWidth=function()
+{
+if(window.innerWidth!=undefined)
+{
+return window.innerWidth;}
+else
+{
+var B=document.body,D=document.documentElement;
+return Math.min(D.clientWidth,B.clientWidth);}}
+function ClickbtnSave()
+{
+var content="<br>"+getLangM("228")+"<br><br><br>";
+msgbox(getLangM("100008"),content,'msgBoxReNameSave()',1,1);}
+function msgbox(title,content,func,cancel,focus)
+{
+create_mask();
+var reanme_selcet_tmp=rename_device_selecet();
+var reanme_input_tmp="<tr  >\
+         <td align=\"center\" >"+getLangM("229")+"</td>\
+         <td align=\"left\" class=\"normalText\" style=\" padding:0px 0px 0px 0px; \">\
+          <input type=\"text\" size=\"15\" maxlength=\"14\" name=\"reName\" id=\"reName\" value=\"\">\
+         </td>\
+        </tr>";
+var rename_tmp="<table style=\"width:400px; \"  cellspacing=\"10\" border=\"0\">"
++reanme_selcet_tmp
++reanme_input_tmp
++"</table>";
+var temp="<form id=\"msg_form\"><div style=\"width:400px;border: 0px solid #37B6D1;background-color: #fff; padding:0px 15px 0px 15px; \" >"
+if(title!=null)
+{
+temp+="<div class=\"taFont1\"  align=\"center\" style=\"line-height:25px; padding:30px 15px 0px 15px; background-color: white;\">"+title+"</div>";}
+temp+="<table  cellspacing=\"0\" border=\"0\">\
+     <tr>\
+      <td style=\" padding:0px 0px 0px 0px; \"></td>"
++"<td >\
+         <div class=\"taFont2\">"+content+"</div>\
+          </td>\
+        </tr>\
+      </table>";
+temp+=rename_tmp;
+temp+="<br><div style=\"text-align:center; padding:0px 0px 6px;background-color: #fff;\"><input type='button' class='tapurple' value='"+getLangM("100001")+"'id=\"msgconfirmb\"   onclick='"+func+";'>";
+if(null!=cancel)
+{
+temp+="&nbsp;&nbsp;&nbsp;<input type='button' class='tapurple' value='"+getLangM("100002")+"'  id=\"msgcancelb\"   onClick='remove()'>";}
+temp+="</div></div></form>";
+create_msgbox(400,200,temp);
+if(focus==0||focus=="0"||null==focus)
+{
+document.getElementById("msgconfirmb").focus();}
+else if(focus==1||focus=="1")
+{
+document.getElementById("msgcancelb").focus();}
+do_arcTrans('#msg_form');}
+function rename_device_selecet()
+{
+var rename_f="<tr >\
+      <td align=\"center\" ><font class=\"taFont1\" id=\"123\">"+getLangM("230")+"</font></td>\
+      <td align=\"left\" class='tdTextTa_normal'>\
+       <div class=\"\">\
+        <select id=\"re_name_select\" name=\"re_name_select\" onChange=\"\"> ";
+var rename_m="";
+for(var j=0;j<station_info.stations.length;j++)
+{
+if(station_info.stations[j].online==0)
+continue;
+var client_mac='"'+station_info.stations[j].station_mac+'"';
+var clinet_name=station_info.stations[j].alias_name;
+if(clinet_name==""||clinet_name=="NULL")
+{
+clinet_name=station_info.stations[j].station_name;}
+rename_m+="<option value = "+client_mac+">   "+clinet_name+"</option>";}
+if(rename_m=="")
+{
+rename_m="<option>--Select--</option> "}
+var rename_l="</select>\
+           </div>\
+          </td>\
+        </tr> ";
+var rename_msg=rename_f+rename_m+rename_l;
+return rename_msg}
+function get_width()
+{
+return(window.getWidth()+document.body.scrollLeft);}
+function get_height()
+{
+return(window.getHeight()+document.body.scrollTop);}
+function get_left(w)
+{
+var bw=document.body.clientWidth;
+var bh=document.body.clientHeight;
+w=parseFloat(w);
+return(bw/2-w/2+document.body.scrollLeft);}
+function get_top(h)
+{
+var bw=document.body.clientWidth;
+var bh=document.body.clientHeight;
+h=parseFloat(h);
+return(bh/2-h/2+document.body.scrollTop);}
+function create_mask()
+{
+var mask=document.createElement("div");
+mask.id="mask";
+mask.style.position="fixed";
+mask.style.filter="progid:DXImageTransform.Microsoft.Alpha(style=4,opacity=25)";
+mask.style.opacity=0.4;
+mask.style.background="white";
+mask.style.top="0px";
+mask.style.left="0px";
+mask.style.width="100%";
+mask.style.height="100%";
+mask.style.zIndex=1000;
+document.body.appendChild(mask);}
+function create_msgbox(w,h,t)
+{
+var box=document.createElement("div");
+box.id="msgbox";
+box.style.position="absolute";
+box.style.width=w;
+box.style.height=h;
+box.style.overflow="visible";
+box.innerHTML=t;
+box.style.zIndex=1001;
+box.style.left=window.getWidth()/3-w/2+100+'px';
+document.body.appendChild(box);
+box.style.top=window.getHeight()/2.5-box.offsetHeight/2+'px';
+re_pos();}
+function re_mask()
+{
+var mask=document.getElementById("mask");
+if(null==mask)return;
+mask.style.width=get_width()+"px";
+mask.style.height=get_height()+"px";}
+function re_pos()
+{
+var box=document.getElementById("msgbox");
+if(null!=box){
+var w=box.style.width;
+var h=box.style.height;
+box.style.left=get_left(w)+"px";
+box.style.top=get_top(h)+"px";}}
+function remove()
+{
+var mask=document.getElementById("mask");
+var msgbox=document.getElementById("msgbox");
+if(null==mask&&null==msgbox)return;
+document.body.removeChild(mask);
+document.body.removeChild(msgbox);}
+function re_show()
+{
+re_pos();
+re_mask();}
+function load_func(){
+window.onresize=re_show;
+window.onscroll=re_show;}
+function update_info_for_aliasname(update_alias_name_info)
+{
+var ret_date="";
+if(update_alias_name_info=="")
+{
+return 0;}
+var alias_name_info=update_alias_name_info.split('?');
+for(var i=0;i<station_info.stations.length;i++)
+{
+var update_stations_date=station_info.stations[i];
+var update_mac=update_stations_date.station_mac;
+if(update_mac==alias_name_info[0])
+{
+update_stations_date.alias_name=alias_name_info[1];
+ret_date=update_stations_date.parent_id+'?$[+'+update_stations_date.station_mac+'?$[+'+
+update_stations_date.alias_name+'?$[+'+update_stations_date.pid;
+break;}}
+return ret_date;}
+function msgBoxReNameSave()
+{
+var f=document.tF0;
+var save_re_device_name=document.getElementById("reName").value;
+var options=$("#re_name_select option:selected");
+var mac_address=options.val()
+if(save_re_device_name=="")
+{
+alert("2-14 characters are required.");
+document.getElementById("reName").value="";
+document.getElementById("reName").focus();
+return false;}
+if(save_re_device_name.length<2)
+{
+alert("2-14 characters are required.");
+document.getElementById("reName").value="";
+document.getElementById("reName").focus();
+return false;}
+if(save_re_device_name.length>14)
+{
+alert("2-14 characters are required.");
+document.getElementById("reName").value="";
+document.getElementById("reName").focus();
+return false;}
+for(var i=0;i<save_re_device_name.length;i++)
+{
+if((((save_re_device_name.charAt(i))>='0')&&((save_re_device_name.charAt(i))<='9'))||(((save_re_device_name.charAt(i))>='A')&&((save_re_device_name.charAt(i))<='Z'))||(((save_re_device_name.charAt(i))>='a')&&((save_re_device_name.charAt(i))<='z'))||((save_re_device_name.charAt(i))==' ')||((save_re_device_name.charAt(i))=='\'')||((save_re_device_name.charAt(i))=='-')||((save_re_device_name.charAt(i))=='_'))
+{}
+else
+{
+document.getElementById("reName").value="";
+document.getElementById("reName").focus();
+AlertM("233");
+return false;}}
+for(var j=0;j<station_info.stations.length;j++)
+{
+var client_mac=station_info.stations[j].station_mac;
+var client_name=station_info.stations[j].station_name;
+if(client_mac!=mac_address)
+{
+if(save_re_device_name==client_name)
+{
+alert("The device name has existed!");
+document.getElementById("reName").value="";
+document.getElementById("reName").focus();
+return false;}}}
+remove();
+var httoken_val=ArcBase._t();
+var macAddress_Name=mac_address+"?"+save_re_device_name;
+var aliasname_json_string=update_info_for_aliasname(macAddress_Name);
+$.ajax({
+type:"POST",
+url:"/cgi-bin/set_status_station.cgi",
+dataType:"text",
+data:{httoken:httoken_val,
+cmd:"syncclientdevicename",
+data:aliasname_json_string}}).done(function(data){
+if(data=="ok"){
+return subForm({
+next:'status_lan_device.htm',
+uploadtype:0,
+wait:5});}else{
+alert("set and reboot error.");
+return false;}});}
+function go_offline(){
+window.location.href="./status_lan_device_offline.htm";}
+function last_date(last_connect){
+last_connect=parseInt(last_connect+"000");
+var now=new Date(last_connect);
+var year=now.getFullYear();
+var month=now.getMonth()+1;
+if(month<10)
+month="0"+month;
+var date=now.getDate();
+var hour=now.getHours();
+if(hour<10)
+hour="0"+hour;
+if(hour>12){
+var hour_pm=hour-12;
+if(hour_pm<10)
+hour_pm="0"+hour_pm;}
+var minute=now.getMinutes();
+if(minute<10)
+minute="0"+minute;
+var second=now.getSeconds();
+var last_time;
+last_time=date+"/"+month+"/"+year+" "+hour+":"+minute;
+return last_time;}
+function ShowOfflineDevices()
+{
+var re_rowcnt=0;
+var c1,c2,c3,c4,c5;
+var pic;
+for(var i=0;i<station_info.stations.length;i++)
+{
+if(station_info.stations[i].online==1)continue;
+c1=station_info.stations[i].alias_name;
+if(c1==""||c1=="NULL")
+{
+c1=station_info.stations[i].station_name;}
+c2=station_info.stations[i].station_mac;
+c3=station_info.stations[i].connect_type;
+c4=last_date(station_info.stations[i].last_connect);
+if((c3=="2.4G")||(c3=="2.4G_guest"))
+{
+c3="2.4GHz";
+pic="<img src='images/wireless.png' style='height:25px;width:25px;'>";}
+else if((c3=="5G")||(c3=="5G_guest"))
+{
+c3="5GHz";
+pic="<img src='images/wireless.png' style='height:25px;width:25px;'>";}
+else
+{
+c3="-";
+c5="-";
+pic="<img src='images/ethernet.png' style='height:24px;width:22px;'>";}
+var msg_onclick="reDeviceNameRE("+i+")>";
+var msg_rename_img="<input type='image' src='images/rename.png' style='height:10px;width:10px;' onClick="+msg_onclick;
+var msg="<div id=re_device_"+i+">"+"<span id='re_device_span_"+i+"'>"+"<span id='re_device_name'>"+c1+"</span>"+"&nbsp;&nbsp;"+"</sapn>"+"</div>";
+var t5="<a class='ex1' href='javascript: void(0)' onClick=\"msgbox2(null,'"+c1+"','msgBoxForgetSave("+i+")',1,1)\";><font>Forget</font></a>";
+RowCell=[[1,pic],[1,c1],[1,c2],[1,c4],[1,t5],[null,null]];
+re_rowcnt+=Table_add_row("station_info",[[5,re_rowcnt,1],RowCell]);}
+setIdVal("offline_clients_num",re_rowcnt);
+return;}
+function remove_offline_devices(){
+return subForm({
+frm:document.tF2,
+wait:3,
+to:"remove_offline.cgi"});}
+function decode_json(enc_str)
+{
+return $.parseJSON(decode(enc_str))}
+function init(){
+var f=document.tF0;
+toplogy_info=decode_json(toplogy_info);
+station_info=decode_json(station_info);
+station_led_info=decode_json(station_led_info);
+for(var j=0;j<station_info.stations.length;j++)
+{
+station_info.stations[j].station_name=safthtml(station_info.stations[j].station_name);}
+write_device_table();
+ShowRepeter();
+ShowOfflineDevices();
+ShowMenu();
+initSelect();}
+function refreshfun(){
+location.href="status_lan_device.htm";
+return false;}
+</script>
+</head>
+<body bgcolor="#ffffff"text="#000000"leftmargin="0"topmargin="0"marginwidth="0"marginheight="0"onLoad="pre_init()">
+<script>ShowPageMenu();</script>
+<form name="tF0"action="/cgi-bin/statusprocess.exe"method="post"target="OUTfrm">
+<table width="100%"border="0"cellspacing="0"cellpadding="10"align="center"id="tb_all_device">
+</table>
+</form>
+<form>
+<table width="100%"border="0"cellspacing="0"cellpadding="10"align="center"id="tb_all_device">
+<tr>
+<td colspan="2"valign="top">
+<font class=taFont2 id="222"></font>
+<font class=taFont2 id="offline_clients_num"></font>&nbsp;&nbsp;&nbsp;&nbsp;
+<table class="vox20_tablec"width=80% cellspacing=1 cellpadding=5 border=0 id="station_info">
+<tr>
+<td width=10% nowrap>
+<font class=taFontBold2></font>
+</td>
+<td width=20% nowrap>
+<font id="202"class=taFontBold2></font>
+</td>
+<td width=20% nowrap>
+<font id="203"class=taFontBold2></font>
+</td>
+<td width=20% nowrap>
+<font id="223"class=taFontBold2></font>
+</td>
+<td width=20% nowrap>
+<font class=taFontBold2></font>
+</td>
+</tr>
+</table>
+</td>
+</tr>
+</table>
+</form>
+<script>ShowPageTail();</script>
+<img title=spacer src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7MjA3OTA5NjMyOA==" border=0>
+</body>
+</html>

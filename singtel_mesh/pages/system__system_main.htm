@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<!--[if lt IE 7]><html class="no-js lt-ie9 lt-ie8 lt-ie7"lang="en"><![endif]-->
+<!--[if IE 7]><html class="no-js lt-ie9 lt-ie8"lang="en"><![endif]-->
+<!--[if IE 8]><html class="no-js lt-ie9"lang="en"><![endif]-->
+<!--[if gt IE 8]><!--><html lang="en"class="gt-ie8"><!--<![endif]-->
+<!--[if lt IE 10]><meta http-equiv="X-UA-Compatible"content="IE=edge"/><![endif]-->
+<head>
+<title></title>
+<meta http-equiv="Content-Type"content="text/html; charset=">
+<link rel="stylesheet"type="text/css"media="screen"href="css/c_voda_main.css">
+<link rel="stylesheet"type="text/css"media="all"href="css/arctransform.css">
+<!--[if lt IE 9]>
+<link rel="stylesheet"type="text/css"media="screen"href="css/ie.css">
+<![endif]-->
+<script language="javascript">var LangJ=["status"];var CGIs=["toplogy_info"];</script>
+<script type="text/javascript"src="js/init_data.js"></script>
+<script language="javascript"src="js/global.js"></script>
+<script language="javascript"src="js/routine.js"></script>
+<script type="text/javascript"src="js/jquery-1.8.3.min.js"></script>
+<script type="text/javascript"src="js/jquery.arctransform.js"></script>
+<script language="JavaScript">
+function decode_json(enc_str)
+{
+return $.parseJSON(decode(enc_str))}
+function get_sys_uptime(uptime)
+{
+var sec=parseInt(uptime);
+if(isNaN(sec))
+{
+return"";}
+var day=Math.floor(sec/(24*60*60));
+sec=sec%(24*60*60);
+var hour=Math.floor(sec/(60*60));
+sec=sec%(60*60);
+var min=Math.floor(sec/(60));
+sec=sec%(60);
+var strtime='';
+if(day>1)
+{
+strtime+=day+" "+getLangM("420")+", ";}
+else{
+strtime+=day+" "+getLangM("419")+", ";}
+if(hour>1)
+{
+strtime+=hour+" "+getLangM("422")+", ";}
+else{
+strtime+=hour+" "+getLangM("421")+", ";}
+if(min>1)
+{
+strtime+=min+" "+getLangM("424");}
+else{
+strtime+=min+" "+getLangM("423");}
+return strtime;}
+function showInformationStatus(){
+for(var i in toplogy_info.nodes)
+{
+if(i==0)
+{
+if(toplogy_info.nodes[i].device_name!="")
+$('#device_name'+i).text(toplogy_info.nodes[i].device_name+"(Primary)");
+else
+$('#device_name'+i).text("Wi-Fi Extender "+i+"(Primary)");}
+else
+{
+if(toplogy_info.nodes[i].device_name!="")
+$('#device_name'+i).text(toplogy_info.nodes[i].device_name);
+else
+$('#device_name'+i).text("Wi-Fi Extender "+i);}
+setIdVal("hardware_version"+i,toplogy_info.nodes[i].hw_ver);
+setIdVal("runtime_code_version"+i,toplogy_info.nodes[i].fw_ver);
+setIdVal("serial_number"+i,toplogy_info.nodes[i].sn);
+setIdVal("device_uptime"+i,get_sys_uptime(toplogy_info.nodes[i].uptime));
+setIdVal("device_ip"+i,toplogy_info.nodes[i].device_ip);
+setIdVal("device_mac"+i,toplogy_info.nodes[i].device_id);
+setIdVal("lan_mac_addr"+i,toplogy_info.nodes[i].eth_mac);
+setIdVal("wlan_mac_addr"+i,toplogy_info.nodes[i].bssid_2g);
+setIdVal("wlan5_mac_addr"+i,toplogy_info.nodes[i].bssid_5g);}}
+function write_info_table(){
+for(var i=0;i<toplogy_info.nodes.length;i++)
+{
+$('#info_table').append('<tr><td valign="top">\
+  <table width="80%" class="vox20_table_nbl" border="0" cellspacing="0" cellpadding="5" align="left" style="margin-left: 10px;margin-bottom:20px;">\
+  <p style="margin-top:0px;margin-left:10px;"><font class="taFont1" id="device_name'+i+'"></font></p>\
+  <tr>\
+  <td width="300"><b><font id="143" class="taFont2"></font>: </b></td>\
+  <td><font class="taFont2" id="hardware_version'+i+'"></font></td>\
+  </tr>\
+  <tr>\
+  <td><b><font class="taFont2" id="137"></font>:</b> </td>\
+  <td><font class="taFont2" id="runtime_code_version'+i+'"></font></td>\
+  </tr>\
+  <tr>\
+  <td><b><font class="taFont2" id="144"></font>:</b></td>\
+  <td><font class="taFont2" id="serial_number'+i+'"></font></td>\
+  </tr>\
+  <tr>\
+  <td><b><font class="taFont2" id="150"></font>: </b></td>\
+  <td><font class="taFont2" id="device_uptime'+i+'"></font></td>\
+  </tr>\
+  <tr>\
+  <td><b><font class="taFont2" id="151"></font>: </b></td>\
+  <td><font class="taFont2" id="device_ip'+i+'"></font></td>\
+  </tr>\
+  <tr>\
+  <td><b><font class="taFont2" id="147"></font>:</b></td>\
+  <td><font class="taFont2" id="device_mac'+i+'"></font></td>\
+  </tr>\
+  <tr>\
+  <td><b><font class="taFont2" id="140"></font>: </b></td>\
+  <td><font class="taFont2" id="lan_mac_addr'+i+'"></font></td>\
+  </tr>\
+  <tr>\
+  <td><b><font class="taFont2" id="145"></font>:</b> </td>\
+  <td><font class="taFont2" id="wlan_mac_addr'+i+'"></font></td>\
+  </tr>\
+  <tr>\
+  <td><b><font class="taFont2" id="146"></font>: </b></td>\
+  <td><font class="taFont2" id="wlan5_mac_addr'+i+'"></font></td>\
+  </tr>\
+  </table>\
+  </td></tr>');}}
+function init(){
+var f=document.tF0;
+toplogy_info=decode_json(toplogy_info);
+station_info=decode_json(station_info);
+station_led_info=decode_json(station_led_info);
+write_info_table();
+showInformationStatus();
+top.G_menu_title=getLangM(110700);
+ShowMenu();}
+</script>
+</head>
+<body bgcolor="#ffffff"text="#000000"leftmargin="0"topmargin="0"marginwidth="0"marginheight="0"onLoad="pre_init()">
+<script>ShowPageMenu();</script>
+<p style="margin-left:10px"><font id="320"class="taFont4"></font></p>
+<form name="tF0"action="/cgi-bin/statusprocess.exe"method="post"target="OUTfrm">
+<table width="100%"border="0"cellspacing="0"cellpadding="0"align="center"id="info_table">
+</form>
+<img title=spacer src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7MTk0MTg1MjY0NA==" border=0>
+</body>
+</html>

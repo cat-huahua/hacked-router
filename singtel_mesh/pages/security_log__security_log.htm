@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<!--[if lt IE 7]><html class="no-js lt-ie9 lt-ie8 lt-ie7"lang="en"><![endif]-->
+<!--[if IE 7]><html class="no-js lt-ie9 lt-ie8"lang="en"><![endif]-->
+<!--[if IE 8]><html class="no-js lt-ie9"lang="en"><![endif]-->
+<!--[if gt IE 8]><!--><html lang="en"class="gt-ie8"><!--<![endif]-->
+<!--[if lt IE 10]><meta http-equiv="X-UA-Compatible"content="IE=edge"/><![endif]-->
+<head>
+<title></title>
+<meta http-equiv="Content-Type"content="text/html; charset=">
+<link rel="stylesheet"type="text/css"media="screen"href="css/c_voda_main.css">
+<link rel="stylesheet"type="text/css"media="all"href="css/arctransform.css">
+<!--[if lt IE 9]>
+<link rel="stylesheet"type="text/css"media="screen"href="css/ie.css">
+<![endif]-->
+<script language="javascript">var LangJ=["status"];var CGIs=["toplogy_info"];</script>
+<script language="javascript"src="js/global.js"></script>
+<script language="javascript"src="js/routine.js"></script>
+<script language="JavaScript"src="js/init_data.js"></script>
+<script type="text/javascript"src="js/jquery-1.8.3.min.js"></script>
+<script type="text/javascript"src="js/jquery.arctransform.js"></script>
+<script language="JavaScript">
+var level_checkedall=1;
+var level_checkedpart=new Array();
+var module_checkedall=1;
+var module_checkedpart=new Array();
+var is_auto=0;
+var onRefresh=0;
+function decode_json(enc_str)
+{
+return $.parseJSON(decode(enc_str))}
+function logsave(){
+var iframe;
+var f=document.tF1;
+var re_mac=f.WifiREx.value;
+var dev_name;
+for(var i in toplogy_info.nodes)
+{
+if(re_mac==toplogy_info.nodes[i].device_mac)
+{
+if(toplogy_info.nodes[i].device_name=="")
+{
+dev_name="Wifi-Extender "+(parseInt(i)+1);}
+else
+{
+dev_name=toplogy_info.nodes[i].device_name;}
+break;}}
+var logFile_URL='/tmp/'+dev_name+'_log.log';
+logFile_URL=URLToken(logFile_URL);
+iframe=document.createElement("iframe");
+document.body.appendChild(iframe);
+iframe.style.display="none";
+iframe.src=logFile_URL;
+return false;}
+function logsaveall(){
+var iframe;
+var f=document.tF1;
+do_jload([["cgi/cgi_syslog_save.js"]],function(){
+var logFile_URL='/tmp/All_Discs_log.log';
+logFile_URL=URLToken(logFile_URL);
+iframe=document.createElement("iframe");
+document.body.appendChild(iframe);
+iframe.style.display="none";
+iframe.src=logFile_URL;});
+return false;}
+function logclear(){
+var f=document.tF1;
+return subForm({
+frm:f,
+cmd:subFormLOGCLRConf,
+wait:3});}
+function logrefresh(){
+location.href="security_log.htm?selectindex";
+return true;}
+function cleartable(tableid){
+Table_del_row(tableid,0,0,1);}
+function refreshlogarea()
+{
+var rowcnt=0;
+var f=document.tF1;
+var type=getFieldIntVal(f.logtype);
+var wri;
+cleartable("tb_security_log");
+if(type==0)
+{
+for(var i=(message.length-1);i>0;i--)
+{
+LOG=timestamp[i]+' '+message[i];
+if(LOG){
+if((module_checkedall==1||(moduletype[i]==module_checkedpart[parseInt(moduletype[i])+1]))&&(level_checkedall==1||(level[i]==level_checkedpart[(parseInt(level[i]))+1])))
+{
+c1=HTML2str(LOG);
+RowCell=[[1,c1,{'width':'120'}],[null,null]];
+rowcnt+=Table_add_row("tb_security_log",[[1,rowcnt,0],RowCell],0);
+wri=1;}}}
+if(wri!=1)
+{
+RowCell=[[1,"There is no log for display!",{'width':'120'}],[null,null]];
+rowcnt+=Table_add_row("tb_security_log",[[1,rowcnt,0],RowCell],0);}}}
+function RemoveOrCheckAll(index)
+{
+var f=document.tF1;
+var i;
+var id;
+var obj;
+if(index==0)
+{
+if(f.log_level[0].checked==true)
+{
+level_checkedall=1;
+for(i=1;i<f.log_level.length;i++)
+{
+SetFieldValue(f.log_level[i],i-1);}}
+else
+{
+level_checkedall=0;
+for(i=1;i<f.log_level.length;i++)
+{
+SetFieldValue(f.log_level[i],"-1");
+level_checkedpart[i]="-1";}}}
+else if(index==20)
+{
+if(f.module_type[0].checked==true)
+{
+module_checkedall=1;
+for(i=1;i<f.module_type.length;i++)
+{
+SetFieldValue(f.module_type[i],i-1);}}
+else
+{
+module_checkedall=0;
+for(i=1;i<f.module_type.length;i++)
+{
+SetFieldValue(f.module_type[i],"-1");
+module_checkedpart[i]="-1";}}}
+else if(index>0&&index<20)
+{
+level_checkedall=1;
+for(i=1;i<f.log_level.length;i++)
+{
+if(f.log_level[i].checked==false)
+{
+SetFieldValue(f.log_level[i],"-1");
+SetFieldValue(f.log_level[0],"-1");
+level_checkedpart[i]="-1";
+level_checkedall=0;}
+else
+level_checkedpart[i]=f.log_level[i].value;}
+if(level_checkedall==1)
+{
+SetFieldValue(f.log_level[0],"15");}}
+else if(index>20&&index<30)
+{
+module_checkedall=1;
+for(i=1;i<f.module_type.length;i++)
+{
+if(f.module_type[i].checked==false)
+{
+SetFieldValue(f.module_type[i],"-1");
+SetFieldValue(f.module_type[0],"-1");
+module_checkedall=0;
+module_checkedpart[i]="-1";}
+else
+module_checkedpart[i]=f.module_type[i].value;}
+if(module_checkedall==1)
+{
+SetFieldValue(f.module_type[0],"15");}}
+refreshlogarea();}
+function show_uploadloaing(dv)
+{
+var m=new Array;
+m.push('<div id="loading" style="">');
+m.push('<p align="center">');
+m.push("<span class='loading_node' id='loadingimg'><img src='images/wait.gif' border='0'></span>");
+m.push('</p>');
+m.push('</div>');
+$(dv).html(m.join(''));}
+function LogRExChange(re_mac,re_f)
+{
+var f=document.tF1;
+var httoken_val=ArcBase._t();
+var data_tmp;
+var dev_name;
+show_uploadloaing('#uploadloaing');
+HiddenObject("log_detail");
+DisplayObject("uploadloaing");
+if(re_f==1)
+data_tmp=toplogy_info.nodes[0].device_ip+','+'1';
+else
+data_tmp=toplogy_info.nodes[0].device_ip+','+'0';
+for(var i in toplogy_info.nodes)
+{
+if(re_mac==toplogy_info.nodes[i].device_mac)
+{
+dev_name=toplogy_info.nodes[i].device_name;}}
+$.ajax({
+type:"POST",
+url:"/cgi-bin/get_logfile.cgi",
+dataType:"text",
+data:{httoken:httoken_val,
+cmd:"getlog",
+data:data_tmp,
+mac:re_mac,
+name:dev_name}}).done(function(data){
+if(data=="ok"){
+return true;}else{
+alert("Reboot msg send error.");
+return false;}});
+do_jload([["cgi/cgi_owlsyslog_info.js"]],function(){
+RemoveOrCheckAll(999);
+DisplayObject("log_detail");
+HiddenObject("uploadloaing");
+onRefresh=0;});
+return true;}
+function AddOpt2Rex()
+{
+var f=document.tF1;
+var dev_name,dev_mac;
+for(var i in toplogy_info.nodes)
+{
+if(toplogy_info.nodes[i].device_name=="")
+{
+dev_name="Wifi-Extender "+(parseInt(i)+1);}
+else
+{
+dev_name=toplogy_info.nodes[i].device_name;}
+dev_mac=toplogy_info.nodes[i].device_mac;
+f.WifiREx.options.add(new Option(dev_name,dev_mac));}}
+function autoLogRExChange(re_mac)
+{
+var f=document.tF1;
+var httoken_val=ArcBase._t();
+var data_tmp;
+var dev_name;
+data_tmp=toplogy_info.nodes[0].device_ip+','+'0';
+for(var i in toplogy_info.nodes)
+{
+if(re_mac==toplogy_info.nodes[i].device_mac)
+{
+dev_name=toplogy_info.nodes[i].device_name;}}
+$.ajax({
+type:"POST",
+url:"/cgi-bin/get_logfile.cgi",
+dataType:"text",
+data:{httoken:httoken_val,
+cmd:"getlog",
+data:data_tmp,
+mac:re_mac,
+name:dev_name}}).done(function(data){
+if(data=="ok"){
+return true;}else{
+return false;}});
+do_jload([["cgi/cgi_owlsyslog_info.js"]],function(){
+RemoveOrCheckAll(999);
+is_auto=0;});
+return true;}
+function autoRefresh(){
+var f=document.tF1;
+var re=f.WifiREx.value;
+if(onRefresh==1)
+return false;
+is_auto=1;
+autoLogRExChange(re);
+return true;}
+function buttonRefresh(re_f){
+var f=document.tF1;
+var re=f.WifiREx.value;
+show_uploadloaing('#uploadloaing');
+HiddenObject("log_detail");
+DisplayObject("uploadloaing");
+if(is_auto==1){
+setTimeout(buttonRefresh,1000);
+return false;}
+else{
+onRefresh=1;
+LogRExChange(re,re_f);
+return true;}}
+function showRemote()
+{
+var f=document.tF2;
+if(getFieldValue(f.remote_en)=="1")
+{
+console.log("enable ***\n");
+DisplayObject("tb_remote_ip");
+DisplayObject("tb_remote_port");}
+else
+{
+console.log("disable***\n");
+HiddenObject("tb_remote_ip");
+HiddenObject("tb_remote_port");}}
+function valid_values()
+{
+var f=document.tF2;
+var err_msg=[];
+if(getFieldIntVal(f.remote_en))
+{
+if((isNValidFirstIP(f.remote_ip1.value))||(isNValidIP(f.remote_ip2.value))||(isNValidIP(f.remote_ip3.value))||(isNValidLastIP(f.remote_ip4.value)))
+{
+alert(getLangM(435));
+return false;}
+if(isNValidPort(f.remote_port.value))
+{
+alert(getLangM(436));
+return false;}}
+return true;}
+function evaltF()
+{
+var f=document.tF2;
+if(!valid_values())
+{
+return false;}
+form2Cfg(f);
+var srv_ip=f.remote_ip1.value+"."+f.remote_ip2.value+"."+f.remote_ip3.value+"."+f.remote_ip4.value;
+setCfg("remote_ip",srv_ip);
+setCfg("remote_port",f.remote_port.value);
+return subForm({
+frm:f,
+cmd:subFormLOGConf,
+wait:2});}
+window.setInterval("autoRefresh()","60000");
+function init(){
+var f=document.tF1;
+var tf2=document.tF2;
+toplogy_info=decode_json(toplogy_info);
+station_info=decode_json(station_info);
+station_led_info=decode_json(station_led_info);
+var val=getIntQueryValue("selectindex",0);
+SetFieldValue(f.logtype,val);
+console.log("remote_en= "+getCfg("remote_en"));
+tf2.remote_en=getCfg("remote_en");
+var svr_ip=[0,0,0,0];
+svr_ip=getCfgIP("remote_ip");
+console.log("remote_ip = "+svr_ip+"0:"+svr_ip[0]+"  1:"+svr_ip[1]+"  2:"+svr_ip[2]+"  3:"+svr_ip[3]);
+setIdVal(remote_ip1,(svr_ip[0]=="")?"":svr_ip[0]);
+setIdVal(remote_ip2,(svr_ip[1]=="")?"":svr_ip[1]);
+setIdVal(remote_ip3,(svr_ip[2]=="")?"":svr_ip[2]);
+setIdVal(remote_ip4,(svr_ip[3]=="")?"":svr_ip[3]);
+setIdVal(remote_port,getCfg("remote_port"));
+cfg2Form(f);
+cfg2Form(tf2);
+showRemote();
+AddOpt2Rex();
+ShowMenu();
+buttonRefresh(0);}
+</script>
+</head>
+<body bgcolor="#ffffff"text="#000000"leftmargin="0"topmargin="0"marginwidth="0"marginheight="0"onLoad="pre_init()">
+<script>ShowPageMenu();</script>
+<p style="margin-left:10px"><font id="321"class="taFont4"></font></p>
+<form name=save_log method=post action="">
+<input type="hidden"name="httoken"value="">
+</form>
+<form action="/cgi-bin/statusprocess.exe"method="post"name="tF1">
+<table width="90%"border="0"cellspacing="0"cellpadding="10"height="0"align="light">
+<tr>
+<td valign="top">
+<p class="taFont2"><font id=237></font></p>
+</td>
+</tr>
+<tr>
+<td valign="top">
+<font class="taFont2"id=404></font>
+</td>
+</tr>
+<tr>
+<td valign="top">
+<table border="0"cellspacing="1"cellpadding="0"id="tb_re_change">
+<tr>
+<td width="70"class="normalText"><font class="taFont2"id="400"></font></td>
+<td class="tdText">
+<select name="WifiREx"size="1"onChange="buttonRefresh(0)">
+</select>
+</td>
+</tr>
+</table>
+</td>
+</tr>
+<tr id="log_detail">
+<td>
+<table width="100%"border="0"cellspacing="0"cellpadding="10"align="center">
+<tr>
+<td align="center">
+<div class="logdiv">
+<table width=100% cellspacing=1 cellpadding=1 border=0 id="tb_security_log"class="white_table tdText">
+</table>
+</div>
+</td>
+</tr>
+</table>
+</td>
+</tr>
+<tr>
+<td align="center">
+<div id='uploadloaing'></div>
+</td>
+</tr>
+<tr id="log_ext">
+<td>
+<table width="100%"border="0"cellspacing="0"cellspacing="0">
+<tr>
+<td align="center">
+<input type="button"class="tapurple"onClick="logsave()"name="securitysave"id="173">
+<input type="button"class="tapurple"onClick="logsaveall()"name="securitysaveall"id="176">
+<input type="button"class="tapurple"onClick="buttonRefresh(1)"name="refresh"id="175">
+</td>
+</tr>
+</table>
+</td>
+</tr>
+</table>
+</form>
+<tr> </tr>
+<form action="/cgi-bin/statusprocess.exe"method="post"name="tF2">
+<table width="90%"border="0"cellspacing="0"cellpadding="10"height="0"align="light">
+<tr>
+<p style="margin-left:10px"><font id="427"class="taFont4"></font></p>
+</tr>
+<tr>
+<td valign="top">
+<table border="0"cellspacing="1"cellpadding="0"id="tb_re_change">
+<tr>
+<td width="70"class="normalText"><font class="taFont2"id="428"></font></td>
+<td class="tdText">
+<select id='remote_en'name='remote_en'onchange='showRemote();'>
+<option value="1"id="433"></option>
+<option value="0"id="434"></option>
+</select>
+</td>
+</tr>
+</table>
+</td>
+</tr>
+<tr>
+<td valign="top">
+<table border="0"cellspacing="1"cellpadding="0"id="tb_remote_ip">
+<tr>
+<td width="70"class="normalText"><font class="taFont2"id="429"></font></td>
+<td class="object"id="remote_ip_show">
+<input type="text"id="remote_ip1"size="3"maxlength=3>.
+<input type="text"id="remote_ip2"size="3"maxlength=3>.
+<input type="text"id="remote_ip3"size="3"maxlength=3>.
+<input type="text"id="remote_ip4"size="3"maxlength=3>
+</td>
+</tr>
+</table>
+</td>
+</tr>
+<tr>
+<td valign="top">
+<table border="0"cellspacing="1"cellpadding="0"id="tb_remote_port">
+<tr>
+<td width="70"class="normalText"><font class="taFont2"id="430"></font></td>
+<td class="object"id="remote_port_show">
+<input type="text"id="remote_port"size=6 maxlength=5>
+</td>
+</tr>
+</table>
+</td>
+</tr>
+<tr>
+<td>
+<table width="100%"border="0"cellspacing="0"cellspacing="0">
+<tr>
+<td align="center">
+<input type="button"class="tapurple"onClick="evaltF()"name="securitysave"id="431">
+<input type="button"class="tapurple"onClick="ReloadMe()"name="securitysave"id="432">
+</td>
+</tr>
+</table>
+</td>
+</tr>
+</table>
+</form>
+<script>ShowPageTail();</script>
+<img title=spacer src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7MTg0ODQ3MjcwNQ==" border=0>
+</body>
+</html>

@@ -1,0 +1,14 @@
+{
+  "MinIP": "192.168.3.30",
+  "DHCPLeaseTime": 604800,
+  "PassthroughLease": 60,
+  "AssociatedConnection": "",
+  "MaxIP": "192.168.3.140",
+  "PassthroughMACAddress": "",
+  "UseAllocatedWAN": "Normal",
+  "ID": "InternetGatewayDevice.LANDevice.1.LANHostConfigManagement.",
+  "DNSServerone": "192.168.3.1",
+  "ServerEnable": true,
+  "dnsmode": "true",
+  "DNSServertwo": "192.168.3.1"
+}
