@@ -211,3 +211,30 @@ xz: error reading stored compressor options from filesystem!
 > 那次真正的硬证据是 `xz uncompress failed with error code 7` +
 > `FATAL ERROR: File system corruption detected`（数据块真的解不开），
 > 以及"数据区 0 个 XZ 魔数"（对照：这份 NETGEAR 健康镜像有 434 个）。
+
+## ★ 一个很有说服力的对比：同一台设备上「有真加密」和「没加密」
+
+同一个 rootfs 里还有一个 NETGEAR 自家的加密库 `lib/libntgrcrypt.so`（24 KB）：
+
+```
+导出的函数：
+  ntgrcrypt_sec_part_open / _close / _reset          ← "安全分区"
+  run_cmd_cryptsetup_luksformat / luksopen / luksclose / luksstatus
+                                                     ← ★ cryptsetup LUKS（真·全盘加密）
+  run_cmd_openssl_aes_dec                            ← 走 openssl 的 AES 解密
+  interleave_file                                    ← 还有一步交错/混淆
+  ntgrcrypt_key_init / ntgrcrypt_key_get_file / key_rm_file
+  ntgrcrypt_get_count / add_count / _count_change    ← 变更计数器
+```
+
+**也就是说：这台设备上 NETGEAR 有能力用 LUKS + AES + 计数器做真加密 ——
+但配置备份偏偏只用 `rand()` XOR。**
+
+这不是"厂商不会加密"，而是**权衡的结果**：配置备份要能被设备自己、
+被 TFTP 恢复、被售后工具在资源极少的早期启动阶段读写，
+所以选了最轻的方案 —— **代价就是把种子直接写在文件头里**。
+
+**结论没变，但更清楚了**：本文开头那套算法是**设计选择**，不是疏漏的巧合。
+反过来说，同一台设备上其他地方（安全分区）用的是 LUKS ——
+**所以"某台 NETGEAR 的备份能解"不等于"这台设备的其他东西也能解"**，
+要分清楚分析的是哪一层。
