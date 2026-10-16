@@ -10,7 +10,7 @@
 | **glbcfg 配置** | ★ **纯明文** `key=value`，不需要解密 |
 | **密码派生机制** | ★ **已完整破译**（见第 2 节）—— root/SSH 密码是**可算的** |
 | **extender 的 rootfs** | **加密 squashfs**，密钥在 **bootloader**，**没有 flash dump 就解不开** |
-| **厂商共用默认物** | 有共用私钥 + 默认账户哈希（见第 5 节） |
+| **厂商共用默认物** | 有共用私钥 + 默认账户哈希（见第 6 节） |
 
 ---
 
@@ -66,7 +66,7 @@ mngcli set ARC_UI_WEB_REMOTEMN_Password=`echo -n "$sn" | md5sum | ...`
 
 ### ★ 这条规则是被实证过的，不只是读代码
 
-同一厂固件的默认账户哈希（模板值，见第 5 节）：
+同一厂固件的默认账户哈希（模板值，见第 6 节）：
 
 ```
 admin:$1$LzO.ToaL$5imIcbz0deL8NG8YUfde81
@@ -146,7 +146,52 @@ magic 0x746F435D | len | crc32 | flag | off1(kernel) | off2(rootfs) | off3
 
 **不要靠熵**判断加密与否（压缩数据熵也是 8.0）；**不要靠"看起来像随机"**下结论。
 
-## 5. 厂商共用默认物（★ 有实际意义的安全发现）
+## 5. 同厂设备里的 OWL 子系统（与 extender 的 MQTT 云【不是一套】）
+
+同厂另一台设备（`Singtel-MeshRG` / DSL 系列）的 rootfs 是**未加密的 ubifs**，直接可读。
+里面有一套完整的 **OWL**（Arcadyan 的 SON / 自组网子系统）：
+
+```
+usr/lib/libArcOWLcore.so      438KB  核心（JSON 序列化、RRM/BTM 决策）
+usr/lib/libArcOWLapi.so        66KB
+usr/lib/libArcOWLhttpApi.so   6.1KB
+usr/agents/arca-owl-agent.so
+usr/sbin/owl  owl_monitor  owl-tplg  arc_ieee1905_owl
+usr/share/config/etc/arcOwl/config.owl
+```
+
+`config.owl`（纯文本，类 C 语法）里写着设备身份：
+
+```
+DEVICE_INFORMATION {
+    MODEL_NAME     ARC-VDSLIAD;
+    PRODUCT_ID     VRV9519AAWAC34-A-TA;
+    SERIAL_NUMBER  J701557422;
+    ...
+}
+OWL_DATA_TRANSMISSION_MODE 1;   # 1 = IEEE1905.1, 2 = socket
+```
+
+glbcfg 里还露出**云端地址**：
+
+```
+ARC_OWL_CLOUD_Enable=0
+ARC_OWL_CLOUD_URL=https://stage1.arciot.com:55668      ← ★ 注意 stage1 = 测试环境
+```
+
+> **★ 对"extender 的 MQTT 命令格式"这条线有用的判断**：
+> 这套 OWL 走的是 **JSON + libmicrohttpd**（HTTP），云端是 **arciot.com**；
+> 而 extender 走的是 **MQTT over TLS** 到 `mqtt.wifi-analytics.singtel.com.sg`，
+> 负载还是 zlib 压缩的。**两者不是同一套协议** —— 实测这台设备的 rootfs 里
+> `wifi-analytics` / `adornment` / `desired_state` / `mqtt` **全部 0 命中**。
+>
+> 所以那份 MQTT 协议只存在于 **extender 自己那份【加密】的 rootfs** 里
+> —— 又回到第 3 节那个结论：**没有 flash dump 就解不开**。
+
+顺带一提：**正式固件里指向 `stage1` 测试环境**，这本身是个工程质量问题
+（测试后端可能不具备生产级的安全与容量保障）。
+
+## 6. 厂商共用默认物（★ 有实际意义的安全发现）
 
 从同厂某台设备的官方固件里解出的 rootfs 中（**未加密部分**）实测到：
 
@@ -159,7 +204,7 @@ magic 0x746F435D | len | crc32 | flag | off1(kernel) | off2(rootfs) | off3
   **厂商从别家运营商的项目复制模板**留下的痕迹。
 - 设备**不校验**服务端证书 —— 这正是[冒充云端](singtel-firmware-analysis.md)能成功的原因。
 
-## 6. 安全发现（负责任披露）
+## 7. 安全发现（负责任披露）
 
 同厂固件里存在**工厂/诊断类 CGI 入口**，可在设备上读出板级数据（含 `gui-pwd`、
 `wps-pin`、WiFi 口令这类出厂密钥）。若这类入口在**鉴权之前**可达，即为信息泄漏缺陷。
