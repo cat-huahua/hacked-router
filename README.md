@@ -142,6 +142,7 @@ PUBLISH   devices/data/shadow                zlib 压缩的身份上报
 - [`docs/singtel-firmware-analysis.md`](docs/singtel-firmware-analysis.md) —— 加密地图、分区表、密码存储方式
 - [`docs/uboot-web-recovery.md`](docs/uboot-web-recovery.md) —— ★ **u-boot 的 Web 恢复模式**（不鉴权，能写 bootloader）
 - [`docs/spi-flash-dump-guide.md`](docs/spi-flash-dump-guide.md) —— ★ **SPI flash 读取指南**：三个解不开的目标，钥匙都在同一块 flash 里；含具体步骤、分区偏移、拿到 dump 后怎么用
+- `flashdump.py` —— ★ **flash dump 自动分析**（配上一份指南用）：扫明文配置块/华为 keystring/AES 表/文件系统，按性价比顺序报出来
 
 ### ★★★ 配置备份解密
 
