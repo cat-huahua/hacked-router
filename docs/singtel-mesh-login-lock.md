@@ -139,3 +139,70 @@ GET /cgi/cgi_login.js?_tn=<token>&_t=<毫秒>
 
 **很讽刺**：管理界面被一把锁焊死，但"上传固件并恢复出厂"这条最重的操作一步都不需要登录。
 唯一的护栏是 `/bin/fw_upgrade` 用 `arca_validateImage` 验签，只收官方签名镜像。
+
+---
+
+# ★ 附：登录算法已从【可读源码】确认（2026-10-16）
+
+早先这套算法是从 extender 那份**混淆过的 JS** 里逆出来的。后来在**同厂另一台设备**
+（`Singtel-MeshRG`）的 **未加密 rootfs** 里找到了**没混淆的源码**，逐行核对**完全一致**。
+
+## 1. `ArcMD5` —— `www/js/common/global.js`
+
+```js
+function ArcMD5(_s){
+    var s = calcMD5(_s);                    // MD5，输出小写 hex
+    var shaObj = new jsSHA(s, "ASCII");     // 拿 MD5 的 hex 字符串当输入
+    s = shaObj.getHash("SHA-512", "HEX");   // 再 SHA-512，输出 hex
+    return s;
+}
+```
+
+即 `ArcMD5(x) = SHA512_hex( MD5_hex(x) )` ✓（与逆向结论一致）
+
+## 2. 登录表单 —— `www/login.htm`
+
+```js
+document.tF2.user_name.value = ArcMD5( ArcMD5(userName)     + ArcBase._t() );
+document.tF2.pws.value       = ArcMD5( ArcMD5(userPassword) + ArcBase._t() );
+```
+
+`ArcBase._t()` 就是 token 的 base64 形式：
+`ArcBase._t = function(a){ var k = ArcBase._tt(); k = ArcBase.encode(k); return k }`
+
+## 3. ★ token 从哪来 —— `ArcBase._tt()`（被 eval 混淆，已还原）
+
+```js
+ArcBase._tt = function(){
+    var objs = document.getElementsByTagName("img");
+    for (var i = 0, sz = objs.length; i < sz; i++) {
+        x = objs[i].src;
+        if (x.indexOf("data:") == 0) {
+            return ArcBase.decode(x.substring(78));   // ★ 第一个 data: 图片的第 78 字符起
+        }
+    }
+    return "";
+}
+```
+
+**取页面里第一个 `src` 以 `data:` 开头的 `<img>`（那张 1×1 GIF），
+对 `src.substring(78)` 做 base64 解码** → 得到 token（一个数字）。
+
+> 混淆方式（顺带记录）：`enkripsi` 密文 → base64 解码 → **每字节 XOR 3**
+> → `unescape` → 去掉前 19 个字符 → `eval("ArcBase._tt=function()" + ...)`。
+> 变量名叫 `teksasli`（印尼语"原文"）—— 又一个厂商跨国复制粘贴的痕迹。
+
+## 4. httpd 侧（同一个未加密 rootfs 的 `/usr/sbin/httpd`）
+
+```
+[%s] token=%lu from %s                     ← token 是个无符号长整数
+[%s] check token before getting data
+[%s] failed to pass token checking         ← 漏 httoken 字段就是这个
+name="httoken"                             ← 表单必须带这个字段
+httoken_output / ssi_httoken_output
+ARC_UI_WEB_TOKEN_Disable                   ← 可以整个关掉
+ARC_SYS_LoginEnable / ARC_SYS_LoginTimeout ← ★ 登录开关与超时（锁机制同一族）
+```
+
+**结论**：README 里写的那套登录流程（token 一次性、必须带 `httoken`、
+必须带 Referer）现在每一条都有源码出处，不再是黑盒观察。
