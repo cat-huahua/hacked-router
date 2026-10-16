@@ -231,3 +231,42 @@ ARC_OWL_CLOUD_URL=https://stage1.arciot.com:55668      ← ★ 注意 stage1 = �
 相关：[singtel-firmware-analysis.md](singtel-firmware-analysis.md)（加密地图 / 分区表）·
 [singtel-mesh-login-lock.md](singtel-mesh-login-lock.md)（登录锁）·
 [huawei-config-format.md](huawei-config-format.md)（另一种设计：密钥在设备上）
+
+## ★ 为什么可以确定「是 bootloader 解密，不是内核」
+
+前面证明了 rootfs 加密、密钥不在固件包里。但**还有第三种可能**：
+密钥硬编码在**内核**里（内核解密 rootfs 再挂载）。这条也排除了：
+
+内核里 squashfs 用的**全是标准解压器** ——
+
+```
+0x5E7368  zlib
+0x5E73B6  xz_dec       (6 处)
+0x5E7466  unlzma
+0x5E7468  lzma         (5 处)
+0x5E7370  lzo
+0x5E7455  "SQUASHFS error: unlzma ..."
+0x5E7442  "decompressor"
+```
+
+**没有任何自定义的「先解密再解压」包装器**，也没有"解密用"的解压器注册项。
+
+> 内核要解密 rootfs，就必须在 squashfs 的挂载路径上插一层自己的代码
+> （自定义 decompressor，或改 `squashfs_read_data`）。
+> **这里一个都没有** —— 全是上游标准实现。
+
+**所以解密发生在内核拿到数据之前，即 bootloader。**
+
+**完整链条**（每一步都实测）：
+
+| 环节 | 结论 | 依据 |
+|---|---|---|
+| 容器 | 明文 | `otrx` 源码里没加密代码 |
+| 内核 | 明文 | LZMA 直接解开，7.7 MB |
+| 内核是否解密 rootfs | **否** | ★ squashfs 只有标准解压器，无自定义包装 |
+| rootfs | 加密 | `xz uncompress failed with error code 7` + 0 个 XZ 魔数 |
+| ⇒ 谁解密 | **bootloader** | 排除法 |
+| bootloader 在哪 | flash `0x0`–`0x30000` | 分区表 |
+| 我们手上有没有 | **没有** | `.w`/`ubi_*` 镜像里 `U-Boot`/`bootdelay`/`bootcmd` 全 0 命中 |
+
+**结论：没有 SPI flash 物理读取，无解。这是信息不存在，不是方法不对。**
