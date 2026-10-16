@@ -114,9 +114,24 @@ magic 0x746F435D | len | crc32 | flag | off1(kernel) | off2(rootfs) | off3
 
 **判断"是加密而不是压缩参数问题"的证据链**（每一条都实测过）：
 
-1. `unsquashfs` 读得出超块，但**紧接着就报**
-   `xz: error reading stored compressor options from filesystem!` —— 超块过了，下一块就不过；
-2. 数据区**没有任何压缩魔数**（XZ/GZIP/LZ4/ZSTD/BZIP2 全 0 命中）；
+1. **★ 真正的硬证据：`unsquashfs` 真去解会失败**，报的是
+
+   ```
+   xz uncompress failed with error code 7
+   read_block: failed to read block @0xb118e6
+   read_fragment_table: failed to read fragment table index
+   FATAL ERROR: File system corruption detected
+   ```
+
+   即"数据块解不开"，而不是"压缩器选项读不到"。
+
+   > **⚠️ 本文档早先把下面这条当成了加密证据，是错的，已删：**
+   > `xz: error reading stored compressor options from filesystem!`
+   > **这条只是无害警告。** 对照实验：**官方 NETGEAR R7800 固件的 rootfs 也报一模一样的话，
+   > 但 `unsquashfs` 照样解出 3245 个文件。** 所以它不能作为任何结论的依据。
+   > 教训：**判据要能区分"良性"和"恶性"，不能只看到一句 error 就下结论。**
+2. 数据区**没有任何压缩魔数**（XZ/GZIP/LZ4/ZSTD/BZIP2 全 0 命中；
+   对照：NETGEAR 那份健康镜像有 **434 个 XZ 魔数**）；
 3. 熵 7.999（注意：**熵高本身不说明问题**，压缩后的数据也是 8.0，必须靠"能不能解"判断）；
 4. 手写暴力 5616 种解压参数组合（LZMA1/LZMA2 × 偏移 × 字典 × 参数 × BCJ）全失败；
 5. **不是重复密钥 XOR**：单字节 256 种全试失败；自相关找周期，最大只有 1.4×（自然重复水平）；

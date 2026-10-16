@@ -137,3 +137,77 @@ SSID 里的名字（如 "HomeSweetHome" 里的 Home/Sweet）· 家庭成员名�
 - 参考实现：[`fysac/orbicfg`](https://github.com/fysac/orbicfg)（Go，为 Orbi 写的，但算法是通用的）。
   它源码里还有一张「宣称的 magic ≠ 实际 magic」的覆盖表 —— 有些设备头里写的值是错的。
 - 路由器上负责这件事的二进制是 `/bin/datalib`。
+
+---
+
+# ★ 附：官方固件分析（2026-10-16）
+
+**结论：官方固件的 rootfs 完全可解，而且二进制层面证实了本文的加密分析。**
+
+## 固件直链与容器结构
+
+```
+https://www.downloads.netgear.com/files/GDC/R7800/R7800-V1.0.2.90.zip   (30 MB)
+```
+
+解开 zip 得到一个 `.img`，结构是：
+
+```
+偏移 0x0       文本头（明文）
+               device:R7800 / version:V1.0.2.90 / region: /
+               hd_id:29764958+0+128+512+4x4+4x4+cascade
+偏移 0x80      uImage（"Linux-3.4.103" 内核）
+偏移 0x220040  第二个 uImage
+偏移 0x220080  ★ squashfs 超块（合法、明文）
+               inodes=3862  block=262144  comp=4(xz)  flags=0x06c0
+偏移 0x666CFD  "CHK" 标记
+```
+
+切出 0x220080 之后的部分直接 `unsquashfs -d sq rootfs.sqsh` ——
+**成功解出 3245 个文件 / 161 目录 / 456 符号链接**。
+
+## ★ 二进制层面证实了配置加密分析
+
+`/bin/datalib`（负责读写配置的那个二进制，40 KB，ARM ELF，stripped）：
+
+```
+$ file bin/datalib
+ELF 32-bit LSB executable, ARM, EABI5, dynamically linked,
+  interpreter /lib/ld-uClibc.so.0, stripped
+
+$ readelf -sW bin/datalib | grep -E 'srand|rand'
+   UND rand        ← ★
+   UND srand       ← ★
+
+$ ls -la lib/ld-uClibc*
+  ld-uClibc-0.9.33.2.so     ← ★ 就是 uClibc 0.9.33.2
+```
+
+**三条独立吻合**：
+1. `datalib` 导入 `srand` / `rand` → 印证"用 rand() 生成密钥流"；
+2. 链接的是 **uClibc 0.9.33.2** → 印证"要用 uClibc 那一支的 `rand()`（TYPE_3）"，
+   这也解释了为什么我们的配置是用 `uclibc` 而不是 `musl` 解开的；
+3. `datalib` 里有 `http_passwd` / `samba_passwd` / `wl_wpa2_psk` / `wla_wpa2_psk` 等
+   字段名，以及 `/tmp/datalib-bakrst.bin`（备份恢复用的临时文件，正是我们解的那种格式）。
+
+**所以本文开头那套算法不是猜的，是从固件二进制里核对过的。**
+
+## ⚠️ 一个判据上的教训（值得单列）
+
+`unsquashfs` 读这份**健康的** NETGEAR 镜像时会报：
+
+```
+xz: error reading stored compressor options from filesystem!
+```
+
+**但它照样把 3245 个文件全解出来了。** 所以这条信息**只是无害警告**，
+**不能作为"文件系统坏了/被加密了"的依据**。
+
+我早先在分析另一台设备（Singtel extender）的加密 rootfs 时，
+**把这条当成了加密的证据之一** —— 是错的，已在
+[arcadyan-singtel-config-format.md](arcadyan-singtel-config-format.md) 里更正。
+
+> **判据必须能区分"良性"和"恶性"**，不能只看到一句 error 就下结论。
+> 那次真正的硬证据是 `xz uncompress failed with error code 7` +
+> `FATAL ERROR: File system corruption detected`（数据块真的解不开），
+> 以及"数据区 0 个 XZ 魔数"（对照：这份 NETGEAR 健康镜像有 434 个）。
