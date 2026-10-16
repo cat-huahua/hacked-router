@@ -238,3 +238,42 @@ xz: error reading stored compressor options from filesystem!
 反过来说，同一台设备上其他地方（安全分区）用的是 LUKS ——
 **所以"某台 NETGEAR 的备份能解"不等于"这台设备的其他东西也能解"**，
 要分清楚分析的是哪一层。
+
+---
+
+# ★ 附：`PWD_question1/2` 的编号对应哪两个问题
+
+解密出来的配置里，安全问题只存**编号**（如 `PWD_question1=4`），看编号根本不知道问的是什么。
+从官方固件的语言文件里可以拿到完整对照表
+（`www/languages-en.js` 与 `www/language/English.js`）：
+
+```
+PWD_question1（第一个安全问题的槽位，共 9 个选项）
+  1  What was the name of the first NETGEAR product you purchased?
+  2  What was the name of the first school you attended?
+  3  What is your oldest sister's first name?
+  4  What is your oldest brother's first name?
+  5  In what city were you born?
+  6  What is your grandmother's first name?
+  7  What is your grandfather's first name?
+  8  In what year (YYYY) did you graduate from high school?
+  9  What is the name of your first employer?
+
+PWD_question2（第二个槽位，共 8 个选项）
+  1  What is your youngest sister's first name?
+  2  What is your youngest brother's first name?
+  3  What is your father's middle name?
+  4  What is your mother's middle name?
+  5  What was the first name of your first manager?
+  6  In what city was your mother born?
+  7  In what city was your father born?
+  8  What is your best friend's first name?
+```
+
+**注意两个槽位的选项列表是不同的**（一个 9 项、一个 8 项），
+所以 `PWD_question1` 和 `PWD_question2` 的同一个数字代表**不同的问题**。
+
+配套的 CGI 是 `www/securityquestions.cgi`（里面用 `quest1_1..quest1_9` /
+`quest2_1..quest2_8` 这些语言变量填充下拉框）。
+
+这样解出来的配置才算**完整**：字段名 → 值 → **值是什么含义**。
