@@ -155,7 +155,8 @@ PUBLISH   devices/data/shadow                zlib 压缩的身份上报
 **三种设计的安全强度依次递增**：NETGEAR 把种子写在文件头里（所以能解）→
 华为把密钥放设备上（一机一密）→ Arcadyan 把密钥放 bootloader 里（最靠下，最难拿）。
 
-统一工具 `routercfg.py` 四种格式都认（含华为的 **HMAC 密钥验证器**）；
+统一工具 `routercfg.py` **五种格式**都认：NETGEAR 配置 / **NETGEAR 官方固件** /
+华为配置 / Arcadyan .trx / Arcadyan glbcfg（含华为的 **HMAC 密钥验证器**）；
 `hwkey.c` 是华为 aescrypt2 的**高速密钥破解器/验证器**（C + 多线程，约 2400 条/秒，判据是 256 位 HMAC，零误判）。
 
 ---

@@ -12,6 +12,7 @@ routercfg —— 家用路由器配置备份的【统一识别 + 解码】工具
   ③ Arcadyan .trx       容器是普通 TRX（otrx，无加密）；rootfs 是 Arcadyan 自家 AES，
                         密钥在 bootloader —— 只有物理读 flash 才能拿到
   ④ Arcadyan glbcfg     ★ 纯明文 key=value（管理密码/WiFi 口令都在里面，不用解密）
+  ⑤ NETGEAR 官方固件    容器明文，rootfs 是普通 squashfs，能直接解（--extract）
 
 用法:
     python3 routercfg.py 某个备份文件                    # 自动识别并尽可能解
@@ -21,6 +22,7 @@ routercfg —— 家用路由器配置备份的【统一识别 + 解码】工具
 import argparse
 import gzip
 import hashlib
+import re
 import struct
 import sys
 import tempfile
@@ -367,7 +369,105 @@ def arc_fields(text):
 
 
 # ══════════════════════════════════════════════════════════════════════
+# ══════════════════════════════════════════════════════════════════════
+# ⑤ NETGEAR 官方固件（.img / CHK）—— 容器明文，rootfs 是标准 squashfs
+# ══════════════════════════════════════════════════════════════════════
+# 结构（实测 R7800-V1.0.2.90.img）：
+#   0x0        文本头   device:R7800 / version:V1.0.2.90 / region: / hd_id:...
+#   0x80       uImage   内核
+#   0x220040   第二个 uImage
+#   0x220080   ★ squashfs 超块（明文、合法）
+#   0x666CFD   "CHK" 标记
+NETGEAR_FW_HDR = b"device:"
+
+NG_FW_NOTE = (
+    "  容器【不加密】，rootfs 是普通 squashfs（xz）—— 可直接 unsquashfs 解开。\n"
+    "  ⚠ `unsquashfs` 会报一句\n"
+    "      xz: error reading stored compressor options from filesystem!\n"
+    "    ★ 那只是【无害警告】：官方健康镜像也报这句，但照样能解出全部文件。\n"
+    "    别拿它当\"文件系统坏了/被加密了\"的依据（真正的坏是\n"
+    "      xz uncompress failed with error code N + FATAL ERROR: File system corruption）。\n"
+    "  对照：同一台设备上 NETGEAR 的\"安全分区\"用的是 cryptsetup LUKS\n"
+    "  （lib/libntgrcrypt.so 里有 luksformat/luksopen），是真加密；\n"
+    "  但【配置备份】只用了 rand() XOR（见 docs/netgear-config-decrypt.md）。\n"
+    "  ⇒ \"备份能解\"不等于\"这台设备别的也能解\"，要分清在哪一层。"
+)
+
+
+def ng_fw_scan(data):
+    """在固件里找一个合法的 squashfs 超块"""
+    out = []
+    start = 0
+    while True:
+        i = data.find(SQSH_MAGIC, start)
+        if i < 0:
+            break
+        sb = sqsh_super(data, i)
+        if sb and 0 < sb["inodes"] < 100000 and sb["block_size"] >= 4096:
+            out.append((i, sb))
+        start = i + 1
+    return out
+
+
+def ng_fw_report(data, out_prefix, do_extract=False):
+    print("── NETGEAR 官方固件（.img / CHK）──")
+    # 文本头
+    end = data.find(b"\x00", 0)
+    head = data[:end if 0 < end < 1024 else 512]
+    try:
+        txt = head.decode("ascii")
+        if txt.startswith("device:"):
+            print("   文本头:")
+            for line in txt.splitlines()[:6]:
+                print("      %s" % line)
+    except UnicodeDecodeError:
+        pass
+    # uImage
+    for m in re.finditer(re.escape(struct.pack(">I", UIMAGE_MAGIC)), data[:0x300000]):
+        o = m.start()
+        name = data[o + 32:o + 64].split(b"\x00")[0]
+        size = struct.unpack(">I", data[o + 12:o + 16])[0]
+        print("   uImage @ 0x%-8X name=%-18s size=%d comp=%d"
+              % (o, name.decode("latin1"), size, data[o + 31]))
+    # CHK
+    c = data.find(b"CHK")
+    if c > 0:
+        print("   CHK 标记 @ 0x%X" % c)
+    # squashfs
+    sq = ng_fw_scan(data)
+    if not sq:
+        print("   ✗ 没找到合法 squashfs 超块")
+        return 1
+    for off, sb in sq:
+        print("   ★ squashfs @ 0x%X" % off)
+        print("       inodes=%d block=%d frags=%d comp=%d(%s) flags=0x%04x ver=%s"
+              % (sb["inodes"], sb["block_size"], sb["frags"], sb["comp"],
+                 COMP_NAME.get(sb["comp"], "?"), sb["flags"], sb["ver"]))
+        print("       bytes_used=%d" % sb["bytes_used"])
+    off, sb = sq[0]
+    out = Path(str(out_prefix) + ".rootfs.sqsh")
+    out.write_bytes(data[off:off + sb["bytes_used"]])
+    print("   → 已切出 %s（%d 字节）" % (out, sb["bytes_used"]))
+    print()
+    print(NG_FW_NOTE)
+    if do_extract:
+        import subprocess
+        d = Path(str(out_prefix) + ".rootfs")
+        print("\n   解压到 %s ..." % d)
+        r = subprocess.run(["unsquashfs", "-d", str(d), str(out)],
+                           capture_output=True, text=True)
+        tail = [l for l in (r.stdout or "").splitlines() if l.startswith(("created", "FATAL"))]
+        for l in tail[:6]:
+            print("     %s" % l)
+    else:
+        print("\n   解压: unsquashfs -d <目录> %s" % out)
+    return 0
+
+
 def identify(data):
+    # ★ NETGEAR 官方固件：文本头 device:... + 内含合法 squashfs
+    if data[:len(NETGEAR_FW_HDR)] == NETGEAR_FW_HDR:
+        return "ng_firmware"
     if len(data) >= 36 and data[0:4] == b"\x00\x00\x00\x02":
         return "huawei"
     if len(data) > 24 and struct.unpack("<I", data[:4])[0] == TRX_MAGIC:
@@ -399,6 +499,8 @@ def main():
     ap.add_argument("--hw-hdr", type=int, default=HW_HEADER, help="华为设备的头长度（默认 32）")
     ap.add_argument("--hw-tag", type=int, default=HW_TAG, help="华为末尾 HMAC 长度（默认 32，没有就填 0）")
     ap.add_argument("-o", "--out", help="输出文件前缀")
+    ap.add_argument("--extract", action="store_true",
+                    help="NETGEAR 固件：顺便用 unsquashfs 把 rootfs 解出来")
     a = ap.parse_args()
 
     p = Path(a.file)
@@ -407,6 +509,8 @@ def main():
     print("文件  : %s (%d 字节)" % (p, len(data)))
     print("格式  : %s" % kind)
     print()
+    if a.info:
+        return 0
 
     if kind == "netgear":
         print("── NETGEAR 配置（XOR + rand()，种子在文件头）──")
@@ -429,6 +533,9 @@ def main():
         out.write_bytes(plain)
         print("\n  完整明文 → %s" % out)
         return 0
+
+    if kind == "ng_firmware":
+        return ng_fw_report(data, a.out or p, do_extract=a.extract)
 
     if kind == "huawei":
         if a.hw_key:
