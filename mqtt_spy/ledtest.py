@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """等设备连上 -> 往三个命令主题各发一轮 LED 候选格式 -> 观察设备反应"""
+import os
 import time, sys, subprocess
-sys.path.insert(0, "/home/ma-xiuyuan/mqtt_spy")
+sys.path.insert(0, os.path.expanduser("~/mqtt_spy"))
 from pub import connect, publish
 
 DEV = "AABBCC000001"
-LOG = "/home/ma-xiuyuan/mqtt_spy/spy.log"
+LOG = os.path.expanduser("~/mqtt_spy/spy.log")
 
 def connected():
     try:

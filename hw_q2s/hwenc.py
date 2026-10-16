@@ -22,6 +22,7 @@
   · 2048 位密钥 + SHA-1 的 OAEP 上限正好是 214 字节 —— 所以 214 是精心选的
   · E 是 010001（65537）
 """
+import os
 import base64
 
 from cryptography.hazmat.primitives import hashes
@@ -55,7 +56,7 @@ def hw_enc(pub, s):
 if __name__ == "__main__":
     import json
     import sys
-    sys.path.insert(0, "/home/ma-xiuyuan/hw_q2s")
+    sys.path.insert(0, os.path.expanduser("~/hw_q2s"))
     import router as R
 
     rt = R.Router()

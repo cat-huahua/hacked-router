@@ -2,8 +2,9 @@
 # -*- coding: utf-8 -*-
 """第四轮：设备所有出站 payload 都是 zlib 压缩的，入站极可能也要求压缩。
    这次用 zlib 压缩后再发。"""
+import os
 import time, sys, subprocess, zlib
-sys.path.insert(0, "/home/ma-xiuyuan/mqtt_spy")
+sys.path.insert(0, os.path.expanduser("~/mqtt_spy"))
 from pub import connect, publish
 
 DEV = "AABBCC000001"

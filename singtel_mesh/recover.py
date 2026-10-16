@@ -14,12 +14,13 @@ Recover Singtel —— 一键把 Singtel mesh 的设置恢复到你要的状态�
     python3 recover.py --ch       # 只恢复信道
     python3 recover.py --name     # 只恢复名字
 """
+import os
 import argparse
 import re
 import sys
 import time
 
-sys.path.insert(0, "/home/ma-xiuyuan/singtel_mesh")
+sys.path.insert(0, os.path.expanduser("~/singtel_mesh"))
 from sg import Mesh                       # noqa: E402
 from setch import read_cfg, build_payload, CH24, CH5   # noqa: E402
 
@@ -89,7 +90,7 @@ def do_names():
     # 顺手同步到华为 3.1，让两边的设备列表一致
     print("\n  同步到华为 3.1 ...")
     try:
-        sys.path.insert(0, "/home/ma-xiuyuan/hw_q2s")
+        sys.path.insert(0, os.path.expanduser("~/hw_q2s"))
         import router as R
         rt = R.Router(); rt.login(HW_USER, HW_PW)
         h = rt.get("system/HostInfo")

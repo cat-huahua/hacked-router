@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """只读探测：用 FACTORY_PASSWORD_HERE 登录后，看这个会话到底有多少权限。绝不写任何东西。"""
+import os
 import re, sys, time
 import requests
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
 requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 
-sys.path.insert(0, "/home/ma-xiuyuan/singtel_mesh")
+sys.path.insert(0, os.path.expanduser("~/singtel_mesh"))
 from sg import Mesh, arcmd5
 
 HOST = sys.argv[1] if len(sys.argv) > 1 else "192.168.3.2"

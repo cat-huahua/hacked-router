@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """第三轮：带上设备身份（_device_id / _sn），这是前两轮漏掉的关键字段。"""
+import os
 import time, sys, subprocess, json
-sys.path.insert(0, "/home/ma-xiuyuan/mqtt_spy")
+sys.path.insert(0, os.path.expanduser("~/mqtt_spy"))
 from pub import connect, publish
 
 DEV = "AABBCC000001"

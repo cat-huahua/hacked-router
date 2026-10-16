@@ -9,8 +9,9 @@
     python3 apply_config.py --dry-run     # 只读并显示将要写入的内容
     python3 apply_config.py --apply       # 真写
 """
+import os
 import argparse, sys, time
-sys.path.insert(0, "/home/ma-xiuyuan/singtel_mesh")
+sys.path.insert(0, os.path.expanduser("~/singtel_mesh"))
 from sg import Mesh
 from setch import read_cfg, build_payload
 

@@ -3,24 +3,25 @@
 """
 routercfg —— 家用路由器配置备份的【统一识别 + 解码】工具
 
-支持的三种格式（都是实测过的）：
+支持的四种格式（都是实测过的）：
 
-  ① NETGEAR .cfg     ★ 完全可解。XOR + uClibc/musl 的 rand()，种子写在文件头里
-  ② 华为 .conf       格式已破译（aescrypt2: 头32 + IV16 + AES-256），
-                     但密钥在设备的 /etc/wap/aes_string —— 文件本身解不开
-  ③ Arcadyan .trx    容器是普通 TRX（otrx，无加密）；但 rootfs 是 Arcadyan 自家 AES，
-                     密钥在 bootloader —— 只有 kernel 能取出来
+  ① NETGEAR .cfg        ★ 完全可解。XOR + uClibc/musl 的 rand()，种子写在文件头里
+  ② 华为 .conf          格式完全破译（aescrypt2）；★ 密钥在设备的 /etc/wap/aes_string。
+                        老光猫全网共用一把，消费级机型一机一密 —— 文件本身解不开。
+                        本工具带 **HMAC 密钥验证器**（256 位判据，零误判）
+  ③ Arcadyan .trx       容器是普通 TRX（otrx，无加密）；rootfs 是 Arcadyan 自家 AES，
+                        密钥在 bootloader —— 只有物理读 flash 才能拿到
+  ④ Arcadyan glbcfg     ★ 纯明文 key=value（管理密码/WiFi 口令都在里面，不用解密）
 
 用法:
-    python3 routercfg.py 某个备份文件            # 自动识别并尽可能解
-    python3 routercfg.py --huawei-key <密钥串> f # 手动给华为那把钥匙
-    python3 routercfg.py --info f                # 只看格式，不动它
+    python3 routercfg.py 某个备份文件                    # 自动识别并尽可能解
+    python3 routercfg.py --hw-test-key 'hex:xxxx' f      # 用 HMAC 判定华为密钥对不对
+    python3 routercfg.py --info f                        # 只看格式，不动它
 """
 import argparse
 import gzip
 import hashlib
 import struct
-import subprocess
 import sys
 import tempfile
 from pathlib import Path
@@ -31,7 +32,6 @@ from pathlib import Path
 NG_HEADER = 12
 NG_CHUNK = 4
 NG_INIT_CRC = 0xFFFFFFFF
-# 老固件常用的种子（头里的 magic 就是这个）
 NG_KNOWN_MAGICS = (0x20131224, 0x23091293, 0x01346232, 0x20200426)
 
 _UC_RANDTBL = [-1726662223, 379960547, 1735697613, 1040273694, 1313901226, 1627687941,
@@ -126,6 +126,17 @@ def netgear_fields(plain):
     return out
 
 
+# ★ 各字段用哪种哈希（实测钉死，别用错模式）
+NG_HASH_HINT = {
+    "http_passwd": "SHA256(明文)",
+    "http_passwd_digest": "SHA256(明文)",
+    "dhx2_passwd": "MD5-crypt（-m 500）",
+    "samba_passwd": "★ NTLM = MD4(UTF-16LE) ——【不是 MD5】（-m 1000）",
+    "PWD_answer1": "SHA256(答案)",
+    "PWD_answer2": "SHA256(答案)",
+    "wl_wpa2_psk": "明文", "wla_wpa2_psk": "明文",
+}
+
 NG_INTERESTING = [
     "http_username", "http_passwd", "http_passwd_digest",
     "wl_ssid", "wla_ssid", "wl_wpa2_psk", "wla_wpa2_psk",
@@ -139,41 +150,95 @@ NG_INTERESTING = [
 
 
 # ══════════════════════════════════════════════════════════════════════
-# ② 华为：aescrypt2（头32 + IV16 + AES-256）
+# ② 华为：aescrypt2（★ 2026-10-16 按 palmerc/AESCrypt2 源码更正）
 # ══════════════════════════════════════════════════════════════════════
-HW_HEADER = 32
-HW_ONTSHARED_KEY = "hex:13395537D2730554A176799F6D56A239"   # 老光猫全网共用
-HW_AESCRYPT2_SRC = "https://github.com/palmerc/AESCrypt2"
+HW_HEADER = 32          # 设备额外加的头
+HW_TAG = 32             # 密文末尾的 HMAC-SHA256
+HW_ONTSHARED_KEY = b"hex:13395537D2730554A176799F6D56A239"   # 老光猫全网共用
 
 HW_MODEL_LINE = (
-    "  结构 = [设备头 %d 字节][16 字节 IV][AES-256 密文]\n"
-    "  密钥 = SHA256(IV ‖ 密钥串) 迭代 8192 次；每块先 XOR IV 再 AES\n"
+    "  结构 = [设备头 %d 字节][16 字节 IV][AES-256 密文（CBC 链式）][32 字节 HMAC-SHA256]\n"
+    "  ★ 密钥派生: digest = IV ‖ 16 个零字节（共 32），迭代 8192 次 sha256(digest ‖ 密钥串)\n"
+    "  ★ 分组模式: **CBC 链式**（IV 每块后更新为当前密文块）—— 不是独立逐块\n"
     "  ⚠ 密钥在设备的 /etc/wap/aes_string，【不在备份文件里】\n"
-    "     老光猫共用: %s\n"
-    "     消费级(Q2S 等)不是这把。要拿设备的密钥只能有 shell 或固件。\n"
-    "  参考实现: %s"
-) % (HW_HEADER, HW_ONTSHARED_KEY, HW_AESCRYPT2_SRC)
+    "     老光猫(HG 系列)全网共用: %s\n"
+    "     消费级(Q2S / WS5281 等)是一机一密，实测【不是上面那把】\n"
+    "  用 --hw-test-key 可以验一把密钥对不对（HMAC 判据，零误判）"
+) % (HW_HEADER, HW_ONTSHARED_KEY.decode())
 
 
-def huawei_try(data, key, aescrypt2=None):
-    """用 aescrypt2 解，看能不能 gunzip 出来"""
-    if not aescrypt2 or not Path(aescrypt2).exists():
+def hw_derive_key(iv16, key):
+    """★ 关键：digest 是 32 字节 = IV 后面补 16 个零"""
+    if isinstance(key, str):
+        key = key.encode()
+    d = bytes(iv16) + b"\x00" * 16
+    for _ in range(8192):
+        d = hashlib.sha256(d + key).digest()
+    return d
+
+
+def hw_decrypt(data, key, hdr=HW_HEADER, tag=HW_TAG):
+    """返回 (明文 或 None, 说明)。tag=0 表示文件没有 HMAC 尾巴。"""
+    if hdr + 16 + tag + 16 > len(data):
+        return None, "文件太短"
+    iv = data[hdr:hdr + 16]
+    ct = data[hdr + 16: len(data) - tag] if tag else data[hdr + 16:]
+    k = hw_derive_key(iv, key)
+    try:
+        from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+    except ImportError:
+        return None, "需要 python3-cryptography（或用 --aescrypt2 走外部二进制）"
+    pt = Cipher(algorithms.AES(k), modes.CBC(iv)).decryptor().update(ct)
+    lastn = iv[15] & 0x0F
+    if lastn and len(pt) >= 16:
+        pt = pt[:-16] + pt[-16:][:lastn]
+    return pt, "ok"
+
+
+def hw_verify_hmac(data, key, hdr=HW_HEADER, tag=HW_TAG):
+    """★ 256 位判据：验密文末尾的 HMAC。返回 True/False/None（文件没有 HMAC 就 None）"""
+    if not tag or hdr + 16 + tag > len(data):
         return None
-    with tempfile.TemporaryDirectory() as d:
-        d = Path(d)
-        (d / "b.bin").write_bytes(data[HW_HEADER:])
-        (d / "k.txt").write_text(key)
-        r = subprocess.run([aescrypt2, "1", str(d / "b.bin"), str(d / "o.bin"), str(d / "k.txt")],
-                           capture_output=True)
-        if r.returncode != 0 or not (d / "o.bin").exists():
-            return None
-        out = (d / "o.bin").read_bytes()
-        if out[:2] != b"\x1f\x8b":
-            return None
-        try:
-            return gzip.decompress(out)
-        except Exception:
-            return None
+    iv = data[hdr:hdr + 16]
+    ct = data[hdr + 16: len(data) - tag]
+    want = data[len(data) - tag:]
+    k = hw_derive_key(iv, key)
+    ipad = bytearray(b"\x36" * 64)
+    opad = bytearray(b"\x5c" * 64)
+    for i in range(32):
+        ipad[i] ^= k[i]
+        opad[i] ^= k[i]
+    inner = hashlib.sha256(bytes(ipad) + ct).digest()
+    got = hashlib.sha256(bytes(opad) + inner).digest()
+    return got == want
+
+
+def hw_report(data, key=None):
+    print("── 华为配置（aescrypt2）──")
+    print(HW_MODEL_LINE)
+    if key:
+        ok = hw_verify_hmac(data, key)
+        print("\n   试密钥 %r ..." % key)
+        if ok is True:
+            print("   ★★★ HMAC 通过 —— 密钥正确！")
+        elif ok is False:
+            print("   ✗ HMAC 不通过 —— 密钥不对")
+        else:
+            print("   （该文件尾部没有 32 字节 HMAC，只能用明文判据）")
+        pt, why = hw_decrypt(data, key)
+        if pt:
+            good = pt[:2] == b"\x1f\x8b" or pt.lstrip()[:1] == b"<"
+            print("   解密 %d 字节，%s" % (len(pt), "看起来是 gzip/XML" if good else
+                                          "开头是 %s（不像明文）" % pt[:8].hex()))
+            if pt[:2] == b"\x1f\x8b":
+                try:
+                    xml = gzip.GzipFile(fileobj=__import__("io").BytesIO(pt)).read()
+                    print("   ★ gunzip 成功，%d 字节 XML" % len(xml))
+                    return xml
+                except Exception as e:
+                    print("   gunzip 失败: %s" % e)
+        elif why != "ok":
+            print("   %s" % why)
 
 
 # ══════════════════════════════════════════════════════════════════════
@@ -185,14 +250,18 @@ TRX_MAGIC = 0x746F435D
 SQSH_MAGIC = b"hsqs"
 UIMAGE_MAGIC = 0x27051956
 
+# squashfs 标志位（★ 别记错：bit15 SET = 未压缩）
+SQ_COMP_OPT = 0x0400
+
 SINGTEL_NOTE = (
     "  容器 = 普通 TRX（OpenWrt 的 otrx 生成，源码里【没有任何加密】）\n"
     "  头 = magic(4) len(4) crc32(4) flag(4) off1(4) off2(4) off3(4)\n"
     "  kernel  = LZMA，非标准参数 lc=1/lp=2/pb=2 + dict 8MB → FORMAT_ALONE 直接解\n"
-    "  rootfs  = ★ Arcadyan 自家 AES 加密（不是容器干的）\n"
-    "            5616 种压缩参数组合全失败、0 个 xz 魔数、熵 7.999\n"
+    "  rootfs  = ★ 半明文：squashfs 超块明文，其后（comp_opts 起）全部加密\n"
     "            密钥在 flash 的 u-boot(0x0) / u-boot-env(0x30000)，【不在固件包里】\n"
-    "  ⚠ 有些镜像里 `hsqs` 是脚本 echo 进去的【假标记】，后面全是 0，别被它骗了"
+    "            ⇒ 没有 SPI 物理读取，这块解不开（不是参数问题，是信息不存在）\n"
+    "  ⚠ 判断加密要看【能不能解】，别靠熵（压缩数据熵也是 8.0）\n"
+    "  ⚠ 有些镜像里 `hsqs` 是脚本 echo 进去的【假标记】，后面全是 0"
 )
 
 
@@ -203,29 +272,121 @@ def trx_parse(data):
             "off1": off1, "off2": off2, "off3": off3}
 
 
-def _sqsh_valid(blob, off):
-    if blob[off:off + 4] != SQSH_MAGIC:
-        return False
-    try:
-        inodes, _t, bs, _fr, comp = struct.unpack("<IIIII", blob[off + 4:off + 24])
-    except Exception:
-        return False
-    return 0 < inodes < 100000 and 4096 <= bs <= 1048576 and comp in (1, 2, 3, 4, 5, 6)
+def sqsh_super(data, off):
+    """解析 squashfs 超块（4.0 格式，96 字节）"""
+    if data[off:off + 4] != SQSH_MAGIC:
+        return None
+    (magic, inodes, mtime, bs, frags, comp, blog,
+     flags, idc, vmaj, vmin) = struct.unpack("<IIIIIHHHHHH", data[off:off + 32])
+    names = ["root_inode", "bytes_used", "id_tbl", "xattr_id_tbl",
+             "inode_tbl", "dir_tbl", "frag_tbl", "lookup_tbl"]
+    vals = dict(zip(names, struct.unpack("<QQQQQQQQ", data[off + 32:off + 96])))
+    return {"inodes": inodes, "block_size": bs, "frags": frags, "comp": comp,
+            "flags": flags, "ids": idc, "ver": "%d.%d" % (vmaj, vmin), **vals}
+
+
+COMP_NAME = {1: "gzip", 2: "lzma", 3: "lzo", 4: "xz", 5: "lz4", 6: "zstd",
+             7: "lz4hc", 8: "zstd"}
+
+
+def trx_report(data, out_prefix):
+    h = trx_parse(data)
+    print("   magic=0x%08X len=%d crc=0x%08X flag=0x%X" %
+          (h["magic"], h["len"], h["crc"], h["flag"]))
+    print("   kernel@0x%X  rootfs@0x%X  off3@0x%X" % (h["off1"], h["off2"], h["off3"]))
+    # kernel
+    if data[h["off1"]:h["off1"] + 4] == struct.pack(">I", UIMAGE_MAGIC):
+        size = struct.unpack(">I", data[h["off1"] + 12:h["off1"] + 16])[0]
+        body = data[h["off1"] + 64:h["off1"] + 64 + size]
+        print("   uImage: size=%d comp=%d" % (size, data[h["off1"] + 31]))
+        try:
+            import lzma
+            k = lzma.decompress(body, format=lzma.FORMAT_ALONE)
+            out = Path(str(out_prefix) + ".kernel")
+            out.write_bytes(k)
+            print("   ★ kernel 解出来了（%d 字节）→ %s" % (len(k), out))
+        except Exception as e:
+            print("   kernel 解压失败: %s" % str(e)[:60])
+    # rootfs：超块应是明文，其后应解不开
+    off = h["off2"]
+    sb = sqsh_super(data, off)
+    if sb:
+        print("   ★ rootfs 超块 = 明文（合法）：")
+        print("       inodes=%d block=%d frags=%d comp=%d(%s) flags=0x%04x ver=%s"
+              % (sb["inodes"], sb["block_size"], sb["frags"], sb["comp"],
+                 COMP_NAME.get(sb["comp"], "?"), sb["flags"], sb["ver"]))
+        print("       bytes_used=%d  inode_tbl=0x%X  dir_tbl=0x%X"
+              % (sb["bytes_used"], sb["inode_tbl"], sb["dir_tbl"]))
+        if sb["flags"] & SQ_COMP_OPT:
+            print("       flags 含 COMP_OPT(0x0400) → 超块后紧跟 comp_opts 块")
+        # 超块之后的第一个块：明文还是密文？
+        after = data[off + 96:off + 96 + 16]
+        print("       超块后首块: %s  ← 若读不出压缩器选项即为【密文】" % after.hex())
+    elif data[off:off + 4] == SQSH_MAGIC:
+        print("   rootfs: 那 4 字节 hsqs 是【假标记】（后面全 0）")
+    print()
+    print(SINGTEL_NOTE)
+
+
+# ══════════════════════════════════════════════════════════════════════
+# ④ Arcadyan glbcfg —— ★ 纯明文，直接能用
+# ══════════════════════════════════════════════════════════════════════
+ARC_SECRET_KEYS = [
+    "ARC_SYS_Password", "ARC_ROOT_Passwd", "ARC_SYS_LoginBlocked",
+    "ARC_SYS_SerialNum", "ARC_SYS_IsFactoryDefault",
+    "ARC_UI_WEB_REMOTEMN_Password", "ARC_UI_WEB_REMOTEMN_Enable",
+    "ARC_TR69_Password", "ARC_TR69_Username", "ARC_TR69_URL",
+    "ARC_IPSEC_0_PSK_KEY", "ARC_DDNS_0_Password",
+    "ARC_WLAN_24G_SSID_0_ESSID", "ARC_WLAN_5G_SSID_0_ESSID",
+    "ARC_WLAN_24G_SSID_0_WPA_Passphrase", "ARC_WLAN_5G_SSID_0_WPA_Passphrase",
+    "ARC_WLAN_24G_SSID_0_WPA_GroupRekey", "ARC_WLAN_24G_SSID_0_WPS_ExRegistrarPIN",
+    "ARC_WAN_000_PPP_Username", "ARC_WAN_000_PPP_Password",
+]
+
+ARC_NOTE = (
+    "  ★ glbcfg 是【纯明文】的 key=value（2480 行左右），不需要任何解密。\n"
+    "     设备上的 glbcfg(0x1fb0000) / config(0x1fc0000) 分区同理 ——\n"
+    "     **管理密码、WiFi 口令都是明文躺在里面**，SPI 读出来即可。\n"
+    "  密码怎么来的（见 /sbin/arc_glbcfg 脚本）：\n"
+    "     root/SSH 密码 = 's1ngt3l' + 序列号后 6 位   ← ★ 可离线算\n"
+    "     ARC_ROOT_Passwd = MD5(上面那个)              ← ★ 可离线算\n"
+    "     ARC_UI_WEB_REMOTEMN_Password = MD5(序列号)   ← ★ 可离线算\n"
+    "     ARC_SYS_Password(管理界面) = arc_board get gui-pwd   ← 板级出厂数据\n"
+    "     WiFi 口令 / WPS PIN = arc_board get wifi-*-pwd / wps-pin\n"
+    "     板级数据在 /dev/brcmboard"
+)
+
+
+def arc_fields(text):
+    out = {}
+    for line in text.splitlines():
+        if "=" in line and not line.lstrip().startswith("#"):
+            k, _, v = line.partition("=")
+            out[k.strip()] = v.strip()
+    return out
 
 
 # ══════════════════════════════════════════════════════════════════════
 def identify(data):
+    if len(data) >= 36 and data[0:4] == b"\x00\x00\x00\x02":
+        return "huawei"
+    if len(data) > 24 and struct.unpack("<I", data[:4])[0] == TRX_MAGIC:
+        return "trx"
+    # Arcadyan glbcfg / 明文 key=value
+    head = data[:4096]
+    if b"ARC_" in head and b"=" in head:
+        try:
+            head.decode("ascii")
+            if head.count(b"\n") > 8:
+                return "arc_glbcfg"
+        except UnicodeDecodeError:
+            pass
     if len(data) > 12:
         magic = struct.unpack("<I", data[:4])[0]
         if magic in NG_KNOWN_MAGICS or (data[4:8] and 100 < struct.unpack("<I", data[4:8])[0] < len(data) + 16):
-            # NETGEAR 的头 = magic/len/crc，len 应该约等于文件大小
             ln = struct.unpack("<I", data[4:8])[0]
             if abs(ln - (len(data) - 12)) <= 16:
                 return "netgear"
-    if struct.unpack("<I", data[:4])[0] == TRX_MAGIC:
-        return "trx"
-    if len(data) >= 36 and data[0:4] == b"\x00\x00\x00\x02":
-        return "huawei"
     return "unknown"
 
 
@@ -233,8 +394,10 @@ def main():
     ap = argparse.ArgumentParser(description="家用路由器配置备份统一解码")
     ap.add_argument("file")
     ap.add_argument("--info", action="store_true", help="只识别格式，不尝试解")
-    ap.add_argument("--huawei-key", help="华为配置的密钥串（如 hex:....）")
-    ap.add_argument("--aescrypt2", default="./aescrypt2", help="aescrypt2 可执行文件路径")
+    ap.add_argument("--huawei-key", "--hw-test-key", dest="hw_key",
+                    help="华为配置的密钥串（如 hex:....），会用 HMAC 判据验证")
+    ap.add_argument("--hw-hdr", type=int, default=HW_HEADER, help="华为设备的头长度（默认 32）")
+    ap.add_argument("--hw-tag", type=int, default=HW_TAG, help="华为末尾 HMAC 长度（默认 32，没有就填 0）")
     ap.add_argument("-o", "--out", help="输出文件前缀")
     a = ap.parse_args()
 
@@ -251,66 +414,48 @@ def main():
         print("   magic=0x%08X  len=%d  crc=0x%08X  rng=%s"
               % (info["magic_stated"], info["len"], info["crc"], info.get("rng")))
         if not plain:
-            print("  ✗ 校验没过 —— 两个 RNG 都试了。可能是别的 magic，用 --magic 指定")
+            print("  ✗ 校验没过 —— 两个 RNG 都试了。可能是别的 magic")
             return 1
         fields = netgear_fields(plain)
         print("  ★ 解密成功，%d 个配置项" % len(fields))
         print()
         for k in NG_INTERESTING:
             if fields.get(k):
-                print("   %-24s = %s" % (k, fields[k][:70]))
+                print("   %-24s = %s" % (k, fields[k][:60]))
+        print("\n  ── 这些字段该用哪种哈希 ──")
+        for k, v in NG_HASH_HINT.items():
+            print("   %-24s %s" % (k, v))
         out = Path(a.out or (str(p) + ".dec"))
         out.write_bytes(plain)
         print("\n  完整明文 → %s" % out)
         return 0
 
     if kind == "huawei":
-        print("── 华为配置（aescrypt2）──")
-        print(HW_MODEL_LINE)
-        keys = []
-        if a.huawei_key:
-            keys.append(a.huawei_key)
-        keys.append(HW_ONTSHARED_KEY)
-        for k in keys:
-            print("\n   试密钥 %r ..." % k)
-            pt = huawei_try(data, k, a.aescrypt2)
-            if pt:
-                print("   ★★★ 成功！%d 字节明文" % len(pt))
+        if a.hw_key:
+            xml = hw_report(data, a.hw_key)
+            if xml:
                 out = Path(a.out or (str(p) + ".xml"))
-                out.write_bytes(pt)
+                out.write_bytes(xml)
                 print("   → %s" % out)
                 return 0
-            print("     不成（要么密钥不对，要么没编译 aescrypt2）")
+            return 1
+        hw_report(data, None)
         return 1
 
     if kind == "trx":
-        print("── Arcadyan .trx（Singtel Mesh 等）──")
-        h = trx_parse(data)
-        print("   magic=0x%08X len=%d crc=0x%08X flag=0x%X" %
-              (h["magic"], h["len"], h["crc"], h["flag"]))
-        print("   kernel@0x%X  rootfs@0x%X  off3@0x%X" % (h["off1"], h["off2"], h["off3"]))
-        # kernel
-        if data[h["off1"]:h["off1"] + 4] == struct.pack(">I", UIMAGE_MAGIC):
-            size = struct.unpack(">I", data[h["off1"] + 12:h["off1"] + 16])[0]
-            body = data[h["off1"] + 64:h["off1"] + 64 + size]
-            print("   uImage: size=%d comp=%d" % (size, data[h["off1"] + 31]))
-            try:
-                import lzma
-                k = lzma.decompress(body, format=lzma.FORMAT_ALONE)
-                out = Path(a.out or (str(p) + ".kernel"))
-                out.write_bytes(k)
-                print("   ★ kernel 解出来了（%d 字节）→ %s" % (len(k), out))
-            except Exception as e:
-                print("   kernel 解压失败: %s" % str(e)[:60])
-        # rootfs
-        off = h["off2"]
-        if _sqsh_valid(data, off):
-            print("   rootfs: 超块合法（明文），但数据段加密")
-        elif data[off:off + 4] == SQSH_MAGIC:
-            print("   rootfs: 那 4 字节 hsqs 是【假标记】（后面全 0）")
-        print()
-        print(SINGTEL_NOTE)
+        trx_report(data, a.out or p)
         return 1
+
+    if kind == "arc_glbcfg":
+        print("── Arcadyan glbcfg（★ 明文，不用解密）──")
+        print(ARC_NOTE)
+        print()
+        fields = arc_fields(data.decode("utf-8", "replace"))
+        print("  共 %d 个配置项。关注这些：" % len(fields))
+        for k in ARC_SECRET_KEYS:
+            if fields.get(k):
+                print("   %-44s = %s" % (k, fields[k][:60]))
+        return 0
 
     print("  认不出来。可以告诉我是哪台设备，我加上识别规则。")
     return 2

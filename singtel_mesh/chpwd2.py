@@ -3,11 +3,12 @@
 """完整复刻浏览器改密码流程（change_pwd.htm）：
    ① 登录  ② 取新鲜 token  ③ syncpasswdconfig2  ④ 再 POST login.exe 提交 encoded 新密码
 """
+import os
 import re, sys, time
 import requests
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
 requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
-sys.path.insert(0, "/home/ma-xiuyuan/singtel_mesh")
+sys.path.insert(0, os.path.expanduser("~/singtel_mesh"))
 from sg import Mesh, arcmd5
 
 BASE = "https://192.168.3.2"

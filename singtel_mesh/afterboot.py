@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """断电重启后：等设备起来 -> 确认倒计时归零 -> 只用 ROUTER_PASSWORD_HERE 试一次"""
+import os
 import re, sys, time
 import requests
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
 requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
-sys.path.insert(0, "/home/ma-xiuyuan/singtel_mesh")
+sys.path.insert(0, os.path.expanduser("~/singtel_mesh"))
 from sg import Mesh, arcmd5
 
 BASE = "https://192.168.3.2"

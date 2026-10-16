@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """逐个编号发送 LED 关闭候选格式，间隔 12 秒，方便肉眼归因。"""
+import os
 import time, sys, subprocess
-sys.path.insert(0, "/home/ma-xiuyuan/mqtt_spy")
+sys.path.insert(0, os.path.expanduser("~/mqtt_spy"))
 from pub import connect, publish
 
 DEV = "AABBCC000001"

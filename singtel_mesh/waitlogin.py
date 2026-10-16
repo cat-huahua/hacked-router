@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """等登录锁定倒计时归零，然后只用新密码登一次。绝不在倒计时中重试。"""
+import os
 import re, sys, time
 import requests
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
 requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
-sys.path.insert(0, "/home/ma-xiuyuan/singtel_mesh")
+sys.path.insert(0, os.path.expanduser("~/singtel_mesh"))
 from sg import Mesh, arcmd5
 
 HOST = "192.168.3.2"; BASE = "https://%s" % HOST

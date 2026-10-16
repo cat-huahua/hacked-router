@@ -2,8 +2,9 @@
 # -*- coding: utf-8 -*-
 """用"重启"当探针：发几个 reboot 变体，看 MQTT 连接会不会断。
    连接一断 = 命令格式对了。避开 factoryreboot（会抹配置）。"""
+import os
 import time, sys, subprocess
-sys.path.insert(0, "/home/ma-xiuyuan/mqtt_spy")
+sys.path.insert(0, os.path.expanduser("~/mqtt_spy"))
 from pub import connect, publish
 
 DEV = "AABBCC000001"

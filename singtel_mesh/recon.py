@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+import os
 import re, sys, time, base64
 import requests
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
 requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
-sys.path.insert(0, "/home/ma-xiuyuan/singtel_mesh")
+sys.path.insert(0, os.path.expanduser("~/singtel_mesh"))
 from sg import Mesh, arcmd5
 
 HOST = "192.168.3.2"; BASE = "https://%s" % HOST; PW = sys.argv[1] if len(sys.argv)>1 else "FACTORY_PASSWORD_HERE"

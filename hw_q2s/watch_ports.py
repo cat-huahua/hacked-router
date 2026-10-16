@@ -9,10 +9,11 @@
     接口 LAN2 = 面板 2 = NETGEAR
     接口 LAN1 = 面板 3 = WAN
 """
+import os
 import sys
 import time
 
-sys.path.insert(0, "/home/ma-xiuyuan/hw_q2s")
+sys.path.insert(0, os.path.expanduser("~/hw_q2s"))
 import router as R  # noqa: E402
 
 MESH_IPS = ["192.168.3.2", "192.168.3.20", "192.168.3.21", "192.168.3.22"]

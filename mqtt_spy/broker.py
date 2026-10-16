@@ -6,9 +6,10 @@
 
 只实现必需的部分：CONNECT/CONNACK, SUBSCRIBE/SUBACK, PUBLISH, PINGREQ/PINGRESP, DISCONNECT
 """
+import os
 import socket, struct, threading, time, sys, os
 
-LOG = "/home/ma-xiuyuan/mqtt_spy/spy.log"
+LOG = os.path.expanduser("~/mqtt_spy/spy.log")
 BIND = ("0.0.0.0", 1883)
 lock = threading.Lock()
 subs = {}          # topic_filter -> set(conn)

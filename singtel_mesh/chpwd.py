@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """改 3.2 的管理员密码。每个请求都用新鲜 token —— 这是之前崩溃的真正原因。"""
+import os
 import re, sys, time, base64
 import requests
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
 requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
-sys.path.insert(0, "/home/ma-xiuyuan/singtel_mesh")
+sys.path.insert(0, os.path.expanduser("~/singtel_mesh"))
 from sg import Mesh, arcmd5
 
 HOST = "192.168.3.2"; BASE = "https://%s" % HOST

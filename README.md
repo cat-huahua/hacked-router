@@ -148,6 +148,14 @@ PUBLISH   devices/data/shadow                zlib 压缩的身份上报
   （XOR + `rand()`，**种子就写在文件头里**）。工具：`netgear_r7800/ng_cfgdec.py`
 - [`docs/huawei-config-format.md`](docs/huawei-config-format.md) —— 华为 `aescrypt2` 的完整格式与算法
   （**密钥在设备上，不在文件里**）
+- [`docs/arcadyan-singtel-config-format.md`](docs/arcadyan-singtel-config-format.md) —— ★
+  **Arcadyan / Singtel 的配置与密码机制**：glbcfg **是明文**、密码派生规则
+  （`s1ngt3l` + 序列号后 6 位，已实证）、extender rootfs 为什么解不开（附完整证据链）
+
+**三种设计的安全强度依次递增**：NETGEAR 把种子写在文件头里（所以能解）→
+华为把密钥放设备上（一机一密）→ Arcadyan 把密钥放 bootloader 里（最靠下，最难拿）。
+
+统一工具 `routercfg.py` 四种格式都认（含华为的 **HMAC 密钥验证器**）。
 
 ---
 

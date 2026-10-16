@@ -5,6 +5,7 @@
    ② syncdevicename —— 四个节点名
    登录后 /change_pwd.htm 也算成功（闸门只拦 .htm 页面，写接口可用）
 """
+import os
 import json, re, sys, time, hashlib
 import requests
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
@@ -62,7 +63,7 @@ if loc not in ("/index.htm", "/change_pwd.htm"):
 
 # ---------- ② 无线配置 ----------
 print("\n② 无线配置")
-cfg = json.load(open("/home/ma-xiuyuan/singtel_mesh/good_20261014.json"))
+cfg = json.load(open(os.path.expanduser("~/singtel_mesh/good_20261014.json")))
 wps_index = "1" if cfg.get("wps_enable", "0") == "1" else "0"
 fields = [
     cfg.get("24gname0", ""), cfg.get("5gname0", ""),

@@ -14,7 +14,7 @@ import os
 import re
 import sys
 
-sys.path.insert(0, "/home/ma-xiuyuan/singtel_mesh")
+sys.path.insert(0, os.path.expanduser("~/singtel_mesh"))
 from sg import Mesh  # noqa: E402
 
 # 所有已知 CGI（从 13 个页面的 CGIs=[...] 里收集的）
