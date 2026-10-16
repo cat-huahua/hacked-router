@@ -157,3 +157,29 @@ OpenWrt 移植者写的是 "bootloader is locked with a password… **currently 
 
 **越是靠近"操作系统之下"的东西，越是拿不到** —— 这也正是为什么要看
 [u-boot 的 Web 恢复模式](uboot-web-recovery.md)。
+
+## 容器不是加密的地方（2026-10-16 从 OpenWrt 源码确认）
+
+`.trx` 容器由 OpenWrt 的 **`otrx`** 生成（`target/linux/ramips/image/mt7621.mk`
+里的 `Build/arcadyan-trx`）：
+
+```make
+echo -ne "hsqs" > $@.hsqs
+otrx create $@.trx -M 0x746f435d -f $@ -a 0x20000 \
+     -b 0x420000 -f $@.hsqs -a 1000
+echo -ne "HDR0" | dd of=$@.tail bs=1 seek=0x10c count=4
+```
+
+- **`otrx.c` 里一行加密代码都没有**（只有 `create` / `extract`）→ **容器是纯明文 TRX**
+- 头 32 字节逐字段对上 TRX 格式：
+  `magic(4) | len(4) | crc32(4) | flag(4) | off1(4) | off2(4) | off3(4)`
+- **`0x420000` 处那个 `hsqs` 是脚本用 `echo -ne` 写进去的假标记**（不是真文件系统，
+  后面全是 0）—— 我一开始差点把它当成 squashfs 起点
+- 对比：OpenWrt 的同类镜像 rootfs 就在 `0x440000`，**能正常解开** → 反证
+
+**推论：rootfs 的加密是 Arcadyan 在打包【之前】自己做的，跟容器无关。**
+解密发生在设备启动时（bootloader / kernel），所以密钥在 flash 的
+`u-boot`(0x0) 或 `u-boot-env`(0x30000) —— **不在固件包里**。
+
+这跟 NETGEAR 正好相反：NETGEAR 把种子写在文件头里（所以能解），
+Arcadyan 把密钥放在设备上（所以不能）。

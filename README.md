@@ -124,6 +124,13 @@ PUBLISH   devices/data/shadow                zlib 压缩的身份上报
 - [`docs/singtel-firmware-analysis.md`](docs/singtel-firmware-analysis.md) —— 加密地图、分区表、密码存储方式
 - [`docs/uboot-web-recovery.md`](docs/uboot-web-recovery.md) —— ★ **u-boot 的 Web 恢复模式**（不鉴权，能写 bootloader）
 
+### ★★★ 配置备份解密
+
+- [`docs/netgear-config-decrypt.md`](docs/netgear-config-decrypt.md) —— **NETGEAR 的 `.cfg` 完全可解**
+  （XOR + `rand()`，**种子就写在文件头里**）。工具：`netgear_r7800/ng_cfgdec.py`
+- [`docs/huawei-config-format.md`](docs/huawei-config-format.md) —— 华为 `aescrypt2` 的完整格式与算法
+  （**密钥在设备上，不在文件里**）
+
 ---
 
 ## 脚本速查
