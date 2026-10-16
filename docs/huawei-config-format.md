@@ -117,6 +117,32 @@ head -c -32 no_hdr > no_tail                   # 去掉 32 字节 HMAC
 gunzip out.gz                                  # → 明文 XML
 ```
 
+## 仓库里的工具：`hwkey.c`（高速密钥破解/验证器）
+
+Python 跑这条链太慢（一条候选 5ms 以上）。`hwkey.c` 利用一个关键优化 ——
+**每轮迭代的输入长度固定**（32 + key 长度），填充可以预计算一次，
+之后每轮只需**一次 SHA256 压缩**：
+
+```bash
+cc -O3 -march=native -pthread -o hwkey hwkey.c -lcrypto
+
+./hwkey 备份.conf derive <密钥串>          # 打印派生密钥（交叉验证用）
+./hwkey 备份.conf verify <密钥串>          # ★ 用 HMAC 判据验一把密钥
+./hwkey 备份.conf dict   <词表> [前缀]      # 字典（前缀常用 hex:）
+./hwkey 备份.conf mask   '?l?l?l?l?l?l' [前缀]
+```
+
+实测速度 ≈ 2400 条/秒（8 线程，i7-1185G7）。
+
+> **★ 写这类工具一定要做交叉验证。** 我这个实现里连踩两个坑：
+> ① 覆盖 IV 时按 32 字节循环，而 IV 只有 16 字节 → **越界读取**，
+> 把本该是零的字节写成了垃圾；
+> ② 把上一轮的 digest 留在 `st` 里当**下一轮 SHA256 的初始状态**了 ——
+> 而 `st` 是哈希初值不是消息，正确的做法是**每轮都从标准初值重新开始**。
+>
+> 两个坑都会让结果"看起来能跑但全错"。**要不是拿 Python 实现逐用例对比
+> （5/5 一致才算过），我会用错实现跑一整夜，然后得出一个假的"没找到"。**
+
 ## 参考
 
 - [`palmerc/AESCrypt2`](https://github.com/palmerc/AESCrypt2) —— 逆向出来的 C 实现（**本文档以它为准**）
