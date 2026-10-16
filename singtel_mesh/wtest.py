@@ -34,7 +34,7 @@ print("③ 单发 POST /cgi-bin/toplogy.cgi  cmd=syncdevicename (只此一次)")
 try:
     rr = m.s.post(BASE + "/cgi-bin/toplogy.cgi", timeout=15, allow_redirects=False,
                   data={"httoken": TOK, "cmd": "syncdevicename",
-                        "data": "AA:BB:CC:00:00:02?$[+M_AP_SME"})
+                        "data": "AA:BB:CC:00:00:02?$[+NODE_NAME_2"})
     print("   HTTP %s  Location=%s" % (rr.status_code, rr.headers.get("Location", "-")))
     print("   body(%dB): %r" % (len(rr.text), rr.text[:300]))
 except Exception as e:

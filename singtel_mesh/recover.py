@@ -7,7 +7,7 @@ Recover Singtel —— 一键把 Singtel mesh 的设置恢复到你要的状态�
 
 恢复两样东西：
   1. 信道：2.4G -> 11，5G -> 40
-  2. 四台节点名：M_AP_SME / Lounge SME / Cat Area SME / Upstairs SME（顺带同步到华为 3.1）
+  2. 四台节点名：NODE_NAME_1 / NODE_NAME_2 / NODE_NAME_3 / NODE_NAME_4（顺带同步到华为 3.1）
 
 用法：
     python3 recover.py            # 都恢复
@@ -25,10 +25,10 @@ from setch import read_cfg, build_payload, CH24, CH5   # noqa: E402
 
 # 节点：网卡 MAC -> 想要的内部名（内部 MAC 由 Mesh.inner_mac 自动 +1）
 NODES = [
-    ("AA:BB:CC:00:00:01", "M_AP_SME",     "3.2  主节点"),
-    ("AA:BB:CC:00:00:02", "Lounge SME",   "3.20 Lounge"),
-    ("AA:BB:CC:00:00:03", "Cat Area SME", "3.21 Cat Area"),
-    ("AA:BB:CC:00:00:04", "Upstairs SME", "3.22 Upstairs"),
+    ("AA:BB:CC:00:00:01", "NODE_NAME_1", "3.2  主节点"),
+    ("AA:BB:CC:00:00:02", "NODE_NAME_2", "3.20 节点2"),
+    ("AA:BB:CC:00:00:03", "NODE_NAME_3", "3.21 节点3"),
+    ("AA:BB:CC:00:00:04", "NODE_NAME_4", "3.22 节点4"),
 ]
 HUAWEI = "192.168.3.1"
 HW_USER, HW_PW = "admin", "WIFI_PASSWORD_HERE"

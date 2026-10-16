@@ -16,10 +16,10 @@ USER, PW = "admin", "FACTORY_PASSWORD_HERE"
 CH24, CH5 = "11", "153"
 
 NODES = [
-    ("AA:BB:CC:00:00:01", "M_AP_SME",     "3.2  主控"),
-    ("AA:BB:CC:00:00:02", "Lounge SME",   "3.20 Lounge"),
-    ("AA:BB:CC:00:00:03", "Cat Area SME", "3.21 Cat Area"),
-    ("AA:BB:CC:00:00:04", "Upstairs SME", "3.22 Upstairs"),
+    ("AA:BB:CC:00:00:01", "NODE_NAME_1", "3.2  主控"),
+    ("AA:BB:CC:00:00:02", "NODE_NAME_2", "3.20 节点2"),
+    ("AA:BB:CC:00:00:03", "NODE_NAME_3", "3.21 节点3"),
+    ("AA:BB:CC:00:00:04", "NODE_NAME_4", "3.22 节点4"),
 ]
 
 
