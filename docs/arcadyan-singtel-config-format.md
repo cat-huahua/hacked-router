@@ -1001,3 +1001,63 @@ ARC_FIREWALL_DMZ_*                        /  ARC_FIREWALL_IdentPass / BlockCooki
 **小结**：出厂姿态整体是**收敛的**（UPnP/DMZ/远程管理/telnet 全关、NetBIOS 阻断开）。
 两处可以商量的：**WAN 侧允许 ping**（会暴露设备在线）与**抗 DoS 关闭**。
 客户端隔离是关的（见 NETGEAR 那边的同类项，这条两家一样）。
+
+---
+
+# ★ 附：配置系统怎么用（`mng_cli` / `mngcli` 的完整用法）
+
+前面到处出现的 `mng_cli get/set` 就是这个。它的 usage 字符串是原文：
+
+```
+Usage:
+	mng_cli get  <name>[@<section>]
+	mng_cli set  <name>[@<section>]=<value>
+	mng_cli test <name>
+	mng_cli mget <name_1> <name_2> .. <name_n>
+	mng_cli mset <name>=<value> <name>=<value> .. <name>=<value>
+```
+
+## 四种访问层次
+
+底下的 `mapi_ccfg_*` API 才是真身：
+
+| 函数族 | 作用 |
+|---|---|
+| `mapi_ccfg_get_str` / `_set_str` | 读/写单个键 |
+| `mapi_ccfg_get_multiple` / `_set_multiple` / `_prefix_get_multiple` | 批量（按前缀）读写 |
+| **`mapi_dft_get` / `mapi_ccfg_get_dft_multiple` / `mapi_ccfg_reset_dft`** | **出厂值（dft）** —— 与运行值分开存 |
+| **`mapi_tmp_set`** | **临时覆盖层（tmp）** —— 改了但还没提交 |
+| **`mapi_ccfg_commit`** | **提交**（把改动落盘） |
+| `mapi_ccfg_test_str` / `mapi_ccfg_unset` / `mapi_ccfg_default` | 存在性检验 / 删除 / 全部恢复默认 |
+
+**所以这台设备的配置是「三层」的**：
+
+```
+glbcfg.dft（出厂值） ──reset_dft──┐
+                                  ├──→ 运行值（RAM） ──commit──→ config 分区（flash）
+tmp 覆盖层 ──tmp_set──────────────┘
+```
+
+这也解释了 `arc_glbcfg` 脚本里为什么反复出现
+`mngcli set "\`mngcli dft_get ARC_WLAN_..._WPA_GroupRekey\`"`
+—— **"把出厂值读出来再写回去"**，等于"这一项恢复默认"。
+
+## `@<section>` 的层级语法
+
+`<name>[@<section>]` 里的 section 是**配置树的分区**。这解释了为什么同一个键名
+会被多个 WAN/SSID 实例复用（`ARC_WAN_100_*` / `ARC_WAN_101_*` / `..._200_*` …）——
+它们其实是同一套 schema 在不同 section 下的实例。
+
+## 另一个入口：`arc_cfg_cli`（索引式，更底层）
+
+```
+arc_cfg_get_idx1 / arc_cfg_set_idx1 / arc_cfg_set_long_idx1 / arc_cfg_get_long_idx1
+arc_cfg_unset_idx1 / arc_cfg_get_idx_limit / arc_cfg_get_dft_idx1
+```
+
+这个走的是**按索引**访问（`idx1`/`idx2`），是给内部代码用的低层接口；
+`mng_cli` 是给人用的名字式接口。两者操作的是同一份配置。
+
+> **对设备所有者的意义**：只要有 shell，`mng_cli get ARC_xxx` 就能把任意一项配置读出来
+> （包括 `ARC_SYS_Password`），`mng_cli set` + `commit` 就能改。
+> 这也正是 `arc_glbcfg` / `arc_mt_reset` 这些脚本干的事。
