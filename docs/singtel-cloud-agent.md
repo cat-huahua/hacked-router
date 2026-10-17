@@ -229,6 +229,77 @@ jioiot/svcf/accesspoint/%012llX/UC/fwd/locinfo
 注意最后一条：这台机器**不是** OpenWrt，但代理里带着 UCI 模板 —— 同一份代码
 也给别的平台（sagemcom / arcadyan_mtk / edgecore / sercom / jio）用。
 
+### 5.1 ★ 本地 App 配网协议（UDP 9995 + JSON socket）
+
+代理不止连云端，还在**局域网**上开了一条配网通道：
+
+```
+UDP_BCAST_PORT 默认 9995
+iptables -I INPUT  -p udp --dport <port> -i br0 -j ACCEPT
+iptables -I OUTPUT -p udp --dport <port> -j ACCEPT
+```
+
+同一个二进制里还有 `handle_json_socket` / `app_provision.c`。反汇编确认它解析的
+JSON 字段（`json_object_get` 的键）：
+
+```
+method        session_id    members       model
+rest_access_info   statetype   broadband_quality
+client_probe_info  enh_steer_config   enh_blacklist_config
+gateway_topic      ap_mac      bssid      mac
+private            eac         config     location
+timestamp
+```
+
+分派逻辑里能看到两个字符串比较（`0x4E944` / `0x4E958`）：
+
+```
+strcmp(<某字段>, "accesspoint") == 0
+strcmp(<某字段>, "desired_state") == 0
+    ↓ 命中
+写 config/location（0x3DD80），然后刷新 embedur/accesspoint 配置
+```
+
+也就是说：**云端和本地 App 用的是同一套 JSON 形态**，只是承载方式不同
+（MQTT vs UDP/JSON socket）。这解释了为什么 `mqtt_spy` 的 topic 对了，
+但发纯文本命令没反应 —— 它期待的是带 `method` 的 JSON 对象。
+
+### 5.2 ★ 家长控制（按 DNS 关键字拦截 + 流量配额）
+
+配置在 `/data/embedur/parental_controls.json`，运行时会生成：
+
+```
+/tmp/parental_controls_members.sh
+/tmp/parental_controls_services.sh
+/tmp/parental_controls_ip_tables.sh
+/tmp/parental_controls_members_ebtables.sh
+/tmp/singtel_parental_controls.sh
+```
+
+核心规则（字符串里原样可见）：
+
+```sh
+iptables -t filter -N member_filters_0x<mark>
+iptables -t filter -I FORWARD -m mark --mark 0x<mark>/0x<mask> -j member_filters_0x<mark>
+iptables -t filter -A member_filters_0x<mark> -p udp --dport 53 \
+         -m string --algo bm --icase --string '<keyword>' -j REJECT
+iptables -t filter -A member_filters_0x<mark> -p tcp --dport 53 \
+         -m string --algo bm --icase --string '<keyword>' -j REJECT
+```
+
+也就是说：**它不是解析 DNS，而是在 53 端口的报文里做字符串匹配**。
+每个客户端按 connmark 分到自己的链（`member_filters_0x…`）。
+
+另外还有**流量配额**：
+
+```
+PC: ... parental member test, pc_member->total_bytes:%llu  total_bytes_limit:%llu
+PC: ... parental member over limit, blocking...
+```
+
+超额后同一个链直接 `-j REJECT`。这套规则是**独立的**，和 `arc_firewalld` 的
+访问控制（`ARC_FIREWALL_AC_*`）不是一回事。
+
 ---
 
 ## 6. 自动重启策略（比想象中激进）
@@ -294,7 +365,8 @@ Invalid image signature
 - **Mesh Router 这份 rootfs 里就有解码器**（`rrm_bcm_arm`），没有加密；
 - 之前尝试的 `?$[+` 分隔符、zlib、查表格式，都不是它的主要协议 ——
   它用的是 **标准 MQTT + JSON**；
-- topic 与公共字段已经对上了（§4），剩下的是**命令 schema**。
+- topic 与公共字段已经对上了（§4），本地 JSON 解析器的字段也挖出来了（§5.1），
+  剩下的是**每个 method 的参数语义**。
 
 也就是说：假 broker 的思路仍然有效，但要按 **JSON + 真实 topic** 来构造，
 而不是继续猜分隔符。下一步最省事的做法是从 `rrm_bcm_arm` 里把
@@ -374,7 +446,9 @@ cat /data/reboot.log 2>/dev/null | tail
 
 ## 11. 还没解的
 
-1. **命令 JSON schema**：云端下发 `desired_state` / `direct` 的具体键。
+1. **命令 JSON schema**：已经拿到解析器的字段清单（`method`/`session_id`/`members`/
+   `config`/`location`/…，见 §5.1）和 `accesspoint`+`desired_state` 的分派；
+   还差**每个 method 的完整参数语义**（哪些字段必填、类型、嵌套）。
 2. **adornment 的完整结构**：只拿到片段（`ap/ssid/bssid/state/timer`）。
 3. **`broadband_ssl` 的具体协议**：是测速还是探测，尚未逐函数看。
 4. **签名/加密固件包的格式**：`image_manager` 的解密参数还没逆。
@@ -392,6 +466,8 @@ cat /data/reboot.log 2>/dev/null | tail
 | 环境配置 | `erm_agent/erm_config`、`erm_config_staging` |
 | MQTT 主题 | `rrm_bcm_arm` 字符串：`devices/%s/adornment` 等 |
 | 订阅注册函数 | `0x59A04`（拼主题）/ `0x59E68`（desired_state、direct）/ `0x771FC`（adornment）/ `0x70494`（image） |
+| 本地 JSON 解析 | `handle_json_socket` @ `0x4E218`；`accesspoint`/`desired_state` 比较 @ `0x4E944`/`0x4E958` |
+| 家长控制 | `member_filters_0x…` 链 + `-m string --dport 53`；配置 `/data/embedur/parental_controls.json` |
 | 证书配对 | `ca-prod.crt` ↔ `mqtt-key-prod.pem`（模数一致） |
 | 构建出处 | 二进制里的 Jenkins 路径 `SMR-2.3.29` |
 | 多平台支持 | `systematic_reboot.sh` 的 `sagemcom / arcadyan / arcadyan_mtk / sercom_bcm / edgecore / jio_bcm` 分支 |

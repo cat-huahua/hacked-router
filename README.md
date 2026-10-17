@@ -173,7 +173,8 @@ PUBLISH   devices/data/shadow                zlib 压缩的身份上报
   USB `chmod a+rwx`、LTE AT 命令、厂商自定义内核模块
 - [`docs/singtel-cloud-agent.md`](docs/singtel-cloud-agent.md) —— ★★ **EmbedUR 云管理代理**：
   固件里默认开启的第三方代理（`ARC_3rd_EmbedUR_Enable=1`），MQTT 主题、能力面、
-  自动重启策略、固件升级链路；★ 固件里带着**与生产 broker 证书配对的私钥**
+  自动重启策略、固件升级链路；★ 还挖出**本地 App 配网协议（UDP 9995 + JSON）**
+  和**家长控制的 DNS 关键字拦截**；★ 固件里带着**与生产 broker 证书配对的私钥**
 - [`docs/config-recovery.md`](docs/config-recovery.md) —— ★★ **配置恢复包**：
   四层配置结构（rootfs 出厂包 / tmpfs / `pricfg` 分区 / `data` JFFS2）、
   **web 备份 `Settings.CFG` 的离线解密**（`aes-256-cbc` + 固件里写死的口令，
