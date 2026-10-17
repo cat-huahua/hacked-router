@@ -246,3 +246,99 @@ DSL 的 rootfs 是 48MB 的 UBIFS，**UBIFS 的完整提取需要专门的解析
 
 > **下次要接着做的话**：装 `ubi_reader`（`pip install ubi_reader`）或用 `ubireader_extract_files`，
 > 就能把卷 0 完整解出来。这一步不需要硬件。
+
+---
+
+# 附二：DSL-AC87VG 的 rootfs 也全解了（并查出血统）
+
+上面"没做完"的那步补上了 —— **不需要硬件，装个 `ubi_reader` 就行**：
+
+```bash
+python3 -m venv /tmp/ubienv && /tmp/ubienv/bin/pip install ubi_reader
+# 先把 UBI 区切出来（ubi_reader 自己判边界会失败）
+python3 -c "import pathlib;d=pathlib.Path('DSL....w').read_bytes();\
+            pathlib.Path('dsl_ubi.img').write_bytes(d[d.find(b'UBI#'):])"
+/tmp/ubienv/bin/ubireader_extract_images -o out dsl_ubi.img   # → img-0_vol-rootfs_ubifs.ubifs
+/tmp/ubienv/bin/ubireader_extract_files  -o fs  img-0_vol-rootfs_ubifs.ubifs
+```
+
+**结果：3031 个文件 / 93 MB。** 卷名 `rootfs_ubifs`。
+
+## ★★ 血统：这套固件是 **ASUSWRT** 改的
+
+解出来一看，**里面一行 NETGEAR 字样都没有**：
+
+| 痕迹 | 是什么 |
+|---|---|
+| `rom/.asusrouter` | `#!/bin/sh` + `# ASUS app autorun script` ← **ASUSWRT 的标志文件** |
+| `usr/lib/libasusnvram.so` | ASUS 的 nvram 库 |
+| `sbin/arc_asuslink` / `arc_ASUS_updateValue` | 连前缀 `arc_`（Arcadyan）都只加在 ASUS 的东西前面 |
+| `www/images/asustitle.png` / `Advanced_ASUSDDNS_Content.htm` | ASUS 的 web 资源 |
+| `usr/bwdpi/ntdasus2014.cert` / `www/tm_eula_*.htm` | TrendMicro AiProtection（ASUS 的合作方） |
+| **187 个 `ASUS_*` 配置键** | ASUSWRT 的配置命名空间 |
+
+文件计数：**ASUS 相关 109 个 + 77 个含 "asus"**、**NETGEAR **0** 个**、Arcadyan 4 个。
+
+**判读**：DSL-AC87VG 装的是 **Broadcom/ASUS 参考固件（ASUSWRT）经 Arcadyan 改制**，
+NETGEAR 只提供了型号名。⇒ **整套 ASUSWRT 的公开知识（配置键、web UI、工具）都能直接用在这台设备上。**
+
+## ★ 管理密码：`SHA512_hex(MD5_hex(密码))`，默认值 `admin`
+
+`glbcfg.dft`（出厂默认配置，**明文**）里：
+
+```
+ARC_SYS_LoginName = edbd881f1ee2f76ba0bd70fd184f87711be991a0401fd07ccd4b199665f00761afc91731d8d8ba6cbb188b2ed5bfb465b9f3d30231eb0430b9f90fe91d136648
+ARC_SYS_Password  = edbd881f1ee2f76ba0bd70fd184f87711be991a0401fd07ccd4b199665f00761afc91731d8d8ba6cbb188b2ed5bfb465b9f3d30231eb0430b9f90fe91d136648
+ARC_SYS_LoginTimeout = 30
+```
+
+128 位十六进制 = **SHA-512**。`hashcat -m 1700` + crackstation 字典**秒破**：
+
+```
+edbd881f…136648  →  21232f297a57a5a743894a0e4a801fc3
+```
+
+而 `21232f297a57a5a743894a0e4a801fc3` **正是 MD5("admin")** —— 于是：
+
+```
+ARC_SYS_Password = SHA512_hex( MD5_hex( 明文 ) )      明文 = "admin"
+ARC_SYS_LoginName 与 Password 完全相同  ⇒  默认账号密码都是 admin
+```
+
+> **★ 破解这类配置的工作流**（容易走弯路）：哈希是**两层**的。
+> 用 `-m 1700`（SHA-512）破出来的"明文"**其实是 `MD5_hex(真密码)`**（一段 32 位十六进制），
+> 还要再拿它当 MD5（`-m 0`）去查一次表，或者直接认出它就是常见口令的 MD5。
+> 本次就是靠"认出 21232f29… 是 admin 的 MD5"直接得解的。
+
+**同一家厂商，三台设备的密码存法都不同**：
+
+| 设备 | 管理密码怎么存 |
+|---|---|
+| NETGEAR R7800（原厂） | `http_passwd` = 裸 SHA256 |
+| Singtel Mesh Router | `ARC_SYS_Password` = **明文** `admin`（运行时由 `arc_board get gui-pwd` 覆盖） |
+| **DSL-AC87VG** | `ARC_SYS_Password` = **SHA512(MD5(明文))** |
+
+## ★ 三把**无口令保护**的厂商共用私钥
+
+```
+usr/sbin/key.pem                                889 字节  RSA-1024
+usr/share/config/etc/config/cert/RootCA/rootca.key.pem     1679 字节  RSA-2048
+usr/share/config/etc/config/cert/WebServer/webserver.key.pem 1679 字节  RSA-2048
+```
+
+三把**互不相同**（modulus 指纹各不同），**全部没有 `Proc-Type: ENCRYPTED` 头**，
+即**明文私钥、且所有出厂设备共用同一套**。
+
+其中 `rootca.key.pem` 是**厂商根 CA 的私钥** ——
+拿到它就能为这类设备**签发可被信任的证书**（配合[冒充云端](singtel-firmware-analysis.md)
+那条线：设备本来就不校验证书，现在连"签一个像样的"都不需要了）。
+
+## 其它默认值
+
+```
+ARC_USB_ACCOUNT_0_Password   = admin
+ARC_VO_SIPACC_0..5_Password  = **11** **12** **21** **22** **23** **24** **25**
+ARC_VO_DECT_0..2_AucAuthKey  = 00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00   ← 全零
+```
+
+（DECT 的鉴权密钥**全零**，SIP 账号口令是 `**11**` 这种占位符 —— 都是出厂模板值。）
