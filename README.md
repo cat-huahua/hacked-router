@@ -163,6 +163,10 @@ PUBLISH   devices/data/shadow                zlib 压缩的身份上报
 - [`docs/arcadyan-singtel-config-format.md`](docs/arcadyan-singtel-config-format.md) —— ★
   **Arcadyan / Singtel 的配置与密码机制**：glbcfg **是明文**、密码派生规则
   （`s1ngt3l` + 序列号后 6 位，已实证）、extender rootfs 为什么解不开（附完整证据链）
+- [`docs/singtel-web-api-map.md`](docs/singtel-web-api-map.md) —— ★★ **web 字段 ↔ 配置键映射**：
+  `ABS_MAP` 的数字 ID 其实是 `(模块<<16)|字段`，工具 `webmap.py` 从 `libarccfg.so`
+  的 `mod_table`/`item_table` 直接翻译；实测 **414 条映射 / 332 个 ARC 键**
+  （web 只覆盖 2361 个字段中的 332 个，其余是后台开关）
 - [`docs/singtel-network-internals.md`](docs/singtel-network-internals.md) —— ★★ **网络面逐层解码**：
   IPv4/IPv6 防火墙（完整 iptables 规则、DoS/访问控制/`xt_webstr`）、
   QoS（HFSC/HTB + ICMP 自动测速）、VLAN/假 `eth0.0`、WBD mesh、IPv6（6RD/NAT64）、
@@ -181,6 +185,8 @@ PUBLISH   devices/data/shadow                zlib 压缩的身份上报
 
 `cfgpack.py` 是 **Arcadyan/Singtel 配置恢复包**：分析 rootfs、解析 `glbcfg` 字段、
 **离线解密/生成 web 备份 `Settings.CFG`**、从 flash dump 里 carve 配置 tar.gz。
+`webmap.py` 把 web 界面的 `ABS_MAP` 数字 ID 翻译成真正的 `ARC_*` 配置键
+（直接读 `libarccfg.so` 的模块表/字段表）。
 
 统一工具 `routercfg.py` **五种格式**都认：NETGEAR 配置 / **NETGEAR 官方固件** /
 华为配置 / Arcadyan .trx / Arcadyan glbcfg（含华为的 **HMAC 密钥验证器**）；
