@@ -592,3 +592,70 @@ dni_atoi  dni_itoa  dni_strstr  dni_fgets
 也就是说他们把常见的 `strcpy/sprintf` 换成了带长度参数的版本 ——
 **但这不保证调用处都检查了返回值**（这类"换了函数但没改用法"的漏洞很常见）。
 枚举 CGI 动作时如果想找输入处理缺陷，这几个函数是重点。
+
+---
+
+# ★ 附五：R7800 的服务架构（61 个 init 服务 / 187 个内核模块）
+
+## init.d 全部服务
+
+```
+acl  atd  avahi-daemon  aws  boot  br-mode  ca-certificates  cron  dbus  ddns
+detcable  dni-debug.init  dni-qos  dnsmasq  done  enet  forked-daapd  glboot
+guest_dhcp  hd-idle  igmpproxy.init  init6  kcode  lbd  lighttpd  lltd  lvm2
+madwifi  net-br  net-br-dhcpc-helper  net-lan  net-scan  net-wan  ntgrcrypt
+ntpclient  openvpn  openvpn_check  openvpn_client  opmode  pot  powerctl
+qca-nss-drv  qca-nss-ecm  qcmbr  rcS  ripngd  run_afpd  samba  sched_updates
+ssid_steering.init  streamboost  sysctl  sysfixtime  sysfs_config  syslogd
+sysstat  telnet  tftpd-hpa  traffic_meter  ubus  uci2streamboost  umount
+upnp  usb  watchdog  wlan-common  zebra  zzprefix-check_cert_files
+```
+
+三个值得单独点出来的：
+
+| 服务 | 是什么 |
+|---|---|
+| **`telnet`** | ★ telnet **本身就是一个 init 服务** —— 所以"开 telnet"是设备自带能力，只是默认没启 |
+| **`ntgrcrypt`** | 那个 LUKS 安全分区（见前面 `libntgrcrypt.so` 的分析） |
+| **`aws`** | 启动 `/usr/sbin/aws-iot` —— **AWS IoT 客户端** |
+
+## ★ 整套云栈都是「运行时安装」，固件里没有
+
+这条和前面 ReadyCLOUD 的结论**完全一致**，而且更彻底：
+
+| 组件 | 固件里有没有 | 证据 |
+|---|---|---|
+| `/usr/sbin/aws-iot` | **没有** | `init.d/aws` 里写 `start() { /usr/sbin/aws-iot; }`，但文件不存在 |
+| `/usr/rae.tar.gz` | **没有** | `init.d/aws` 里 `rae_partion=/usr/rae.tar.gz`，文件不存在 |
+| `/opt/rcagent/`（ReadyCLOUD） | **没有** | `find rootfs -path '*rcagent*'` → 无 |
+
+但**它们的"壳"都在**：
+
+- `www/rae_*.htm` 一整套 RAE（**Router Analytics Engine**）引导页面：
+  `rae_waiting` / `rae_router` / `rae_main` / `rae_learn` / `rae_learn_ap` /
+  `rae_extender*` / `rae_bridge_*`
+- `init.d/aws` 里的完整逻辑（含 `panic_partion=/dev/mtd9`、
+  `RAE_DIR=/tmp/router-analytics`、按 `artmtd -r region` 判断 `PR` 版则关掉 RA）
+
+**结论**：NETGEAR 的做法是 —— **固件只放"壳"（页面 + init 脚本 + 下载器），
+真正的云 agent 与数据分析组件在设备联网后从自家服务器取。**
+所以对 R7800 做静态固件分析，**永远看不到云协议本体**。
+
+## 内核模块：187 个
+
+```
+ath_*（Qualcomm Atheros 无线：ath_dev/ath_hal/ath_dfs/ath_rate_atheros/ath_spectral…）
+qca-nss-*（Qualcomm 网络卸载）
+NetUSB.ko / GPL_NetUSB.ko（USB over IP，KC_PRINT 那套）
+cbc.ko（AES-CBC）· bonding.ko · act_*（流量整形）· cls_*（分类）…
+```
+
+## 与 Arcadyan 的架构对比（一台一个思路）
+
+| | NETGEAR R7800 | Arcadyan（Mesh Router / DSL-AC87VG） |
+|---|---|---|
+| Web | lighttpd(root) + net-cgi 单体 | 自家 httpd（21 个 CGI） |
+| 服务 | **61 个传统 init 脚本** | **1 个** `arcadyan-agent-loader` + **36 个 dbus agent** |
+| 配置 | `/bin/config`（`datalib`）、nvram | `mng_cli` / `arc_glbcfg` / glbcfg 文本 |
+| 云 agent | ★ **运行时下载**（aws-iot / rae / rcagent） | 烧在 rootfs 里（`arca-*` agent） |
+| 加密 | 配置 = `rand()` XOR；另有 LUKS 安全分区 | 配置 = 明文 glbcfg；extender rootfs = AES |
