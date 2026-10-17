@@ -99,40 +99,39 @@ head -c 400 glbcfg.bin
 **这一条很可能不用破任何哈希，直接就看到密码了。**
 （同厂设备的 `glbcfg.dft` 实测就是纯 ASCII。）
 
-### ② 找 rootfs 的 AES 密钥 → 解开 extender 的 rootfs
+### ② ★ 找 extender rootfs 的 AES 密钥 → 一条命令就够
+
+**这一项现在已经不需要"摸索"了** —— 2026-10-17 把已知条件全部锁定：
+
+| 已知 | 值 | 依据 |
+|---|---|---|
+| 加密算法 | **AES-ECB**（很可能） | 内核 config 里 `CONFIG_ARC_SQUASHFS_FS_CRYPTO=y` + `CONFIG_CRYPTO_ECB=y`，而 **CBC 未启用** |
+| 密文靶子 | `TRX[0x2D001C+110 : +126]` = `aafc96879745454d0e54b3f45d43f111` | 超块(96B)与 comp_opts 块(14B)都是明文，数据块从 **+110** 开始 |
+| 该块**明文** | 必然以 `fd 37 7a 58 5a 00` 开头 | squashfs 的每个 xz 数据块都是【完整 xz 流】 |
+| 密钥位置 | **不在固件里** | 实测：内核/`.trx`/`.w` 共 **1 亿+** 个 16/32 字节候选全部未命中 |
+
+**所以只剩一个可能：密钥在 flash 里**（`factory` 或 `u-boot-env` 分区 —— 注意
+`get_decrypt_keys` 这个函数名是复数 "keys"）。
+
+**dump 到手后，一条命令：**
 
 ```bash
-# u-boot-env：先当"人话"看
-dd if=flash-original.bin bs=1 skip=$((0x30000)) count=$((0x10000)) | strings -a | head -40
-# 形如 bootargs=... aes_key=... 之类，直接就是答案
-
-# u-boot 本体：找 AES 实现与密钥
-dd if=flash-original.bin of=uboot.bin bs=1 count=$((0x30000))
-strings -a uboot.bin | grep -iE 'aes|key|decrypt|rootfs|arcadyan|password'
-# 找 AES 的 S 盒 / T 表（定位实现），密钥通常在附近的 .rodata 里：
-python3 - <<'EOF'
-import pathlib, re
-d = pathlib.Path("uboot.bin").read_bytes()
-for n, m in [("正S盒", bytes.fromhex("637c777bf26b6fcf3001672bfed7ab76")),
-             ("逆S盒", bytes.fromhex("52096ad53036a538bf40a39e81f3d7fb")),
-             ("Td0",   bytes.fromhex("51f4a7507e4165531a17a4c33a275e96"))]:
-    print(n, [hex(x) for x in re.finditer(re.escape(m), d)] or "未找到")
-EOF
+# 把 dump 里每一个 16/32 字节窗口都当密钥，用 AES-ECB 解那个靶子，
+# 看解出来是不是 xz 魔数（48 位判据，误判率 2^-48）
+cc -O3 -march=native -o arckey arckey.c -lcrypto
+./arckey --selftest                                            # 先验 AES 实现（FIPS-197 向量）
+./arckey flash-original.bin aafc96879745454d0e54b3f45d43f111 --hex-ascii
 ```
 
-拿到候选密钥后，用本仓库已有的判据测：
+- 会在**几秒内**给出密钥的**偏移和值**（32MB 的 dump ≈ 6700 万候选）
+- 也顺带试"32 位十六进制**字符串**"形式的密钥
+- 拿到密钥后就能解整个 rootfs：`CONFIG_ARC_SQUASHFS_FS_CRYPTO` 是 AES-ECB，
+  对 `[+110, bytes_used)` 逐 16 字节块 ECB 解密，再 `unsquashfs` 即可
 
-```bash
-# 假设密钥是 16 字节 hex，做成 32 字符的候选，然后：
-# 用 routercfg.py 或直接试解 squashfs 的第一个数据块，看能不能变成 xz 流头
-# （判据：解出来应出现 fd 37 7a 58 5a 00，即 XZ 魔数）
-```
-
-**测密钥时的判据要硬**（这是本仓库踩过的坑）：
-- ✅ "解出来出现合法魔数 / 能 unsquashfs 成功" —— 硬判据
-- ❌ "unsquashfs 报了一句话" —— **软判据，会骗人**
-  （`xz: error reading stored compressor options` 是**无害警告**，
-  官方健康镜像也报；真正的坏是 `xz uncompress failed with error code N`）
+> **如果 `arckey` 也没中**，说明密钥不是"dump 里连续的 16/32 字节"，
+> 那就要去读 `get_decrypt_keys` 的代码：它在 file `0x53A878`
+> （内核虚拟地址 `0x8153A878`，基址实测 `0x81000000`，即 `vaddr = 0x81000000 + fileoff`），
+> 反汇编这个函数就能看出密钥到底从哪读。
 
 ### ③ 华为 Q2S —— 同样先看有没有明文
 

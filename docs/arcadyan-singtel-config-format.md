@@ -9,7 +9,7 @@
 |---|---|
 | **glbcfg 配置** | ★ **纯明文** `key=value`，不需要解密 |
 | **密码派生机制** | ★ **已完整破译**（见第 2 节）—— root/SSH 密码是**可算的** |
-| **extender 的 rootfs** | **加密 squashfs**，密钥在 **bootloader**，**没有 flash dump 就解不开** |
+| **extender 的 rootfs** | **加密 squashfs**（内核选项 `CONFIG_ARC_SQUASHFS_FS_CRYPTO=y`，疑似 AES-ECB）。<br>解密代码**在内核里**，但**密钥不在固件里**（实测 1 亿+候选全不中）→ 最可能在 **flash** 里，**没有 dump 就解不开** |
 | **厂商共用默认物** | 有共用私钥 + 默认账户哈希（见第 6 节） |
 
 ---
@@ -109,7 +109,8 @@ magic 0x746F435D | len | crc32 | flag | off1(kernel) | off2(rootfs) | off3
 | 偏移（相对 rootfs 起点） | 内容 | 状态 |
 |---|---|---|
 | +0 | `hsqs` 超块（96 字节） | ★ **明文**（inodes=1679 block=131072 comp=4 flags=0x06c0 bytes_used 全合法） |
-| +96 | comp_opts 元数据块 | **已加密** |
+| +96 | comp_opts 元数据块（14 字节 = 2 头 + 12 载荷） | ★ **也是明文**（与 NETGEAR 健康镜像同位置逐字节同格式） |
+| **+110** | 第一个数据块 —— **加密从这里开始** | **已加密** |
 | 其后 | 数据块 / inode 表 / 目录表 | **已加密** |
 
 **判断"是加密而不是压缩参数问题"的证据链**（每一条都实测过）：
@@ -147,7 +148,10 @@ magic 0x746F435D | len | crc32 | flag | off1(kernel) | off2(rootfs) | off3
 > **所以：没有 SPI flash 物理读取，这块 rootfs 解不开。** 这不是方法问题，是信息不存在。
 
 对比意义：**NETGEAR 把种子写在文件头里**（所以能解）、**华为把密钥放设备上**（一机一密）、
-**Arcadyan 把密钥放 bootloader 里**（最靠下，最难拿）。三种设计的安全强度依次递增。
+**Arcadyan 把解密做进内核、密钥放 flash 里**（代码给你看、钥匙不给你）。
+三种设计的安全强度依次递增 —— 而 Arcadyan 这种"算法公开、密钥外置"其实是最讲究的做法：
+**它不靠隐藏算法来保证安全**（算法在明文内核里，随便看），
+**只靠那把 128 位的钥匙**。所以拿到 flash 就等于全破，拿不到就一点都进不去。
 
 ## 4. 怎么验证一把 rootfs 密钥（方法论）
 
@@ -232,41 +236,81 @@ ARC_OWL_CLOUD_URL=https://stage1.arciot.com:55668      ← ★ 注意 stage1 = �
 [singtel-mesh-login-lock.md](singtel-mesh-login-lock.md)（登录锁）·
 [huawei-config-format.md](huawei-config-format.md)（另一种设计：密钥在设备上）
 
-## ★ 为什么可以确定「是 bootloader 解密，不是内核」
+## ★ 解密到底在哪一层（2026-10-17 重大更正）
 
-前面证明了 rootfs 加密、密钥不在固件包里。但**还有第三种可能**：
-密钥硬编码在**内核**里（内核解密 rootfs 再挂载）。这条也排除了：
+> **⚠️ 本文档早先写过一段「内核不解密，所以是 bootloader」的推理 —— 那是错的，已删除。**
+> 我当时的理由是"内核里 squashfs 只有标准解压器，没有自定义的'先解密再解压'包装器"。
+> **这个推理从根上就错了**：Arcadyan 的加密根本不是"解压器"，而是
+> **一个独立的 squashfs 编译选项**，从解压器列表里当然看不出来。
 
-内核里 squashfs 用的**全是标准解压器** ——
+### 真凭实据：内核里就有 Arcadyan 的 squashfs 加密
+
+内核自带 config（`IKCFG_ST`…`IKCFG_ED` 段，gzip，位置 file 0x5334A0，可解出 42247 字节）：
 
 ```
-0x5E7368  zlib
-0x5E73B6  xz_dec       (6 处)
-0x5E7466  unlzma
-0x5E7468  lzma         (5 处)
-0x5E7370  lzo
-0x5E7455  "SQUASHFS error: unlzma ..."
-0x5E7442  "decompressor"
+CONFIG_ARC_SQUASHFS_FS_CRYPTO=y       ← ★★ "ARC" = Arcadyan，厂商定制的 squashfs 加密
+CONFIG_CRYPTO=y
+CONFIG_CRYPTO_AES=y
+CONFIG_CRYPTO_ECB=y                   ← ★ ECB 启用了
+# CONFIG_CRYPTO_CBC is not set        ← ★ CBC 没启用 → 很可能就是 AES-ECB
 ```
 
-**没有任何自定义的「先解密再解压」包装器**，也没有"解密用"的解压器注册项。
+**所以解密代码确实在内核里**（我们手上这份明文内核），入口函数是 `get_decrypt_keys`
+（在 file 0x53A878，内核虚拟地址 `0x8153A878`，基址实测为 `0x81000000`）。
 
-> 内核要解密 rootfs，就必须在 squashfs 的挂载路径上插一层自己的代码
-> （自定义 decompressor，或改 `squashfs_read_data`）。
-> **这里一个都没有** —— 全是上游标准实现。
+### ★ 另一个重要更正：加密从哪个字节开始
 
-**所以解密发生在内核拿到数据之前，即 bootloader。**
+早先我以为超块之后的 comp_opts 块就被加密了 —— **错了**。拿
+**NETGEAR 的健康镜像做对照**（它同样是 `comp=4(xz)` + `flags=0x06c0`），
+两份镜像的 comp_opts 块**开头两字节完全一样**：
 
-**完整链条**（每一步都实测）：
+```
+NETGEAR (健康) :  0c80 | 140009009000400000000400 | fd377a585a00...   ← 数据块从这里开始，明文
+extender(加密) :  0c80 | 000006008300400000000200 | aafc9687974545...  ← 数据块从这里开始，已加密
+                   ↑ 元数据头(未压缩,12字节)          ↑ 偏移 +110
+```
 
-| 环节 | 结论 | 依据 |
+- 超块（96 字节）**明文** ✓
+- comp_opts 块（14 字节：2 头 + 12 载荷）**也是明文** ✓
+- **真正的加密从 `+110` 开始**（comp_opts 结束之后、第一个数据块）
+
+> 这也说明 `unsquashfs` 那句 `xz: error reading stored compressor options` 确实无关
+> —— 健康镜像也报（见 [netgear-config-decrypt.md](netgear-config-decrypt.md)）。
+
+### ★ 由此得到一个精确可验证的靶子
+
+squashfs 的**每一个 xz 数据块都是完整的 xz 流**，所以第一个数据块的明文前 6 字节必然是
+
+```
+fd 37 7a 58 5a 00        （XZ 魔数）
+```
+
+于是这个 16 字节就是**已知明文**：
+
+```
+密文 = TRX[0x2D001C + 110 : +126] = aafc96879745454d0e54b3f45d43f111
+明文应以 fd 37 7a 58 5a 00 开头
+```
+
+**拿到任何候选密钥，一次 AES 解密就能判定**（48 位判据）。工具：`arckey.c`。
+
+### ★ 密钥不在我们手上的任何文件里（实测）
+
+用上面这个靶子，把**所有手上二进制的每一个 16/32 字节窗口**都当密钥试过：
+
+| 来源 | 候选数 | 结果 |
 |---|---|---|
-| 容器 | 明文 | `otrx` 源码里没加密代码 |
-| 内核 | 明文 | LZMA 直接解开，7.7 MB |
-| 内核是否解密 rootfs | **否** | ★ squashfs 只有标准解压器，无自定义包装 |
-| rootfs | 加密 | `xz uncompress failed with error code 7` + 0 个 XZ 魔数 |
-| ⇒ 谁解密 | **bootloader** | 排除法 |
-| bootloader 在哪 | flash `0x0`–`0x30000` | 分区表 |
-| 我们手上有没有 | **没有** | `.w`/`ubi_*` 镜像里 `U-Boot`/`bootdelay`/`bootcmd` 全 0 命中 |
+| 内核（已解压 7.7MB） | 1548 万 | 未命中 |
+| 内核（LZMA 压缩态 2.9MB） | 590 万 | 未命中 |
+| 整个 `.trx`（14MB） | 2925 万 | 未命中 |
+| `Singtel-MeshRG.w`（43MB） | **8926 万** | 未命中 |
+| ubi 镜像等 | — | 未命中 |
+| 内核里所有文本串的 hex/base64/MD5/SHA256 | 8031 | 未命中 |
+| 由超块 / TRX 头 / uImage 头派生 | 138 | 未命中 |
 
-**结论：没有 SPI flash 物理读取，无解。这是信息不存在，不是方法不对。**
+**结论**：密钥既不是硬编码常量、也不是文本、也不在容器头里。
+结合 `get_decrypt_keys` 这个函数名（复数的 "keys"），最可能是
+**启动时从 flash 某个固定位置读出来的**（`factory` 或 `u-boot-env` 分区）。
+
+**所以：仍然需要 SPI flash dump —— 但现在这件事变得非常容易了**：
+dump 到手后跑一条命令即可（见 [spi-flash-dump-guide.md](spi-flash-dump-guide.md) 第四节）。

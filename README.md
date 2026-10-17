@@ -159,6 +159,7 @@ PUBLISH   devices/data/shadow                zlib 压缩的身份上报
 
 统一工具 `routercfg.py` **五种格式**都认：NETGEAR 配置 / **NETGEAR 官方固件** /
 华为配置 / Arcadyan .trx / Arcadyan glbcfg（含华为的 **HMAC 密钥验证器**）；
+`arckey.c` 是 Arcadyan squashfs 的 **AES 密钥搜索器**（已锁定靶子与判据，dump 到手一条命令）；
 `hwkey.c` 是华为 aescrypt2 的**高速密钥破解器/验证器**（C + 多线程，约 2400 条/秒，判据是 256 位 HMAC，零误判）。
 
 ---
