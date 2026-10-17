@@ -163,6 +163,9 @@ PUBLISH   devices/data/shadow                zlib 压缩的身份上报
 - [`docs/arcadyan-singtel-config-format.md`](docs/arcadyan-singtel-config-format.md) —— ★
   **Arcadyan / Singtel 的配置与密码机制**：glbcfg **是明文**、密码派生规则
   （`s1ngt3l` + 序列号后 6 位，已实证）、extender rootfs 为什么解不开（附完整证据链）
+- [`docs/singtel-firmware-update.md`](docs/singtel-firmware-update.md) —— ★★ **固件升级链路**：
+  web → httpd → `/bin/fw_upgrade` → `libcms_util.so`；Broadcom tag/CRC/芯片 ID、
+  SHA-256 + RSA 签名、A/B 分区与失败回退；`.trx` 的 `]Cot` 容器与尾部 64 KB 签名块
 - [`docs/singtel-web-api-map.md`](docs/singtel-web-api-map.md) —— ★★ **web 字段 ↔ 配置键映射**：
   `ABS_MAP` 的数字 ID 其实是 `(模块<<16)|字段`，工具 `webmap.py` 从 `libarccfg.so`
   的 `mod_table`/`item_table` 直接翻译；实测 **414 条映射 / 332 个 ARC 键**
