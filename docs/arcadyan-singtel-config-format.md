@@ -946,3 +946,58 @@ echo 1 > /proc/sys/blink_diag_led
 kill 1
 ```
 （先点亮诊断 LED，再 `kill 1` —— 杀掉 init 触发重启。）
+
+---
+
+# ★ 附：防火墙实现与**出厂姿态**
+
+## 实现（`/sbin/arc_firewalld`，ARM ELF，stripped）
+
+基础策略是**全 ACCEPT**，再用 `LOG_DROP` 链做选择性丢弃：
+
+```
+:INPUT   ACCEPT [0:0]
+:FORWARD ACCEPT [0:0]
+:OUTPUT  ACCEPT [0:0]
+
+-A INPUT   ! -i %s -j LOG_DROP          ← 只允许指定接口进
+-A FORWARD -j LOG_DROP                  ← 转发默认丢
+-A FORWARD -i %s -j access_control      ← 访问控制按客户端接口挂链
+-A ac_rule_%d -p %s -m multiport --dports %s -j url_blocking
+-A url_blocking -m webstr --url  "%s" -j LOG_DROP     ← ★ 自定义 webstr 模块做 URL 阻断
+-A url_blocking -m webstr --host "%s" -j LOG_DROP
+```
+
+- 有个自定义 iptables 扩展 **`webstr`**（按 URL/主机名匹配）
+- 端口里出现的：`1701`(L2TP) `1723`(PPTP) `2222` `5190` `8080`
+
+**六组配置键**：
+
+```
+ARC_FIREWALL_Enable  /  ARC_FIREWALL_IDS_*（AntiDOS / BlockNetbios / BlockWANPing）
+ARC_FIREWALL_AC_*（访问控制，最多 10 条）  /  ARC_FIREWALL_SCH_RULE_*（时间表）
+ARC_FIREWALL_MACFILTER_*（MAC 过滤）       /  ARC_FIREWALL_URL_*（URL 阻断）
+ARC_FIREWALL_DMZ_*                        /  ARC_FIREWALL_IdentPass / BlockCookie / BlockJAVA / BlockActivex / BlockProxy / BlockLoopback
+```
+
+## ★ 出厂默认姿态（`glbcfg.dft` 实测值）
+
+| 项 | 出厂值 | 含义 |
+|---|---|---|
+| `ARC_FIREWALL_Enable` | `1` | 防火墙开 |
+| **`ARC_UPNP_Enable`** | **`0`** | ★ **UPnP 默认关**（很多路由器默认开） |
+| `ARC_FIREWALL_DMZ_Enable` | `0` | DMZ 关 |
+| `ARC_UI_WEB_REMOTEMN_Enable` | `0` | 远程 Web 管理关 |
+| `ARC_TELNETD_ENABLE` | `0` | telnet 关 |
+| `ARC_FIREWALL_IDS_BlockNetbios` | `1` | NetBIOS 阻断开 |
+| `ARC_SYS_HTTP_Enable` / `HTTPS_Enable` | `1` / `1` | HTTP 80 + HTTPS 都开 |
+| **`ARC_FIREWALL_IDS_BlockWANPing`** | **`0`** | ⚠ **WAN 侧 ping 是允许的**（会回 ping） |
+| **`ARC_FIREWALL_IDS_AntiDOS`** | **`0`** | ⚠ 抗 DoS 关 |
+| `ARC_FIREWALL_MACFILTER_Enable` | `0` | MAC 过滤未启用 |
+| `ARC_FIREWALL_AC_Enable` | `0` | 访问控制未启用 |
+| `ARC_FIREWALL_BlockCookie/JAVA/Activex/Proxy/Loopback` | 全 `0` | 这些过滤都关 |
+| `ARC_UPNP_IGD_Enable` | `1` | UPnP 总开关关着，但 IGD 子项是 1 |
+
+**小结**：出厂姿态整体是**收敛的**（UPnP/DMZ/远程管理/telnet 全关、NetBIOS 阻断开）。
+两处可以商量的：**WAN 侧允许 ping**（会暴露设备在线）与**抗 DoS 关闭**。
+客户端隔离是关的（见 NETGEAR 那边的同类项，这条两家一样）。
