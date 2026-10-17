@@ -103,7 +103,7 @@ cp -af /tmp/.config/. /etc/config; rm -rf /tmp/.config/
 
 ```
 root:!:0:0:root:/:/bin/ash
-admin:$1$LzO.ToaL$5imIcbz0deL8NG8YUfde81:0:0:Administrator:/:/bin/sh
+admin:$1$<盐>$<哈希>:0:0:Administrator:/:/bin/sh
 ftp:*:55:55:ftp:/home/ftp:/bin/false
 network:*:101:101:network:/var:/bin/false
 nobody:*:65534:65534:nobody:/var:/bin/false
@@ -112,10 +112,10 @@ daemon:*:65534:*:…:/var:/bin/false
 
 - `root` 是 **`!`（锁定）** —— 没有 root 口令，SSH/telnet 的 root 登录靠的是
   运行时 `passwd admin` 设的那个口令 + `arc_sshd`/`arc_telnetd` 的开关。
-- `admin` 用 **MD5-crypt（`$1$`）**，盐 `LzO.ToaL`。
-  ★ 这个哈希**不是** `admin`（`openssl passwd -1 -salt LzO.ToaL admin` 对不上），
-  说明它是**出厂参考机的口令**。要还原就按 §2.4 的派生规则算，或者直接破这个 `$1$`。
-  **仓库里不贴这个哈希的可破解材料** —— 用工具从你自己的 rootfs 里读。
+- `admin` 用 **MD5-crypt（`$1$`）**。★ 这个哈希**不是** `admin`
+  （`openssl passwd -1 -salt <盐> admin` 对不上），而是**出厂参考机**的口令。
+  要还原就按 §2.4 的派生规则算，或者直接破这个 `$1$`。
+  **仓库里不贴哈希本体** —— 用 `cfgpack.py rootfs` 从你自己的 rootfs 里读。
 
 ### 2.2 四把无口令保护的 RSA 私钥
 
