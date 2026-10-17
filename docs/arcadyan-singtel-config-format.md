@@ -23,7 +23,7 @@ ARC_WAN_Type=1
 ARC_WAN_BaseType=1
 ARC_WAN_Active=0 1 2
 ...
-ARC_UI_WEB_REMOTEMN_Password=9df1b182d873117ae8236f3ef8525247     ← MD5(SN)，见下
+ARC_UI_WEB_REMOTEMN_Password=<32 位 MD5>                          ← MD5(SN)，见下
 ARC_TR69_Password=singtel                                          ← 默认值
 ```
 
@@ -66,20 +66,17 @@ mngcli set ARC_UI_WEB_REMOTEMN_Password=`echo -n "$sn" | md5sum | ...`
 
 ### ★ 这条规则是被实证过的，不只是读代码
 
-同一厂固件的默认账户哈希（模板值，见第 6 节）：
+同一厂固件的默认账户哈希（模板值，见第 6 节）。用 hashcat 模式 500 +
+掩码 `s1ngt3l?d?d?d?d?d?d`（100 万候选）**31 秒命中**：
 
 ```
-admin:$1$LzO.ToaL$5imIcbz0deL8NG8YUfde81
+命中值 = s1ngt3l + 模板设备序列号的后 6 位
 ```
 
-hashcat 模式 500 + 掩码 `s1ngt3l?d?d?d?d?d?d`（100 万候选），**31 秒命中**：
-
-```
-s1ngt3l160503
-```
-
-即 `s1ngt3l` + `160503`（那个模板设备的序列号后 6 位）。
 **代码里读到的派生规则 = 哈希里解出来的真值** —— 两个方向互证，规则钉死。
+
+> 具体的模板哈希与命中口令**不写进仓库**（那是真实设备的默认口令形态）。
+> 要看自己的，用 `cfgpack.py rootfs <你的rootfs>` 从固件里读哈希再破。
 
 ### 强制改密闸门是怎么回事
 
@@ -185,7 +182,7 @@ usr/share/config/etc/arcOwl/config.owl
 DEVICE_INFORMATION {
     MODEL_NAME     ARC-VDSLIAD;
     PRODUCT_ID     VRV9519AAWAC34-A-TA;
-    SERIAL_NUMBER  J701557422;
+    SERIAL_NUMBER  <序列号>;
     ...
 }
 OWL_DATA_TRANSMISSION_MODE 1;   # 1 = IEEE1905.1, 2 = socket
