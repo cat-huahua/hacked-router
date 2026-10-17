@@ -133,9 +133,12 @@ SUBSCRIBE devices/<MAC大写>/direct           直接命令
 PUBLISH   devices/data/shadow                zlib 压缩的身份上报
 ```
 
-**⚠️ 命令格式至今没解出来**（查表/JSON/带身份/zlib压缩/`?$[+`分隔符/以 reboot 当探针，
-47+ 次尝试全部零反应）。payload 疑似还有一层封装或签名。要解开只能拿到**云端 agent 的
-二进制**，而它在**加密的 rootfs** 里。
+**★ 2026-10-17 更新**：云端 agent 找到了，就在 **Mesh Router 的 rootfs 里**
+（`/usr/bin/embedur/erm_agent.tar.bz2`，**没有加密**）。它用的是**标准 MQTT + JSON**，
+`devices/<MAC>/adornment`、`devices/<MAC>/desired_state`、`devices/<MAC>/direct`、
+`devices/data/<ID>` 这些主题在二进制里逐字确认 —— 之前的抓包判断是对的。
+详见 [`docs/singtel-cloud-agent.md`](docs/singtel-cloud-agent.md)。
+**还没解的只剩“命令 JSON 的完整 schema”**，binary 已经到手，可以静态反汇编。
 
 ### ★ 固件与 bootloader
 
@@ -160,6 +163,9 @@ PUBLISH   devices/data/shadow                zlib 压缩的身份上报
 - [`docs/arcadyan-singtel-config-format.md`](docs/arcadyan-singtel-config-format.md) —— ★
   **Arcadyan / Singtel 的配置与密码机制**：glbcfg **是明文**、密码派生规则
   （`s1ngt3l` + 序列号后 6 位，已实证）、extender rootfs 为什么解不开（附完整证据链）
+- [`docs/singtel-cloud-agent.md`](docs/singtel-cloud-agent.md) —— ★★ **EmbedUR 云管理代理**：
+  固件里默认开启的第三方代理（`ARC_3rd_EmbedUR_Enable=1`），MQTT 主题、能力面、
+  自动重启策略、固件升级链路；★ 固件里带着**与生产 broker 证书配对的私钥**
 - [`docs/config-recovery.md`](docs/config-recovery.md) —— ★★ **配置恢复包**：
   四层配置结构（rootfs 出厂包 / tmpfs / `pricfg` 分区 / `data` JFFS2）、
   **web 备份 `Settings.CFG` 的离线解密**（`aes-256-cbc` + 固件里写死的口令，
