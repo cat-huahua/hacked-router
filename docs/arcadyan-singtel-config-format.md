@@ -1307,3 +1307,53 @@ ARC_QOS_TCLINK_MaxNum
 ARC_QOS_CLASS_*  ARC_QOS_CLASS_TCPACK     ← ★ 单独给 TCP ACK 一个类别（防止上行被 ACK 挤爆）
 ARC_QOS_ADSL_*
 ```
+
+---
+
+# ★ 附：VLAN 分流（Internet / IPTV 怎么分）
+
+`/sbin/arc_vlan`（POSIX shell，5.8KB）把每个 WAN 实例的 VLAN 子接口建出来：
+
+```sh
+wanx_en          = ARC_WAN_${N}_Enable
+wanx_base_ifname = ARC_WAN_${N}_BASE_Ifname
+wanx_vlan_en     = ARC_WAN_${N}_VLAN_Tagging
+wanx_vlan_id     = ARC_WAN_${N}_VLAN_Id
+wanx_vlan_pbit   = ARC_WAN_${N}_VLAN_P_Bit
+
+if [ "$wanx_en" != "1" ]; then return; fi          # 实例没启用 → 不建接口
+if [ "$bridge_mode" == "1" ] && ...; then return; fi  # AP/桥接模式 → 不建
+
+ifconfig $wanx_base_ifname 0.0.0.0 up
+echo 1 > /proc/sys/net/ipv6/conf/$wanx_base_ifname/disable_ipv6
+
+wanx_ifname="${wanx_base_ifname}.${wanx_vlan_id}"   # ★ 就是 eth0.10 这种
+```
+
+**子接口命名 = `<物理接口>.<VLAN ID>`**。
+
+## ★ 出厂的三条 WAN（从 glbcfg 读出来的实际值）
+
+| 实例 | 接口 | VLAN | P-Bit | 用途 |
+|---|---|---|---|---|
+| `ARC_WAN_100` | `eth0` | **10** | 0 | **互联网** |
+| `ARC_WAN_101` | `eth0` | **20** | **4** | **IPTV**（★ 优先级 4） |
+| `ARC_WAN_102` | `ppp200` | 无 | 0 | PPPoE 直连（不打 VLAN） |
+
+- 与前面的 `ARC_WAN_IPTVIdx=1` 完全对得上 ✓
+- **P-Bit 4** 是 802.1p 优先级 —— IPTV 的组播/视频流在交换机上会被优先调度，
+  这是运营商 IPTV 的标准做法
+- `ARC_WAN_VLAN_Detecting` 这个键在"自动探测 VLAN"模式下会改变行为
+  （探测模式下即使桥接模式也建 VLAN）
+
+## 几个相关的开关
+
+```
+ARC_WAN_${N}_Enable          ← 实例开关
+ARC_WAN_0_BridgeEnable       ← 桥接/AP 模式（此时不建 VLAN 子接口）
+ARC_WAN_${N}_IP4_Proto       ← 该实例的上网方式（bridge/dhcp/pppoe/static…）
+ARC_WAN_VLAN_Detecting       ← VLAN 自动探测
+```
+
+> 顺带：脚本里对**物理接口**先 `disable_ipv6`，再在其上建 VLAN 子接口 ——
+> 所以 IPv6 是在**子接口**上做的，物理口本身不跑 IPv6。
