@@ -163,6 +163,10 @@ PUBLISH   devices/data/shadow                zlib 压缩的身份上报
 - [`docs/arcadyan-singtel-config-format.md`](docs/arcadyan-singtel-config-format.md) —— ★
   **Arcadyan / Singtel 的配置与密码机制**：glbcfg **是明文**、密码派生规则
   （`s1ngt3l` + 序列号后 6 位，已实证）、extender rootfs 为什么解不开（附完整证据链）
+- [`docs/singtel-network-internals.md`](docs/singtel-network-internals.md) —— ★★ **网络面逐层解码**：
+  IPv4/IPv6 防火墙（完整 iptables 规则、DoS/访问控制/`xt_webstr`）、
+  QoS（HFSC/HTB + ICMP 自动测速）、VLAN/假 `eth0.0`、WBD mesh、IPv6（6RD/NAT64）、
+  USB `chmod a+rwx`、LTE AT 命令、厂商自定义内核模块
 - [`docs/singtel-cloud-agent.md`](docs/singtel-cloud-agent.md) —— ★★ **EmbedUR 云管理代理**：
   固件里默认开启的第三方代理（`ARC_3rd_EmbedUR_Enable=1`），MQTT 主题、能力面、
   自动重启策略、固件升级链路；★ 固件里带着**与生产 broker 证书配对的私钥**
