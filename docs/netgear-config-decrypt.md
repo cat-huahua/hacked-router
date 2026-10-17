@@ -498,3 +498,97 @@ ssl.cipher-list = "EECDH+AESGCM:EDH+AESGCM:AES128+EDH"
 
 证书从 `/tmp/secure/...` 读 —— 即**运行时生成/解出来的**，不在 rootfs 里。
 （对照：Arcadyan 那几台是把**未加密的共用私钥**直接放在 rootfs 里。）
+
+---
+
+# ★ 附四：R7800 的完整 CGI 动作表（220 个）
+
+`net-cgi` 里有一张按功能分组的动作表。把它们提出来后，这台设备的 **API 面就一目了然**了
+（按用途归类，原样保留命名）：
+
+```
+# WAN / 上网方式
+pptp  l2tp  orange_pppoe  orange_dhcp  mulpppoe_add/addnum/editnum/edit/del
+apply_iptv_edit  disable_vlan_iptv  apply_vlan  vlan_add  apply_vlan_add  vlan_edit  apply_vlan_edit  vlan_delete
+ipv6_con_type  ipv6_passthrougth  ipv6_auto  ipv6_tunnel  ipv6_fixed  ipv6_dhcp  ipv6_orange  ipv6_pppoe  ipv6_6rd
+
+# ★ 「hijack」= 设置向导的探测/接管流程（AP 模式检测也在这里）
+hijack_dhcp  hijack_pppoe  hijack_pptp  hijack_l2tp  hijack_bpa  hijack_static
+hijack_orange  hijack_mac_clone  hijack_to  hijack_success  hijack_set_vlan
+hijack_set_wireless  hijack_passwd
+（`wl_ssid_password` 与 `hijack_get_timestamp()` 也是这套向导的状态值 ——
+ **它是个 CGI 动作 + 时间戳，不是"SSID 的口令"**）
+
+# 无线
+wlan  bridge_wlan  wlan_adv  wl_ssid_password  wps_pin  stop_wps_status
+wlacl_add/editnum/edit/del/apply            （MAC 访问控制）
+wireless_schedule_select_to_edi / _delete / _delete_an
+wadv_schedule_add/edit (+_an)
+adv_wl_ap_mode  wl_bridge_mode  wl_bridge_sectype  wl_bridge_key
+wl_bridge_key1..4  wl_key1..4  wl_get_keyno  wl_get_keylength  wl_bridge_key_length
+wl_bridge_wep_64_key                         （★ 仍保留 WEP 的 4 个 key 槽）
+wifi_ntgr_hidden_channel  wifi_channel_coexist  wl_sectype  wl_bridge_key3/4
+
+# 设备/状态
+connect_status  show_statistic  status  welcome  reboot  factory
+upg_agree_conditions  full_conditions  edit_devname  rae_router  rae_ap
+extender_step1  extender_step2  detect_update  auto_refresh_value  set_dettype
+need_login  secure_pwd_remind  asp_judge_guest_user  wizard_pls_wait  change_multi
+
+# 安全 / 访问控制
+block_services_add/editnum/edit/del/apply   block_sites  schedule
+acc_control_allow/block  apply_acc_control  add_acc  delete_acc  edit_acc
+editnum_acc_allow  editnum_acc_block  editnum_connect_device
+ipmac  wps_pin  guestpasswd  hijack_mac_clone
+
+# QoS / 流量
+qos_editnum  add_qos_adva  edit_qos_adva  add_qos_online  edit_qos_online
+add_qos_ether  edit_qos_ether  qos_addmac  edit_qos_mac  add_qos_mac  edit_qos_mac
+qos_del  qos_delmac  qos_del_all  apply_qos  apply_prru_qos  qos_editnode
+add_qoslist  edit_qoslist  qos_deletenode  apply_streamboost  apply_wmm
+select_qos_edit  traffic  traffic_reset  show_traffic_reset
+
+# USB / 共享 / 下载
+usb_setting  usb_approved_add/del  sharefolder_creat/edit/delete  disk_remove
+file_browser_open  browser_open/close/apply  open_creat_window  open_browser_window
+upnp_media  upnp_media_scan  upnp
+add_download_item  add_usb_bt_download_item  green_download  enable_green_download
+pause_download  start_download  refresh_download  resume_download  remove_download
+green_download_fail  change_priority  remove_history  add_download_item  download_email
+hdd_download
+
+# 云 / 远程
+ddns  ddns_disable  ddns_register  ddns_reset  email  change_language  browser_language
+readycloud_unregister  vpn_compress_conf  vpn_update_cert
+vpn_client  vpn_client_connect  vpn_client_disconnect
+
+# ★ 游戏加速插件（NETGEAR 中国版 FunJSQ / 迅游）
+funjsq_login  funjsq_forget  funjsq_register  funjsq_pay  funjsq_close
+open_plugin  close_plugin  reset_plugin  reset_open_plugin
+forget_get_verify  register_get_verify  funjsq_no_need_login
+
+# 诊断
+basic_ping  debug_info  collect_log  ntp_debug  asic  manual_set_ant
+ule_service_ip_add  remove_server  st_router_add/del/editnum/edit
+reservation_add/editnum/edit/del  hdd_download  change_conn_status
+auto_refresh_value  onfig  var  tatus  rvices_add  unes_allow_control
+```
+
+> 最后一行那几个（`onfig`/`var`/`tatus`/`rvices_add`/`unes_allow_control`）是**被截断的**
+> —— 因为我是按可读串扫的，前一个字符被并进了别的串。它们的完整名应该是
+> `config` / `var` / `status` / `services_add` / `lines_allow_control` 一类。
+
+## 侧面发现：NETGEAR 自己的安全 C 库 `dni_*`
+
+`net-cgi` 的导入表里有整组 `dni_*` 函数：
+
+```
+dni_memcpy_s  dni_strlcpy  dni_strlcat  dni_strcmp_s  dni_strcasecmp_s
+dni_strcasestr_s  dni_fprintf_s  dni_sprintf_s  dni_strncmp  dni_strdup
+dni_atoi  dni_itoa  dni_strstr  dni_fgets
+```
+
+这是 NETGEAR 自研的 **"安全 C 函数"** 库（`_s` 后缀 = Annex K 风格带上界检查）。
+也就是说他们把常见的 `strcpy/sprintf` 换成了带长度参数的版本 ——
+**但这不保证调用处都检查了返回值**（这类"换了函数但没改用法"的漏洞很常见）。
+枚举 CGI 动作时如果想找输入处理缺陷，这几个函数是重点。
