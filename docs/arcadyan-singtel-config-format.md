@@ -1252,3 +1252,58 @@ Ralink/MTK 驱动（rt_*/RTMP*，内核里那一堆符号）
    ↓
 OWL（读 assoclist / RSSI，做漫游决策）→ 信标 IE 的 TLV 走空口
 ```
+
+---
+
+# ★ 附：QoS 的实现（`tc` + HFSC，带动自动测速）
+
+`/sbin/arc_qos`（ARM ELF，34KB，stripped）里能直接看到它拼出来的 `tc` 命令：
+
+```c
+tc class change dev %s parent 2:1  classid 2:%x   hfsc sc m2 %dkbit ul rate %dkbit
+tc class change dev %s parent 2:   classid 2:%x   hfsc sc m2 %dkbit ul rate %dkbit
+tc class change dev %s parent 2:%x classid 2:%x   hfsc rt m1 %dkbit d %dms \
+                                                       m2 %dkbit ls %dkbit ul rate %dkbit
+```
+
+**用的是 `hfsc`（Hierarchical Fair Service Curve）**，挂在 `2:` 这棵树上；
+`rt`（real-time）/`ls`（link-share）/`ul rate` 三档一起用 —— 这是标准的
+"给语音/视频保底 + 其余按比例分"的做法。
+
+## 接口
+
+```
+eth1   ← LAN 侧（内网）
+ppp0   ← WAN 侧（PPPoE 拨号后的接口）
+```
+
+## ★ 带「自动测速」
+
+函数名很直白：
+
+```
+qos_detect_rate   detect_qos_rate   detect_qos_rate_new
+qos_get_wan_rate  qos_get_wan_rate_1  qos_get_wan_rate_2
+set_ratefile_byicmp    set_ratefile_byicmp_2      ← ★ 用 ICMP 测带宽，写进 ratefile
+qos_reinit_htb  qos_lnk_reinit_htb  check_rate_and_do_wan_qos
+qos_egress_tm_rate_setting  get_lan_rate  qos_rate_change_dft
+htb_prio_fifo_qdisc
+```
+
+也就是说**上/下行速率是自动探测出来的**（`ARC_QOS_AutoRateMode`），
+所以不需要用户手填带宽。
+
+> 这套和内核里那堆 `act_*` / `cls_*` / `qca-nss-*` 模块（NETGEAR 那边）是两家的不同实现：
+> **Arcadyan = 用户态 `arc_qos` 拼 `tc hfsc`；NETGEAR = `uci2streamboost` + `streamboost`**
+
+## 相关配置键
+
+```
+ARC_QOS_AutoRateMode           ← 自动测速开关
+ARC_QOS_UploadRate / DownloadRate
+ARC_QOS_TCLINK_%d_ClassId      ← 每个 tc 链接的 class id
+ARC_QOS_TCLINK_%d_UpStreamRate / DownStreamRate
+ARC_QOS_TCLINK_MaxNum
+ARC_QOS_CLASS_*  ARC_QOS_CLASS_TCPACK     ← ★ 单独给 TCP ACK 一个类别（防止上行被 ACK 挤爆）
+ARC_QOS_ADSL_*
+```
