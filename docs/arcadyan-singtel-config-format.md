@@ -223,6 +223,103 @@ ARC_OWL_CLOUD_URL=https://stage1.arciot.com:55668      ← ★ 注意 stage1 = �
   **厂商从别家运营商的项目复制模板**留下的痕迹。
 - 设备**不校验**服务端证书 —— 这正是[冒充云端](singtel-firmware-analysis.md)能成功的原因。
 
+---
+
+# ★ 附：配置字段全表与其中的安全相关项
+
+## glbcfg 的规模与分组（实测 2361 个字段）
+
+```
+ARC_WLAN   635    ARC_WAN    335    ARC_VPN    312    ARC_QOS    265
+ARC_NAT    134    ARC_ROUTE  102    ARC_IPSEC   87    ARC_LAN     85
+ARC_USB     81    ARC_FIREWALL 71   ARC_SYS     65    ARC_TR69    33
+ARC_IP      28    ARC_OWL     27    ARC_UI      22    ARC_UPNP    16
+ARC_L      14     ARC_SPDSVC  13    ARC_DDNS     8    ARC_ALG      5
+```
+
+## ★ ARC_OWL_*（27 个）—— SON / 漫游参数 + 云端账号
+
+```
+ARC_OWL_MAIN_LOOP_TIME=60        ARC_OWL_SON_DELAY_TIME=1
+ARC_OWL_ROAMING_SIGNAL=-70       ARC_OWL_ROAMING_SIGNAL_BTM=-65
+ARC_OWL_OverLoad_2G=70           ARC_OWL_OverLoad_5G=70
+ARC_OWL_THRESH_2G=-55            ARC_OWL_THRESH_5G=-80
+ARC_OWL_Rssi_Low=-70             ARC_OWL_Rssi_Low_BTM=-65
+ARC_OWL_Thresh_Diff=8            ARC_OWL_Thresh_Diff_BTM=10
+ARC_OWL_steer_capability=3       ARC_OWL_steer_Default=1
+ARC_OWL_Steer_prohibit=300       ARC_OWL_AutoEnableBandSteering=1
+ARC_OWL_Active_Period=10         ARC_OWL_Active_Thresh_Count=10
+ARC_OWL_acl_expire_t0/t1/t2 = 60 / 1200 / 3600
+ARC_OWL_BlackList_expire=3600    ARC_OWL_BTM_BlackList_expire=3600
+ARC_OWL_ChanLoad_Report_t=60
+
+★ ARC_OWL_CLOUD_ENABLE=0
+★ ARC_OWL_CLOUD_URL=https://stage1.arciot.com:55668      ← 【测试环境】
+★ ARC_OWL_CLOUD_USER=mg-test@arciot.com                 ← 【一个测试账号】
+```
+
+> **两件事**：① 出厂配置里带的是一个 **`mg-test@` 测试账号**、指向 **stage1** 测试云；
+> ② 这套参数说明 OWL 的判据是**信号强度 + 信道负载 + BTM（802.11v 的 BSS Transition
+> Management）**，`Thresh_Diff=8` 意思是"目标 AP 比当前强 8dB 才触发漫游"。
+
+## ★ ARC_UI_WEB_REMOTEMN_* —— 出厂配置里带 **Singtel 的公网 IP 白名单**
+
+```
+ARC_UI_WEB_REMOTEMN_Enable = 0          ← 默认关着
+ARC_UI_WEB_REMOTEMN_Https  = 0
+ARC_UI_WEB_REMOTEMN_Port   = 8080
+ARC_UI_WEB_REMOTEMN_ExposeToIP_0 = 165.21.21.38  ~  165.21.21.40
+ARC_UI_WEB_REMOTEMN_ExposeToIP_1 = 203.125.232.138
+ARC_UI_WEB_REMOTEMN_ExposeToIP_2..7 = 0.0.0.0 ~ 0.0.0.0
+ARC_UI_WEB_REMOTEMN_ExposeToAny = 0
+```
+
+**出厂就预置了 Singtel 自己的公网网段**（`165.21.x` 与 `203.125.x` 是 Singtel 的地址空间），
+供其运维从外部访问设备 Web 界面（默认 `Enable=0`，但白名单是**预置好的**）。
+⇒ 只要有人把 `Enable` 打开（或某个云端策略把它打开），这台设备的管理界面就会对
+**上面那几个公网 IP** 开放 8080 端口。**这是设备所有者应该知道的一条。**
+
+## ★ ARC_SYS_* 里的出厂值
+
+```
+ARC_SYS_LoginName=admin      ARC_SYS_Password=admin        ← 出厂默认（明文！）
+ARC_SYS_LoginEnable=1        ARC_SYS_RouterDisable=0
+ARC_SYS_HTTP_Enable=1        ARC_SYS_HTTPS_Enable=1        ARC_SYS_HTTP_UseSpecialPort=0
+ARC_SYS_TimeZone=SGT-8
+ARC_SYS_NTP_SERVER_0=ntp5.singnet.com.sg
+ARC_SYS_NTP_SERVER_1=ntp6.singnet.com.sg
+ARC_SYS_NTP_SyncInterval=3600
+ARC_SYS_StopDnsRebind=1      ARC_SYS_MultiWAN_DNS_Enable=1
+ARC_SYS_LogType=ilog  ARC_SYS_LOG_Level=info  ARC_SYS_LogDumping=0
+ARC_SYS_LOG_RemoteEnable=0  ARC_SYS_LOG_RemoteServerAddr=0.0.0.0  Port=514
+ARC_SYS_PPPOEPassthru=1      ARC_SYS_MACCLONE_Enable=0
+```
+
+## ★ WPS / WEP 的出厂状态
+
+```
+ARC_WLAN_*_SSID_*_WPS_ExRegistrarPIN = 12345670      ← 所有 SSID 同一个出厂 WPS PIN
+ARC_WLAN_24G_WPS_PINEnable = 0                        ← WPS PIN 默认关
+ARC_WLAN_*_WEP_KeyType = hex   WEP_DftKeyId = 1   WEP_KeyLen = 0
+ARC_WLAN_*_SSID_*_WPA_GroupRekey = 0
+ARC_USB_DONGLE_PinState=-1  PinLock=0  PinTimes=3     ← 3G/4G 上网卡 SIM 的 PIN 状态
+```
+
+## 三家厂商的「配置里存了什么」对照
+
+| | NETGEAR R7800（1213 字段） | Singtel glbcfg（2361 字段） | 华为 Q2S |
+|---|---|---|---|
+| 管理密码 | `http_passwd` = **SHA256** | `ARC_SYS_Password` = **明文** | `http_passwd` = **SHA256(MD5())** |
+| WiFi 口令 | `wl_wpa2_psk` = **明文** | `ARC_WLAN_*_WPA_Passphrase` = **明文** | 未知（加密） |
+| 系统账户 | `dhx2_passwd` = MD5-crypt | 无（只用 `admin`） | 未知 |
+| Samba | `samba_passwd` = **NTLM** | 无 | 无 |
+| 安全问题答案 | `PWD_answer1/2` = SHA256 | 无此机制 | 无 |
+| PPPoE | `wan_pppoe_*`（出厂 `guest`/`flets`） | `ARC_WAN_*_PPP_*` | 未知 |
+| 云端账号 | ReadyCLOUD（运行时下载 agent） | `ARC_OWL_CLOUD_USER=mg-test@...` | 未知 |
+| TR-069 | `cwmp_*` | `ARC_TR69_Password=singtel` | 未知 |
+| 远程管理白名单 | — | **预置 Singtel 公网 IP** | — |
+| 弱口令检查 | `weak_password_check=0` | — | — |
+
 ## 7. 安全发现（负责任披露）
 
 同厂固件里存在**工厂/诊断类 CGI 入口**，可在设备上读出板级数据（含 `gui-pwd`、
