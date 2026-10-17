@@ -1357,3 +1357,67 @@ ARC_WAN_VLAN_Detecting       ← VLAN 自动探测
 
 > 顺带：脚本里对**物理接口**先 `disable_ipv6`，再在其上建 VLAN 子接口 ——
 > 所以 IPv6 是在**子接口**上做的，物理口本身不跑 IPv6。
+
+---
+
+# ★ 附：VPN 的配置结构（IPsec / PPTP / L2TP / OpenVPN 全都有）
+
+`ARC_VPN_*`（312 字段）+ `ARC_IPSEC_*`（87 字段）合起来，**这台是一台完整的 VPN 网关**。
+
+## 字段分布
+
+```
+OVPN   139    PPTP   90    CLIENT   72    SERVER   2    L2TP_*
+```
+
+## ★ IPsec（3 条连接，每条 29 个字段）
+
+这是标准的 **IKE 一阶段 + IPSec 二阶段** 架构：
+
+```
+# 通用
+Enable  ConnName  ConnType  Auth_Method  KeyExchange_Method
+IPVer   Tunnel_Mode  WanIfIdx
+
+# 认证
+PSK_KEY            ← ★ 预共享密钥（出厂为空）
+CERT_FileName      ← 证书文件名（用 CERT 认证时）
+
+# IKE（一阶段）
+Ike_Mode  Ike_AuthAlgo  Ike_EncryptAlgo  Ike_DhGroup  Ike_LifeTime
+
+# IPSec（二阶段）
+IPSec_AuthAlgo  IPSec_EncryptAlgo  IPSec_DhGroup  IPSec_LifeTime
+
+# 本端 / 对端
+Local_Id   Local_IPType  Local_IPAddr  Local_IPPrefixLen
+Remote_GatewayAddr  Remote_Id  Remote_IPType  Remote_IPAddr  Remote_IPPrefixLen
+```
+
+**出厂值**：`Ike_Mode`/`KeyExchange` 是 `Auto`，`Auth_Method=PSK`，**`PSK_KEY` 为空**
+（即 IPsec 连接都是"预置好但没配密钥"的状态）。
+
+## VPN 客户端实例（OVPN / PPTP / L2TP）
+
+每个实例的字段很一致：
+
+```
+ARC_VPN_<PROTO>_CLIENT_Enable          ← 总开关
+ARC_VPN_<PROTO>_CLIENT_SecurityType    ← 安全类型
+ARC_VPN_<PROTO>_CLIENT_IPSecPSK        ← L2TP over IPsec 用的 PSK
+ARC_VPN_<PROTO>_CLIENT_<N>_Username
+ARC_VPN_<PROTO>_CLIENT_<N>_Password    ← ★ 明文存
+ARC_VPN_<PROTO>_CLIENT_<N>_Server_IP
+ARC_VPN_<PROTO>_CLIENT_<N>_Remote_IP
+ARC_VPN_<PROTO>_CLIENT_<N>_State
+```
+
+⇒ 与前面 dbus 那 95 个 `CMD_*` 里的 VPN 动作**一一对应**
+（`CMD_START_PPTP` / `CMD_STOP_OVPNC` / `CMD_UPDATE_PPTPD_CHAP` / `CMD_DEL_OVPNC` …）：
+**配置在 glbcfg，动作走 `arca.dbus.pptp|ovpn|l2tp`，实现是各自的 agent。**
+
+## 小结论
+
+这台设备的 VPN 面相当厚（4 种协议、多实例、IPsec 站点到站点），
+但对家庭用户来说默认全是关的；**拿到 shell 以后 `mng_cli get ARC_VPN_*` 就能把所有
+配置（含明文 Password / PSK）读出来**。
