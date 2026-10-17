@@ -1061,3 +1061,57 @@ arc_cfg_unset_idx1 / arc_cfg_get_idx_limit / arc_cfg_get_dft_idx1
 > **对设备所有者的意义**：只要有 shell，`mng_cli get ARC_xxx` 就能把任意一项配置读出来
 > （包括 `ARC_SYS_Password`），`mng_cli set` + `commit` 就能改。
 > 这也正是 `arc_glbcfg` / `arc_mt_reset` 这些脚本干的事。
+
+---
+
+# ★ 附：WAN 上联类型的映射与起机流程
+
+这台设备**一套固件支持四种上联**，靠 `ARC_WAN_Type` / `ARC_WAN_BaseType` 切换：
+
+| 值 | 类型 | 物理接口 | 起机动作 |
+|---|---|---|---|
+| **0** | ADSL | `nas0` / `nas1` | GPIO3←1，`bcm_xdslctl --mod a` 再 `--mod d`，建 ATM 连接 |
+| **1** | **Ethernet** | `eth0` | `rdpa_wan_init.sh` + `ethswctl -c wan -i eth0 -o enable` |
+| **2** | VDSL | `ptm0` | GPIO3←1，`bcm_xdslctl --mod a` 再 `--mod v` |
+| **3** | **G.Fast** | `ptm0` | **GPIO3←0**，`bcm_xdslctl --mod a` |
+
+**出厂值 `ARC_WAN_Type=1` = Ethernet 上联** ✓（这台是接在光猫后面跑的）
+
+## 三个 WAN 实例
+
+```
+ARC_WAN_Active          = 0 1 2      ← 启用了 0/1/2 三个实例
+ARC_WAN_DefaultRouteIdx = 0          ← 实例 0 是默认路由
+ARC_WAN_IPTVIdx         = 1          ← 实例 1 给 IPTV 用
+```
+
+## ADSL 的 ATM 连接是怎么建的（`arc_wanmode` 原文）
+
+```sh
+arc_gpioctrl set 3 1                       # ★ GPIO3 选 DSL 模式
+bcm_xdslctl configure --mod a ; --mod d    # ADSL
+
+vpi=`mng_cli get VAR_PVC000_VPI`           # ← 注意还是老的 VAR_ 命名
+vci=`mng_cli get VAR_PVC000_VCI`
+enc=`mng_cli get VAR_PVC000_ENCAPS`
+if [ $enc = "LLC" ]; then encap="llcsnap_eth"; else encap="vcmux_eth"; fi
+
+bcm_atmctl operate conn --add 1.$vpi.$vci aal5 $encap 0 0 0
+bcm_atmctl operate conn --state 1.$vpi.$vci disable
+bcm_atmctl operate conn --addq 1.$vpi.$vci 0 wfq 0
+bcm_atmctl operate conn --createnetdev 1.$vpi.$vci $waniface
+bcm_atmctl operate conn --state 1.$vpi.$vci enable
+start_dsl_link_check
+```
+
+**`ENCAPS` 的映射**：`LLC` → `llcsnap_eth`，其它 → `vcmux_eth`。
+
+> 脚本里有一句厂商自己的注释很说明问题：
+> `# Fixme, some old code still use VAR_, will fix it later.`
+> —— 所以 `VAR_PVC000_*` 这套老命名和 `ARC_*` 新命名**在同一份配置里并存**。
+
+## 其它细节
+
+- **`arc_gpioctrl set 3 <0|1>`**：GPIO 3 是 **DSL 模式的硬件选择**（1=ADSL/VDSL，0=G.Fast）
+- `dsl_link_check.sh` 只在 DSL 类型下启动（Ethernet 时 `killall` 掉它）
+- `rdpa_wan_init.sh` 是 Ethernet 模式下初始化 Broadcom RDP 加速器数据面的脚本
