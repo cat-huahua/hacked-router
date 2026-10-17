@@ -412,3 +412,89 @@ readycloud_user          readycloud_control       readycloud_status
 readycloud_user_admin    readycloud_user_password
 （另有 www/js/fxCloud-2.0.js 与 www/debug_cloud.cgi —— 后者是 0 字节的空占位）
 ```
+
+---
+
+# ★ 附三：R7800 的 Web 栈（lighttpd + net-cgi）与免认证面
+
+## 架构
+
+```
+web 服务器   lighttpd            （★ 以 root 身份运行：server.username = "root"）
+CGI 分发     net-cgi             （所有 .htm / .cgi 的动作都在这里）
+认证         HTTP Basic          （WWW-Authenticate: Basic realm="NETGEAR R7800"）
+```
+
+**关于 Basic Auth 与 `http_passwd`**：`net-cgi` 里比对的是 `http_passwd`（SHA256 十六进制）。
+也就是说 —— **Basic 认证里"密码"这一项，浏览器发过来的就是那串 SHA256**。
+这正好解释了为什么 NETGEAR 把管理密码存成裸 SHA256：**它既是存储值，也是认证值。**
+
+另外 `net-cgi` 里有 `flag_use_passwd_digest` / `http_passwd_backup` /
+`soap_login_mac` / `soap_login_agent` / `is_soap_login` —— 说明还有一种"digest 模式"的开关，
+以及 SOAP API 侧的登录跟踪（按 MAC/UA）。
+
+## 80 → 443 的强制跳转，以及它的**例外路径**
+
+`etc/lighttpd/lighttpd_https.conf`：
+
+```
+$SERVER["socket"] == ":80" {
+  $HTTP["remoteip"] !~ "127.0.0.1" {
+    $HTTP["url"] !~ "^(/currentsetting\.htm|/soap/server_sa|/soapapi\.cgi|
+                      /cgi-bin/genie\.cgi|/sw-apps/internet-check/connection-check.ntgr|
+                      /hidden_info\.htm|/connecttest\.txt)" {
+      $HTTP["host"] =~ ".*" { url.redirect = ( ".*" => "https://%0$0" ) }
+    }
+  }
+}
+```
+
+**上面这份例外清单 = 允许走明文 HTTP 的路径**（其余一律跳 HTTPS）。
+其中两条是**不需要登录**的信息页：
+
+| 路径 | 内容 |
+|---|---|
+| `currentsetting.htm` | 24 字节的模板 `<% current_setting() %>` —— 区域/标签指纹 |
+| `hidden_info.htm` | 6080 字节模板，渲染出 **FW 版本、序列号、无线区域、SSID、PassPhrase、信道** 等 |
+
+`hidden_info.htm` 的模板片段（原样）：
+
+```
+FW Version : <% cat_file("/firmware_version") %>
+Series number : <% get_sn() %>
+Wireless Region : <% wireless_region_Eng() %>
+2.4G SSID : <% cfg_get_ssid_html("wl_ssid") %>
+2.4G PassPhrase : <% passphrase_bg_msg() %>
+2.4G Channel : <% wl_channel() %>
+```
+
+> **给设备所有者的提醒**：这两页走的是**明文 HTTP 且不要求登录**。
+> 也就是说**同一网段里（或任何能到 80 端口的地方）的人都能读到 FW 版本、序列号、SSID**。
+> 想知道自家设备实际暴露了什么，直接在浏览器里访问这两个路径即可。
+
+## CGI 动作表里有 `need_login` 标志
+
+`net-cgi` 里有一张 CGI 动作名表，旁边就是 `need_login` / `"Need login!"`。
+表里能看到一些有意思的条目：
+
+```
+vlan_delete  apply_iptv_edit  disable_vlan_iptv  rae_router  rae_ap
+extender_step1/2  edit_devname  hijack_passwd  funjsq_login/forget/register
+```
+
+- **`hijack_passwd`** —— 与 `www/BRS_ap_detect_*.html` 里那句
+  `hijack_get_timestamp("wl_ssid_password")` 是同一个"hijack（AP 探测）"子系统
+- **`funjsq_*`** —— NETGEAR 中国版的**游戏加速插件**（FunJSQ / 迅游），
+  脚本在 `/data/funjsq/bin/funjsq.sh`；`need_login` 表里还有一个
+  `funjsq_no_need_login` 的标志
+
+## TLS 配置
+
+```
+server.port = 443;  ssl.engine = "enable"
+ssl.pemfile  = "/tmp/secure/etc/lighttpd/certs/server.pem"
+ssl.cipher-list = "EECDH+AESGCM:EDH+AESGCM:AES128+EDH"
+```
+
+证书从 `/tmp/secure/...` 读 —— 即**运行时生成/解出来的**，不在 rootfs 里。
+（对照：Arcadyan 那几台是把**未加密的共用私钥**直接放在 rootfs 里。）
