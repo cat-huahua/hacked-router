@@ -1115,3 +1115,67 @@ start_dsl_link_check
 - **`arc_gpioctrl set 3 <0|1>`**：GPIO 3 是 **DSL 模式的硬件选择**（1=ADSL/VDSL，0=G.Fast）
 - `dsl_link_check.sh` 只在 DSL 类型下启动（Ethernet 时 `killall` 掉它）
 - `rdpa_wan_init.sh` 是 Ethernet 模式下初始化 Broadcom RDP 加速器数据面的脚本
+
+---
+
+# ★ 附：`ARC_WLAN` 的配置模型（635 个字段怎么来的）
+
+`ARC_WLAN_*` 是最大的一组（635 个）。它不是一堆平铺的键，而是**四个维度的笛卡尔积**：
+
+```
+ARC_WLAN_<频段>_<类型>_<索引>_<属性>
+  频段： 24G | 5G
+  类型： SSID | STA_SSID | FH_SSID | BH_SSID
+  索引： 0 | 1 | 2 | 3
+  属性： 16 种（见下）
+  + 每个接口一套 MACFILTER（最多 10 个 MAC 槽）
+```
+
+## 四个"类型"是什么（这是 mesh 设备的典型结构）
+
+| 类型 | 含义 | 用途 |
+|---|---|---|
+| `SSID_N` | **主 SSID 模板** | 每频段 4 个可广播的用户网络 |
+| **`STA_SSID_N`** | ★ **STA（站点）模式** | **作为客户端去连上级** —— 即**回程客户端** |
+| **`FH_SSID`** | ★ **Fronthaul（前传）** | 面向客户端的一面 |
+| **`BH_SSID`** | ★ **Backhaul（回传）** | mesh 节点之间的上行 |
+
+**⇒ 所以这台设备天生是 mesh 设备**：同一套无线硬件同时挂着
+"给用户连的"（FH/SSID）、"连上级的"（STA）、"给子节点连的"（BH）。
+
+## 每个接口的 16 个属性
+
+```
+ESSID  Enable  Hide  Mode  Interface            ← 基本
+SecurityType  WPA_Cipher  WPA_Passphrase  WPA_GroupRekey   ← WPA
+WEP_Key_0  WEP_Key_1  WEP_Key_2  WEP_Key_3      ← ★ WEP 还留 4 个 key 槽
+WEP_KeyLen  WEP_KeyType  WEP_DftKeyId
+WPS_Enable  WPS_ExRegistrarEnable  WPS_ExRegistrarPIN  WPS_Unconfigured
+```
+
+**注意两点**：
+1. **WEP 的 4 个 key 槽还在** —— 这套代码是从很老的版本一路改下来的（和前面
+   `Fixme, some old code still use VAR_` 那条注释一个味道）
+2. `WPS_Unconfigured` 这个字段 —— WPS 的"未配置"状态是**单独存**的，
+   说明 `WPS_ExRegistrarPIN` 那个固定 PIN（出厂 `12345670`）是有专门处理路径的
+
+## MAC 过滤
+
+```
+ARC_WLAN_<频段>_<类型>_<索引>_MACFILTER_Enable
+ARC_WLAN_..._MACFILTER_MaxNum
+ARC_WLAN_..._MACFILTER_MAC_0 .. MAC_9        ← 每个接口 10 个槽
+```
+
+（12 组 × (1 + 1 + 10) —— 与前面 12 个"频段×类型"组合对得上）
+
+## 索引 0~3 的实际用途（从出厂值看）
+
+| 索引 | 出厂 SSID | 说明 |
+|---|---|---|
+| 0 | `Singtel` / `Singtel_5G` | 主网络 |
+| 1 | `24G_SSID_1` / `5G_SSID_1` | 预留 |
+| 2 | `24G_SSID_2` / `5G_SSID_2` | 预留 |
+| 3 | `24G_SSID_3` / `5G_SSID_3` | 预留 |
+
+（索引 1/2/3 的 SSID 名就是字面上的模板占位，说明出厂只用了索引 0。）
