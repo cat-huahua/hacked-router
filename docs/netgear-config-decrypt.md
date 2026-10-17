@@ -366,3 +366,49 @@ cloud_version      20161026
 > **⚠️ 提醒**：`bin/login` 这条路要能连上 telnet 才有用 ——
 > 而 telnet 是否在监听取决于固件设置（默认是不开的）。
 > 本文只记录机制，不涉及开启方法。
+
+---
+
+# ★ 附二：NETGEAR ReadyCLOUD 的架构（云 agent 是运行时下载的）
+
+从 R7800 的 `sbin/cloud` 解出来的流程 —— 这条解释了**为什么在所有固件分析里都找不到云 agent**：
+
+```
+① 下载   /usr/bin/curl  https://updates1.netgear.com/sw-apps/ready-genie-cloud/<ver>/<file>
+         （另一处写的是 https://http.fw.updates1.netgear.com/sw-apps/ready-genie-cloud/）
+② 校验   /tmp/cloud_md5、".hash"、/usr/bin/md5sum        ← ★ 用的是 MD5
+③ 安装   → /opt/rcagent/   （"install ... to R/W filesystem successfully"）
+④ 运行   sed '2s/^/source \/etc\/profile\n/' /opt/rcagent/run_server.sh > /tmp/run_server.sh
+         /opt/rcagent/run_server.sh
+⑤ 凭据   readycloud_user_admin / readycloud_user_password（config 键）
+```
+
+## ★ 关键：`/opt/rcagent` 在固件里**不存在**
+
+`find rootfs -path '*rcagent*'` → 无。所以：
+
+> **ReadyCLOUD 的云 agent 不在固件里，是设备联网后自己下载安装的。**
+
+这解释了为什么我们前面在 R7800 的 rootfs 里翻遍也找不到任何云协议实现 ——
+它压根不随固件分发。（对照：Singtel 那边的云端 agent 是烧进 rootfs 的，
+所以只能从**加密的** extender rootfs 里拿 —— 两条路都被堵上，但原因完全不同。）
+
+## 值得注意的两点
+
+1. **完整性校验是 MD5**，而且 `.hash` 与被校验的文件**来自同一个服务器** ——
+   所以它只能防"传输损坏"，**防不了"服务端被替换/投毒"**。
+   真正起作用的只有 HTTPS 的传输加密（`curl`，未见证书固定）。
+2. **它会把下载来的脚本改写后执行**：给 `run_server.sh` 插入一行 `source /etc/profile`
+   再跑到 `/tmp/run_server.sh`。也就是说**这个文件的内容会被当作代码执行**。
+
+> 结论（就事论事，不夸大）：ReadyCLOUD 的信任模型是「相信 updates1.netgear.com」。
+> 想核对自家设备有没有开这个功能，看 config 里的 `readycloud_enable` / `readycloud_register`。
+
+## 相关配置键（全部）
+
+```
+readycloud_enable        readycloud_register      readycloud_unregister
+readycloud_user          readycloud_control       readycloud_status
+readycloud_user_admin    readycloud_user_password
+（另有 www/js/fxCloud-2.0.js 与 www/debug_cloud.cgi —— 后者是 0 字节的空占位）
+```
