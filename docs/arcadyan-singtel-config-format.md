@@ -565,3 +565,106 @@ ARC_SYS_LoginTimeout
 > **关于那个工厂测试类 CGI**：它的存在与能力已在
 > [本文件第 7 节](#7-安全发现负责任披露)说明过（会明文打印板级口令），
 > **此处不列出调用方式** —— 按负责任披露原则保留。
+
+---
+
+# ★★ 附：Arcadyan 的内部 dbus 控制协议（整台设备的总控台）
+
+36 个 agent 之间不是靠文件或信号通信，而是靠 **dbus**。而他们在 `dbus-arca-cli` 里
+**把手册都写进用法字符串了** —— 于是我们拿到了这台设备的完整内部 API。
+
+## 1. 44 个 dbus 接口：`arca.dbus.<服务>`
+
+```
+autofw  autowandetect  crond  ddns  dhcp6c  dhcp6d  dhcpc  dhcpd  dhcprelay
+dnsmasq  ecmh  ECOmode  firewall  httpd  ieee1905  igmpproxy  ipsecvpn
+l2tp  l2tpd  misc  openvpn  owl  pptp  qos  radvd  service  syslog_ng  tr69
+transmission  udevd  upa/ula  upnp  usbapp  v6rd  wanppp  wlan  zebra
+```
+
+**44 个接口 = 44 个可独立控制的服务。** 每个接口都有一套 `CMD_*` 方法 + 可查询的状态变量。
+
+## 2. ★ `dbus-arca-cli` 的语法（原文来自二进制里的 usage 串）
+
+```
+Usage: dbus-arca-cli <--enquire | --command | --notify> [--dest=NAME]
+                     <VARIABLE[=VALUE] | COMMAND[=ARGUMENT]> { ... }
+
+  # 查状态
+  dbus-arca-cli --enquire --dest=arca.dbus.dnsmasq STAT_AGENT
+
+  # 发命令（可以一次打给多个服务）
+  dbus-arca-cli --command --dest=arca.dbus.dnsmasq "CMD_SLEEP 3" \
+                          --dest=arca.dbus.radvd   "CMD_SLEEP 1"
+
+  # 广播（不带 --dest）
+  dbus-arca-cli --notify CMD_QUIT
+
+  # 广播 + 定向
+  dbus-arca-cli --notify --dest=arca.dbus.dnsmasq STAT_AGENT \
+                        --dest=arca.dbus.radvd   CMD_QUIT
+```
+
+三种模式：
+
+| 模式 | 作用 |
+|---|---|
+| `--enquire` | **读**某个服务的状态变量（如 `STAT_AGENT`） |
+| `--command` | **下命令**（带参数），可一次给多个服务 |
+| `--notify` | **发通知/信号**（不带 dest 就是广播） |
+
+## 3. 95 个 `CMD_*` 动作（按用途归类）
+
+```
+# 生命周期
+CMD_BOOT  CMD_BOOTSTRAP  CMD_REBOOT*  CMD_RESTART  CMD_STOP  CMD_START
+CMD_QUIT  CMD_RELOAD  CMD_REINIT  CMD_DEFAULTS  CMD_CLEAR  CMD_SAVE
+CMD_SLEEP  CMD_STAGE2  CMD_TRIGGER  CMD_UPDATE  CMD_IFSEQ
+
+# 上网连接
+CMD_CONNECT  CMD_DISCONNECT  CMD_RECONNECT  CMD_RELEASE  CMD_RENEW
+CMD_DHCPC_RELEASE  CMD_DHCPC_RENEW  CMD_DHCPC_IPTV_UNI_REQUEST/RELEASE
+CMD_WRITE_DHCPD_CLIENTS  CMD_DEL_LEASE  CMD_WAN_UPDATE  CMD_WAN_IFUPDATE
+CMD_6RD_RESTART  CMD_DSL_MOD  CMD_DSL_INET_NLED_TOGGLE
+
+# VPN（PPTP / L2TP / OpenVPN 各有独立 agent）
+CMD_START_PPTP  CMD_STOP_PPTP  CMD_UPDATE_PPTP  CMD_RESTART_PPTP
+CMD_START_PPTPD CMD_STOP_PPTPD CMD_UPDATE_PPTPD CMD_UPDATE_PPTPD_CHAP
+CMD_START_L2TP  CMD_STOP_L2TP  CMD_UPDATE_L2TP  CMD_UPDATE_L2TPD_CHAP
+CMD_START_OVPNC CMD_STOP_OVPNC CMD_UPDATE_OVPNC
+CMD_START_OVPND CMD_STOP_OVPND CMD_UPDATE_OVPND CMD_UPDATE_OVPND_PASSWD
+CMD_DEL_PPTP  CMD_DEL_L2TP  CMD_DEL_OVPNC
+
+# 桥接
+CMD_BRIDGE_RESTART  CMD_BRIDGE_STOP  CMD_BRIDGE_RELEASE
+
+# USB / 共享
+CMD_ACTION_UNMOUNT  CMD_ACTION_USB30TO20  CMD_USB_CONNECT
+CMD_FTP_START/STOP/RESTART/UPDATE  CMD_LPD_START/STOP/RESTART
+CMD_SAMBA_START/STOP/RESTART/UPDATE/IFMODIFY
+CMD_MINIDLNA_START/STOP/RESTART   CMD_DLNA_START/STOP/RESTART/RESCAN/UPDATE
+
+# WPS / 无线
+CMD_WPS_PUSHBUTTON  CMD_WPS_ENTERPIN  CMD_WPS_CANCEL  CMD_WL_SPEC
+
+# ACS / 账号 / 时间
+CMD_ACS_CHANGE  CMD_ACCOUNT_BOOT/RESET/SET  CMD_TIME_CHANGE
+CMD_REINIT_PORTMAPPING
+```
+
+## 4. 这意味着什么
+
+**这台设备上有一个"单一控制面"** —— 只要能在设备上执行命令
+（root/SSH，密码规则见前面「密码派生」那一节），就能用 **一个 CLI** 精确控制
+**44 个服务、95 种动作**，而不必去碰任何 Web 接口：
+
+```bash
+# 例：把 DNS 服务重启、把 6rd 重开会话、把 WPS 关掉
+dbus-arca-cli --command --dest=arca.dbus.dnsmasq "CMD_RESTART" \
+                        --dest=arca.dbus.v6rd     "CMD_6RD_RESTART" \
+                        --dest=arca.dbus.wlan     "CMD_WPS_CANCEL"
+```
+
+> 与 NETGEAR 的对比：R7800 那边要发 **HTTP 请求到 `net-cgi`**（带 Basic Auth / digest），
+> 而且 220 个动作散在一个 CGI 里；这边是**一个本地 dbus 调用**，
+> 接口按服务切开、语义清楚得多。
