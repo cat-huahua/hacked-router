@@ -659,3 +659,75 @@ cbc.ko（AES-CBC）· bonding.ko · act_*（流量整形）· cls_*（分类）�
 | 配置 | `/bin/config`（`datalib`）、nvram | `mng_cli` / `arc_glbcfg` / glbcfg 文本 |
 | 云 agent | ★ **运行时下载**（aws-iot / rae / rcagent） | 烧在 rootfs 里（`arca-*` agent） |
 | 加密 | 配置 = `rand()` XOR；另有 LUKS 安全分区 | 配置 = 明文 glbcfg；extender rootfs = AES |
+
+---
+
+# ★ 附六：NETGEAR 配置字段全表（1213 个）与其中的安全开关
+
+## 字段分组
+
+```
+wan 134   qos 133   access 129   wl 84    wla 59   wla1 34   wlg1 33
+ipv6 33   endis 24  email 19     usb 16   lan 15   green 15  bridge 14
+wlg 13    upnp 13   ap 13        log 11   enable 11  repeater 9
+http 9    failover 9  st 8       cwmp 8   readycloud 7  extender 7
+wps 6     wds 6      （其余零散）
+```
+
+**命名约定**（读配置时很有用）：
+
+| 前缀 | 含义 |
+|---|---|
+| `wl_*` | **2.4G** 射频 |
+| `wla_*` | **5G** 射频（a = 5GHz） |
+| `wla1_*` / `wlg1_*` | 第 2 组 5G / guest 射频 |
+| `wlg_*` | guest 网络 |
+| `endis_*` | **enable/disable 开关**（值 0/1） |
+| `access_*` | 访问控制（129 个，设备级规则） |
+| `qos_*` | 带宽/QoS 规则（133 个） |
+| `ap_*` / `bridge_*` | AP 模式 / 桥接模式下的独立参数组 |
+| `cwmp_*` | TR-069 |
+| `readycloud_*` | ReadyCLOUD |
+
+## ★ 安全开关的实测值（这是最该看的一段）
+
+```
+endis_telnet=0                  ← telnet 关闭（这个字段就是那个开关）
+endis_wla_wps=1                 ← ★ 5G 射频的 WPS 是【开着】的
+endis_ssid_broadcast=1          ← SSID 广播开
+weak_password_check=0           ← 弱口令检查关（设密码时不强制复杂度）
+enable_password_recovery=1       ← 安全问题恢复开（也解释了 PWD_answer1/2 为什么会被填）
+flag_use_passwd_digest=1        ← Basic 认证走 digest 模式（对应 net-cgi 里那个 flag）
+enable_smart_connect=0          ← Smart Connect（单一 SSID 自动选频）关
+enable_11k=0                    ← 802.11k 关
+endis_wla_wireless_isolation=0  ← 5G 客户端隔离关（客户端之间可互访）
+endis_wla_guest_wireless_isolation=0
+endis_wla_radio=1  endis_wla_wmm=1  endis_watchdog=1
+block_no_connect_sta=hidden  allow_no_connect_sta=hidden
+block_trustedip=（空）            block_skeyword=0
+enable_block_device=0
+```
+
+> **两条给设备所有者的话**：
+> 1. **`endis_wla_wps=1`** —— 5G 那个射频的 **WPS 是开着的**。
+>    WPS 的 PIN 方式有已知的离线/在线攻击（PixieWPS / Reaver 一类），
+>    不开 WPS 时这扇门是不存在的。**建议关掉。**
+> 2. **`endis_wla_wireless_isolation=0`** —— 连上你 5G 的客户端**能互相访问**。
+>    家里有 IoT 设备（摄像头/打印机）和访客时，打开隔离会更稳。
+>
+> （`endis_telnet=0` 说明 telnet 目前是关的 —— 前面那套 `bin/login` 机制只有在
+> 这个字段被打开时才有意义。）
+
+## 其它值得知道的出厂值
+
+```
+admin_userAdmin / admin_userGuest      ← 两个预置的 Web 登录名
+wan_pppoe_username=guest               ← PPPoE 用户名为 guest（无密码）
+wan_mulpppoe2_west_username=flets@flets   _west_password=flets   ← 日本 FLET'S 出厂模板
+wan_mulpppoe2_east_username=guest@flets   _east_password=guest
+green_download_fileTP_username=anonymous
+usb_passwdNet=0  usb_passwdFtp=0  usb_passwdFvia=1  usb_passwdHvia=1
+enable_green_download=327418433        ← 一个时间戳
+endis_xr=1  auto_check_for_upgrade  auto_update
+ap_* / bridge_* 各一整套              ← AP 模式、桥接模式各自的 IP/DNS/DHCP 参数
+```
