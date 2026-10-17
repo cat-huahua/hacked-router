@@ -857,3 +857,92 @@ nonce 派生，比裸 MD5 稍好）。之前找到的 `nonce` 递增计数器正
 > **一条给设备所有者的自查项**：
 > 看 `ARC_SYS_LoginEnable` 是不是 `1`。如果是 `0`，
 > **这台设备的 Web 界面完全没有鉴权**（只是"登录功能被禁用"这个词听起来像无害的）。
+
+---
+
+# ★ 附：telnet / SSH / 恢复出厂 的实际实现
+
+这几个脚本把"设备怎么被远程进去、怎么被重置"讲得很清楚。
+
+## 1. ★★ telnet 由配置键控制，打开就是**无登录提示的 root shell**
+
+`/sbin/arc_telnetd`（POSIX shell，344 字节，全文）：
+
+```sh
+case "$1" in
+    "CMD_BOOT" | "CMD_START" | "CMD_RESTART")
+        telnetd_enable=`mng_cli get ARC_TELNETD_ENABLE`
+        if [ $telnetd_enable = "1" ] ; then
+            echo "start telnetd ..."
+            /usr/sbin/telnetd -l /bin/sh            # ★ -l /bin/sh
+        fi
+        ;;
+    "CMD_STOP")
+        killall telnetd
+```
+
+- **`ARC_TELNETD_ENABLE=1` ⇒ `telnetd -l /bin/sh`**
+  —— `-l` 指定的是**直接执行 `/bin/sh`**，**不经过 `login` 程序**，
+  所以连密码提示都没有（是 root shell，因为 telnetd 以 root 跑）。
+- **出厂默认 `ARC_TELNETD_ENABLE=0`**（`glbcfg.dft` 第 882 行）
+- 它在 `CMD_BOOT/START/RESTART` 时检查 —— 也就是**每次开机都会重新读这个键**
+
+> **⇒ 只要能让 `ARC_TELNETD_ENABLE=1` 生效并重启，任何能连到 23 端口的人都是 root。**
+> 这是设备自带的（不是我们加的）。所有者的自查项：**确认它是 0。**
+> 能改这个键的途径有：Web 管理接口（需登录）、`mng_cli`（需 shell）、
+> 或把改过的配置写回 config 分区（需物理/刷写）。
+
+## 2. SSH 走 dropbear，host key 是**运行时生成**
+
+```
+/sbin/arc_sshd          ELF ARM（链接 libarc-shared.so / libmidcore.so，
+                        用 mapi_ccfg_get_str/set_str 读写配置 → 是个配置驱动的开关器）
+/usr/sbin/dropbear      dropbear 本体（init.d 用 procd 管，START=50）
+/usr/share/config/etc/dropbear/dropbear_{rsa,dss}_host_key   ← ★ 都是 0 字节
+```
+
+**host key 文件是 0 字节** ⇒ 每台设备**首次启动时自己生成**，不是厂商共用的默认密钥 ✓
+（这一点比前面几台好：NETGEAR/Arcadyan 那边都发现过**未加密的共用私钥**。）
+
+## 3. 恢复出厂：两步
+
+```sh
+# /usr/sbin/arc_restore_defaults（92 字节，全文）
+#!/bin/sh
+if [ -f /data/dhcpd.leases ] ; then rm /data/dhcpd.leases* ; fi
+mng_cli default
+```
+
+`mng_cli default` 把 glbcfg 恢复成 `glbcfg.dft` 的出厂值。
+
+## 4. ★ `arc_mt_reset`：重跑 `arc_glbcfg`（**重新派生全部口令**）
+
+```sh
+# /usr/sbin/arc_mt_reset 的关键几行
+arc_glbcfg start 2>&1 1>>/dev/null        # ★ 重跑派生脚本
+mngcli set ARC_WAN_100_Iface=eth0.10      # 手工修正几个值
+mngcli set ARC_WAN_100_Ifname=eth0.10
+mngcli set ARC_WAN_101_Iface=eth0.20
+mngcli set ARC_WAN_101_Ifname=eth0.20
+mngcli set ARC_WAN_100_MACaddr=`mngcli get ARC_WLAN_MAC`
+mngcli set ARC_WLAN_BAND=5
+mngcli set ARC_SYS_IsFactoryDefault=1     # ★ 标记"出厂默认"
+mngcli commit
+```
+
+**这解释了整条恢复出厂链**：
+`arc_restore_defaults`（配置回出厂）→ `arc_glbcfg start`（**按板级数据重新派生
+root/SSH 密码、`ARC_ROOT_Passwd`、`ARC_UI_WEB_REMOTEMN_Password` 等**）→ `commit`。
+
+所以"恢复出厂后密码是什么"的答案就在这条链里 ——
+**root/SSH 密码 = `s1ngt3l` + 序列号后 6 位**（可算），**管理密码来自 `gui-pwd`**（读板级区）。
+
+## 5. 重启
+
+```sh
+# /usr/sbin/arc_reboot（55 字节，全文）
+#!/bin/sh
+echo 1 > /proc/sys/blink_diag_led
+kill 1
+```
+（先点亮诊断 LED，再 `kill 1` —— 杀掉 init 触发重启。）
