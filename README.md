@@ -163,6 +163,9 @@ PUBLISH   devices/data/shadow                zlib 压缩的身份上报
 - [`docs/arcadyan-singtel-config-format.md`](docs/arcadyan-singtel-config-format.md) —— ★
   **Arcadyan / Singtel 的配置与密码机制**：glbcfg **是明文**、密码派生规则
   （`s1ngt3l` + 序列号后 6 位，已实证）、extender rootfs 为什么解不开（附完整证据链）
+- [`docs/singtel-dbus-command-map.md`](docs/singtel-dbus-command-map.md) —— ★★ **dbus 命令字典**：
+  35 个 agent、95 个唯一 `CMD_*`、`dbus-arca-cli` 用法与示例；
+  ★ dbus policy 是 `context="default"` 全放行（无 uid/gid 限制）
 - [`docs/singtel-boot-event-bus.md`](docs/singtel-boot-event-bus.md) —— ★★ **启动流程与事件总线**：
   `sysup` → dbus → 35 个 agent → `sys_boot` 的 50 步启动表；
   `/usr/share/msg/` 的 **210 个动作脚本**就是整机的“可执行动作字典”
