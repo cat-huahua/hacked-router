@@ -170,7 +170,9 @@ def cmd_rootfs(a):
         print("   （用 `cfgpack.py glbcfg %s` 看明细）" % glb)
         for k, v in items:
             if k == "ARC_SYS_Password":
-                print("   ARC_SYS_Password = %r  ← 出厂明文口令" % v)
+                kind = "明文" if len(v) < 40 and not re.fullmatch(r"[0-9a-fA-F]+", v or "") \
+                    else "哈希（按厂商规则再解一层）"
+                print("   ARC_SYS_Password = %r  ← 出厂值（%s）" % (v[:24] + ("…" if len(v) > 24 else ""), kind))
             if k == "ARC_PROJ_HTTPD_CONFIG_SSL_EncrptType":
                 print("   web 备份算法     = %r" % v)
 
