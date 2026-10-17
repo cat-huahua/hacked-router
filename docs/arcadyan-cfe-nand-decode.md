@@ -342,3 +342,64 @@ ARC_VO_DECT_0..2_AucAuthKey  = 00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00  
 ```
 
 （DECT 的鉴权密钥**全零**，SIP 账号口令是 `**11**` 这种占位符 —— 都是出厂模板值。）
+
+---
+
+# 附三：把两个内核的**完整符号表**解出来了（`vmlinux` 深挖）
+
+`strings vmlinux | grep` 只能捞到零星几个符号名 —— 因为内核把符号名**压缩**存储。
+解出来之后一次能拿到几万个函数名。
+
+## 三张表
+
+```
+kallsyms_token_table   256 个 NUL 结尾的「片段」（如 'oo' 'ig' 'init_' '_set_' 'lock_'）
+kallsyms_token_index   256 个 u16 偏移，指回 token_table
+kallsyms_names         每个符号 = [长度][长度个 token 索引]
+                       （名字首字符是【类型】：T=全局代码 t=局部代码 r=只读数据 b=BSS）
+```
+
+## ★ 判据是踩了三次才对的（全记下来）
+
+| 尝试 | 为什么不够 |
+|---|---|
+| ① "token 表 = 256 个递增 u16" | **整片零也满足** → 把零串误判成表（见过解出 256 个空 token 的"表"） |
+| ② 加"≥200 个非空 token" | 表找到了 ✓，但还找不到 names 段的**对齐起点** |
+| ③ "能连续解出 100 个合法字符的名字" | **错位解码同样能解出一大串**（见过 `initit_r__func_fiinit...`） |
+| ④ 加"多样性 ≥150/200" | 仍不够 —— 见过 `init4_A` 重复 69 次却仍够唯一值的 |
+| ⑤ **取"解出名字最多"的那个起点** | ✅ 正确的对齐能一路解到几万个，错位的几百个就断 —— **差异是数量级，所以稳** |
+
+**⑤ 还要配两趟做**（否则逐字节长解太慢）：先每题只解 60 个快速筛候选，
+再对候选长解比数量。另外候选列表**不能截断** —— 真正的对齐可能在很后面
+（我就因为截断到 40 个候选而漏掉了它，解出 128 个垃圾名还以为成功了）。
+
+## 结果
+
+| 内核 | 版本 | 解出符号 | 开头符号（ARM 内核入口，可验证对齐正确） |
+|---|---|---|---|
+| Singtel Mesh Router | Linux **4.1.38** | **40,349** | `Tstext` `T_text` `t__create_page_tables` `t__turn_mmu_on` |
+| NETGEAR DSL-AC87VG | Linux **3.4.11** | **17,483** | `Tasm_do_IRQ` `T_stext` `T__exception_text_start` |
+
+**交叉校验**（用已知事实反验）：
+- `down_timeout` 在 Mesh Router 的表里 ✓（它确实导出过这个符号）
+- **`get_decrypt_keys` 不在** Mesh Router 的表里 ✓ —— 与"这台没有 `CONFIG_ARC_SQUASHFS_FS_CRYPTO`"完全一致
+
+## 顺手挖出来的东西：Broadcom 的**板级参数 API**
+
+```
+Mesh Router(4.1.38):  213 条 Bp*  · 124 条 kerSys* · 58 条 brcm*
+DSL-AC87VG (3.4.11):  194 条 Bp*  · 121 条 kerSys* · 68 条 brcm*
+```
+
+`Bp*` = Broadcom 的 **Board Parameter** 系列 —— 就是 `arc_board` 在 Broadcom 侧的对应物：
+
+```
+BpGetBoardId  BpGetBoardIdNameByIndex  BpGetAllPinmux  BpGetButtonInfo
+BpGetAdslLedGpio  BpGetDectLedGpio  BpGetVoipDspConfig  BpGetDefaultOpticalParams
+BpGetAFELDPwrBoostGpio  BpGet1ppsStableGpio  BpGetBatteryEnable ...
+```
+
+**价值**：这等于拿到了**这台设备能配哪些硬件参数**的完整清单 ——
+比从字符串里捞要系统和完整得多。
+
+工具：[`kallsyms_extract.py`](../kallsyms_extract.py)（两台真机内核上实测通过）

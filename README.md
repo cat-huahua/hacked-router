@@ -142,6 +142,8 @@ PUBLISH   devices/data/shadow                zlib 压缩的身份上报
 - [`docs/singtel-firmware-analysis.md`](docs/singtel-firmware-analysis.md) —— 加密地图、分区表、密码存储方式
 - [`docs/uboot-web-recovery.md`](docs/uboot-web-recovery.md) —— ★ **u-boot 的 Web 恢复模式**（不鉴权，能写 bootloader）
 - [`docs/spi-flash-dump-guide.md`](docs/spi-flash-dump-guide.md) —— ★ **SPI flash 读取指南**：三个解不开的目标，钥匙都在同一块 flash 里；含具体步骤、分区偏移、拿到 dump 后怎么用
+- `kallsyms_extract.py` —— ★ **从裸内核解出 kallsyms 全符号表**：内核把符号名压缩存储，
+  `strings` 只能捞到零星几个；这个工具解出全部（实测两台真机内核 40,349 / 17,483 个）
 - `jffs2_extract.py` —— ★ **JFFS2 提取器（自动判端序）**：常规工具遇到「字段端序反了」
   或「CRC 约定不同」会直接失败，而这两件事看起来都像数据被加密了
 - [`docs/arcadyan-cfe-nand-decode.md`](docs/arcadyan-cfe-nand-decode.md) —— ★
