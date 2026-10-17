@@ -314,3 +314,86 @@ fd 37 7a 58 5a 00        （XZ 魔数）
 
 **所以：仍然需要 SPI flash dump —— 但现在这件事变得非常容易了**：
 dump 到手后跑一条命令即可（见 [spi-flash-dump-guide.md](spi-flash-dump-guide.md) 第四节）。
+
+---
+
+# ★ 附：Arcadyan 的服务架构是「dbus agent 框架」（与 NETGEAR 完全不同）
+
+解出 Singtel Mesh Router 的 rootfs 后，服务架构一目了然 ——
+**整台设备只启用了一个 init 服务，其余全是 dbus agent。**
+
+## 启动链
+
+```sh
+# /usr/share/config/etc/init.d/arcadyan-agent-loader   （rc.d 里唯一的 S09 链接）
+start() {
+    # 先等 dbus-daemon 起来
+    PIDS=`ps | grep -w "dbus-daemon" | grep -v grep | awk '{print $1}'`
+    while [ -z $PIDS ]; do echo "Wait for dbus-daemon starting up ..."; sleep 1; ... done
+    /usr/sbin/arca-agent-loader /usr/agents &
+}
+stop() {
+    dbus-arca-cli --notify CMD_QUIT
+    killall arca-agent-loader
+}
+```
+
+**`/etc` 本身是 `-> ./tmp/etc` 的符号链接（tmpfs）** —— 运行时配置从
+`/usr/share/config/etc` 复制出来，所以固件里的 `/etc/init.d` 是空的、
+真正的服务定义在 `/usr/share/config/etc/init.d` 里。
+
+## 36 个 dbus agent（`/usr/agents/arca-*-agent.so`）
+
+```
+ECOmode   autofw     autowandetect  crond     ddns        dhcp6c     dhcp6d
+dhcpc     dhcpd      dhcprelay      dnsmasq   ecmh        firewall   httpd
+ieee1905  igmpproxysnooping         l2tp      l2tpd       misc       openvpn
+owl       pptp       qos            radvd     syslog_ng   tr69       transmission
+udevd     ula        upnp           usbapp    v6rd        wanppp     wlan
+zebra
+```
+
+**⇒ 每一项网络服务（DHCP/DNS/防火墙/VPN/UPnP/TR-069/QoS/无线…）都是一个独立 agent，
+通过 dbus 通信。** 这与 NETGEAR R7800 的
+「lighttpd + net-cgi 单体」设计是两种完全不同的思路：
+
+| | NETGEAR R7800 | Arcadyan（Mesh Router / DSL） |
+|---|---|---|
+| Web 服务 | lighttpd + net-cgi | 自家 `httpd`（`Singtel-MeshRG_httpd.arm`） |
+| 服务模型 | 传统 init 脚本 + 单体 CGI | **dbus agent 框架**（36 个 .so） |
+| 配置 | `/bin/config`（`datalib`） | `mng_cli` / `arc_glbcfg` / glbcfg 文本 |
+| 进程管理 | start-stop-daemon | `arca-agent-loader` + `dbus-arca-cli` |
+
+## OWL / ATDP：mesh 层的两个内核模块
+
+`/sbin/arc_ieee1905_owl`（shell 脚本）：
+
+```sh
+"boot" | "CMD_BOOT")
+    echo "==>Boot ATDP and OWL" > /dev/console
+    KERNELVER=`uname -r`
+    insmod /lib/modules/$KERNELVER/extra/arc_oshal.ko;
+    insmod /lib/modules/$KERNELVER/extra/drv_atdp.ko;
+```
+
+- **ATDP = Arcadyan Topology Discovery Protocol**（`drv_atdp.ko` +
+  配套的 `arc_atdp_app` / `arc_atdp_util` / `arc_backhaul_handle_atdp_set_owlie_daemon`）
+- **OWL** 建在 ATDP 之上（`arca-owl-agent.so` + `libArcOWLcore/api/httpApi.so`）
+- 三者关系：**IEEE1905 ↔ ATDP（厂商自己的拓扑发现）→ OWL（SON / 漫游决策）**
+
+> 这也解释了符号表里的发现：**`owl_*` 在 extender 的内核里**
+> （`owl_build_beacon_ie` / `owl_insert_tlv`）—— OWL 是**信标 IE 里的 TLV**，
+> 属于空口 mesh 协议，与云端 MQTT 是两回事。
+
+## 顺带：`arc_*` 工具集（近 100 个）
+
+```
+arc_glbcfg  arc_board  arccfg  arc_cfg_cli  arc_nvram  arc_nvram_sync
+arc_wlan  arc_lan  arc_wan  arc_wanmode  arc_wandown  arc_wanup
+arc_firewalld  arc_firewall6  arc_qos  arc_vlan  arc_bridge  arc_switch
+arc_tr69_trigger  arc_spdsvc  arc_spdsvc_tr69  arc_ddns  arc_ntpclient
+arc_telnetd  arc_sshd  arc_reboot  arc_restore_defaults  arc_mt_reset
+arc_fw_md5sum  arc_util_cert_gen  arc_ledd  arc_gpiod  arc_iptal …
+```
+（`arc_telnetd` / `arc_sshd` 说明**开 telnet / SSH 是设备本身具备的能力**，
+只是默认不启用。）
