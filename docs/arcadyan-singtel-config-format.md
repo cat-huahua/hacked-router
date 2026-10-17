@@ -796,3 +796,64 @@ Broadcom DSL：        bcm_enet  bcm_ingqos  bcm_usb  bcmmcast  bcmvlan  bdmf
 - `dhd` / `wl` / `wlcsm` / `wlemf` / `wfd` = Broadcom 无线栈
 - **只有三个 `arc_*` 模块** —— 厂商自己的东西主要在**用户态 agent** 里，
   内核只放了 mesh 相关的那三个（正好和前面的 dbus/OWL 架构对上）
+
+---
+
+# ★ 附：httpd 登录逻辑里几个**能改变安全姿态**的开关
+
+从 `Singtel-MeshRG_httpd.arm` 的字符串能直接把登录流程读出来 ——
+其中三条是**配置开关，改了就等于改了安全姿态**：
+
+## 1. ★★ `ARC_SYS_LoginEnable = 0` ⇒ **认证全放行**
+
+```
+[%s] Login disabled, all pass
+```
+
+字面意思：**登录被禁用时，所有请求都通过**。
+也就是说这个字段的语义是**反的**——不是"关闭登录功能"，而是"**取消鉴权**"。
+（`ARC_SYS_LoginEnable=1` 是默认值，也是正确的。）
+
+## 2. `ARC_HTTPD_JSONAPI_Enable` —— 另一套 JSON API 的开关
+
+```
+ARC_HTTPD_JSONAPI_Enable
+D_JSONAPI_Enable
+```
+
+httpd 里还有一套 **JSON API**（和 `*.cgi` 那套不同），由这个标志控制。
+默认没开时用不到；一旦打开就是**多出来一个接口面**。
+
+## 3. 强制改密闸门与 cookie
+
+```
+[%s] Default password is used, force to change it.
+Location: /change_pwd.htm
+login=0&%s%s; Path=/
+[%s] new user %s(%s) comes to login, check user and auth
+User from %s(%s) authentication fail.
+[%s] %s has already granted, pass
+[%s] %s login time out, reauth
+/tmp/security_log.txt
+```
+
+- 会话 cookie 是 `login=0&<...>; Path=/`
+- 登录失败/成功都详细记日志（`/tmp/security_log.txt`）—— 这就是
+  [登录锁](singtel-mesh-login-lock.md)里的"失败计数"数据来源
+- `ARC_SYS_SerialNum` / `ARC_LAN_0_MACaddr` 参与了会话/摘要的计算
+
+## 4. Digest 认证支持 `MD5-sess`
+
+```
+Digest 
+MD5-sess
+%s:%s:%s
+%s:%s:%s:%s:%s:%s
+```
+
+httpd 同时接受 **`MD5`** 和 **`MD5-sess`** 两种 digest 算法（`MD5-sess` 对每个会话换一次
+nonce 派生，比裸 MD5 稍好）。之前找到的 `nonce` 递增计数器正好配套。
+
+> **一条给设备所有者的自查项**：
+> 看 `ARC_SYS_LoginEnable` 是不是 `1`。如果是 `0`，
+> **这台设备的 Web 界面完全没有鉴权**（只是"登录功能被禁用"这个词听起来像无害的）。
