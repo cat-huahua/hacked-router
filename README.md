@@ -163,6 +163,10 @@ PUBLISH   devices/data/shadow                zlib 压缩的身份上报
 - [`docs/arcadyan-singtel-config-format.md`](docs/arcadyan-singtel-config-format.md) —— ★
   **Arcadyan / Singtel 的配置与密码机制**：glbcfg **是明文**、密码派生规则
   （`s1ngt3l` + 序列号后 6 位，已实证）、extender rootfs 为什么解不开（附完整证据链）
+- [`docs/singtel-tr069.md`](docs/singtel-tr069.md) —— ★★ **TR-069 / CWMP**：
+  Arcadyan CWMP 客户端、ACS `bs-hdm.singnet.com.sg`、默认 `singtel/singtel`、
+  **45 秒一次 Inform**、30005 反向连接 + STUN、完整 RPC 列表、固件下载签名校验、
+  ACS 能触发的 10 条 `tr69_*` 动作
 - [`docs/singtel-wps-and-mesh-pairing.md`](docs/singtel-wps-and-mesh-pairing.md) —— ★ **WPS 与 mesh 配对**：
   前传 WPS 默认关、**回传 WPS 默认开且 PIN 出厂 12345670、PSK 12345678**；
   Broadcom WPS 状态码、板级数据覆盖、如何关闭回传 WPS
