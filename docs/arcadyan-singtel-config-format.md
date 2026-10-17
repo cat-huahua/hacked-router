@@ -397,3 +397,74 @@ arc_fw_md5sum  arc_util_cert_gen  arc_ledd  arc_gpiod  arc_iptal …
 ```
 （`arc_telnetd` / `arc_sshd` 说明**开 telnet / SSH 是设备本身具备的能力**，
 只是默认不启用。）
+
+---
+
+# ★ 附：Singtel Mesh Router 的 httpd 接口面（21 个 CGI）
+
+从 `Singtel-MeshRG_httpd.arm`（= 固件里的 `/usr/sbin/httpd`，md5 `78479f6c…`）提取：
+
+```
+apply_abstract_cgi        apply_cgi                 backhaul_cgi
+bs_settings_cgi           get_info_cgi              get_topology_clients_cgi
+__init_cgi                login_cgi                 logout_cgi
+lte_settings_cgi          lte_warn_cgi              owl_cmd_cgi
+setpwd_cgi                setpwd2_cgi               singtel_cgi
+sw_img_cgi                upload_cgi                upload_torrent_file_cgi
+vpnupload_cgi             wl_cal_cgi                （另有一个工厂测试类 CGI，见下）
+```
+
+按用途分组：
+
+| 组 | CGI |
+|---|---|
+| 登录/口令 | `login_cgi` `logout_cgi` `setpwd_cgi` `setpwd2_cgi` |
+| 配置 | `apply_cgi` `apply_abstract_cgi` `bs_settings_cgi` `backhaul_cgi` `__init_cgi` |
+| 查询 | `get_info_cgi` `get_topology_clients_cgi` `get_info` |
+| 固件/上传 | `sw_img_cgi` `upload_cgi` `upload_torrent_file_cgi` `vpnupload_cgi` |
+| 无线/校准 | `wl_cal_cgi`（`/wireless_calibration.htm`） |
+| LTE | `lte_settings_cgi` `lte_warn_cgi` |
+| **OWL / 云** | `owl_cmd_cgi` ← OWL 命令通道 |
+| Singtel 定制 | `singtel_cgi` |
+
+## ★ 两套认证并存
+
+`httpd` 里同时有：
+
+1. **HTTP Digest**：
+
+   ```
+   Digest realm="Password required to Singtel RG", qop="auth,auth-int",
+          nonce="%s", opaque="5ccc069c403ebaf9f0171e9517f40e41"
+   ```
+
+   （注意 `opaque` 就是那个 Apache digest 示例常量 `5ccc069c…` —— 早先以为是密钥，是诱饵。）
+
+   `get_nonce_num` 说明 nonce 是个**递增计数**。
+
+2. **httoken**（我们一直在用的那套）：`httoken=` / `httoken` 字段。
+
+**两种都接受** —— 这也解释了为什么不同工具/页面能用不同方式访问。
+
+## 登录锁的配置键也在这里
+
+```
+ARC_SYS_LoginBlocked     ← ★ 锁标志（见 singtel-mesh-login-lock.md）
+ARC_SYS_LoginEnable
+ARC_SYS_LoginName
+ARC_SYS_LoginTimeout
+```
+
+## 其它
+
+- `/tmp/tr69/Devicetype.xml` —— TR-069 的设备类型描述
+- `/cgi/cgi_*.js` 一整套前端接口（`cgi_dev` / `cgi_login` / `cgi_wireless` /
+  `cgi_topology_client_cnt` / `cgi_pcm` / `cgi_systime` …）
+- 页面：`/login.htm` `/change_pwd.htm` `/setup_top_login.htm` `/loginpserr.htm`
+  `/index.htm` `/wireless_calibration.htm` `/lte_warn.htm`
+- `httpd` 里**唯一的对外 URL 是 `http://www.apache.org/`** —— 没有云端地址；
+  云端对接在 agent / `owl_cmd_cgi` 那一层
+
+> **关于那个工厂测试类 CGI**：它的存在与能力已在
+> [本文件第 7 节](#7-安全发现负责任披露)说明过（会明文打印板级口令），
+> **此处不列出调用方式** —— 按负责任披露原则保留。
