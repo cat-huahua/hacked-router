@@ -65,19 +65,49 @@ def read_token_table(d, i, check_index=True):
 
 
 def find_token_table(d):
-    """找 token_table。★ 先做廉价预筛，否则要逐 4 字节扫几百万次（实测慢到不可用）
+    """找 token_table。
 
-    注意 token_table 是【NUL 分隔的短串】，所以整体可打印率并不高 ——
-    不能用"可打印率高"来筛（会把正确的表筛掉）。改判据：
-    第一个 token 必须是「非空且 ≤7 字符」的短串。"""
+    ★ 性能（踩过）：早期版本「逐 4 字节试着读 256 个 token」——
+    6.4MB 内核要 30 秒，7.7MB 的 MIPS 内核直接超时。
+    现在先找 **token_index**（256 个递增 u16，相邻差值 = 该 token 长度+1）——
+    `u16==0` 出现率约 1/65536，候选只有上百个。
+
+    ★ 再踩一次：index[255] 是**最后一个 token 的起始偏移**，不是表尾长度，
+    所以表起点 = i - (index[255] + 最后一个 token 的长度 + 1)，而最后那个长度未知。
+    做法：对 extra=0..32 逐个试 T = i - index[255] - extra，
+    要求「按 T 读出的 256 个 token 的偏移与 index **完全一致**」且读到的结尾正好是 i。
+    """
     n = len(d)
-    for i in range(0, n - 1024, 4):
-        nl = d.find(b"\x00", i, i + 8)
-        if nl <= i:                      # 第一个 token 为空 / 超过 7 字符
+    # ★ 注意：不能假设 index[0] == 0（有的内核不是）——
+    #   真正的判据是「256 个 u16 非递减，且相邻差值 = 该 token 长度+1（1..64）」
+    for i in range(512, n - 512, 2):
+        idx, prev, ok = [], None, True
+        for k in range(256):
+            v = d[i + 2*k] | (d[i + 2*k + 1] << 8)
+            if prev is not None and not (1 <= v - prev <= 64):
+                ok = False
+                break
+            idx.append(v)
+            prev = v
+        if not ok:
             continue
-        r = read_token_table(d, i)
-        if r:
-            return i, r[0], r[1]
+        for extra in range(0, 34):
+            T = i - idx[255] - extra
+            if T < 0:
+                break
+            r = read_token_table(d, T, check_index=False)
+            if not r:
+                continue
+            toks, tend = r
+            # ★ 表和 index 之间可能有对齐填充（实测见过 9 字节），不能要求紧贴
+            if not (0 <= i - tend <= 16):
+                continue
+            offs, q = [], T
+            for t in toks:
+                offs.append(q - T)
+                q += len(t) + 1
+            if offs == idx:                        # ★ 完全一致才算
+                return T, toks, i
     return None
 
 
