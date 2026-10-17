@@ -1179,3 +1179,76 @@ ARC_WLAN_..._MACFILTER_MAC_0 .. MAC_9        ← 每个接口 10 个槽
 | 3 | `24G_SSID_3` / `5G_SSID_3` | 预留 |
 
 （索引 1/2/3 的 SSID 名就是字面上的模板占位，说明出厂只用了索引 0。）
+
+---
+
+# ★ 附：WiFi 配置怎么落到驱动（`/sbin/arc_wlan`，POSIX shell，8.8KB）
+
+**这套 WiFi 不走 `hostapd` / `nl80211`，而是走 Ralink/MediaTek 的 `iwpriv` / `iwconfig`。**
+（这也和内核里一大堆 `RTMP*` / `rt_*` 符号对得上。）
+
+## 4 个 SSID 就是 4 个 BSS 接口
+
+```
+wlan0       ← SSID 索引 0
+wlan0.1     ← 索引 1
+wlan0.2     ← 索引 2
+wlan0.3     ← 索引 3
+```
+
+对每个 BSS 都逐条下发（脚本里是真的这么写的）：
+
+```sh
+iwconfig $wlan essid $essid                    # ARC_WLAN_24G_SSID_$1_ESSID
+iwpriv   $wlan sHiddenSSID $hidden
+iwconfig wlan0 channel $channel                # ARC_WLAN_24G_Channel（0 = auto）
+```
+
+## ★ `sNetworkMode` 的取值表（Ralink/MTK 特有，由 `ARC_WLAN_24G_RadioMode` 决定）
+
+| 值 | 协议 |
+|---|---|
+| **17** | `b` |
+| **18** | `g` |
+| **19** | `bg` |
+| **20** | `n` |
+| **22** | `gn` |
+| **23** | `bgn` |
+
+（21 缺失 —— 大概是 `g` 的某个变体被跳过了。脚本里对每个值都是
+`wlan0` / `wlan0.1` / `wlan0.2` / `wlan0.3` **四条一起下发**。）
+
+## 信道与带宽
+
+```sh
+channel   = ARC_WLAN_24G_Channel
+bandwidth = ARC_WLAN_24G_ChannelBandwidth
+secondary = ARC_WLAN_24G_ExChannelMode      # 决定上下副信道
+# channel == 0 → iwconfig wlan0 channel auto
+```
+
+## 14 个函数 = WiFi 应用层的全部动作
+
+```
+set_wl_essid    set_wl_apmode   set_wl_wep      set_wl_channel
+get_eth_mac     set_wl_bssid    wps_sta_pin     wps_pbc
+wl_assoclist    wl_assoclist_alive              wl_macfilter
+start_single_ssid   wlan_start   wlan_boot
+```
+
+- **WPS 两条路都有**：`wps_sta_pin`（STA 模式的 PIN）/ `wps_pbc`（按钮）
+- `wl_assoclist` / `wl_assoclist_alive` —— 关联客户端列表（OWL 的 RSSI/漫游决策就吃这个）
+- `wl_macfilter` —— 对应前面 `ARC_WLAN_*_MACFILTER_*`
+- `set_wl_wep` —— 前面那 4 个 WEP key 槽最终还是会被下发下去
+
+## 一句话总结这条链
+
+```
+glbcfg 的 ARC_WLAN_* （配置）
+   ↓ mng_cli get
+arc_wlan（shell，用 iwconfig/iwpriv 下发）
+   ↓
+Ralink/MTK 驱动（rt_*/RTMP*，内核里那一堆符号）
+   ↓
+OWL（读 assoclist / RSSI，做漫游决策）→ 信标 IE 的 TLV 走空口
+```
