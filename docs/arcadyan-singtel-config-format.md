@@ -668,3 +668,79 @@ dbus-arca-cli --command --dest=arca.dbus.dnsmasq "CMD_RESTART" \
 > 与 NETGEAR 的对比：R7800 那边要发 **HTTP 请求到 `net-cgi`**（带 Basic Auth / digest），
 > 而且 220 个动作散在一个 CGI 里；这边是**一个本地 dbus 调用**，
 > 接口按服务切开、语义清楚得多。
+
+---
+
+# ★ 附：OWL / ATDP 的协议分层（mesh 层到底怎么跑）
+
+前面知道 OWL 是内核里的 SON（自组网）子系统。把 `libArcOWL*.so` 和 `libArcShareATDP.so`
+的符号捋一遍，层次就清楚了：
+
+## 分层
+
+```
+                    应用：漫游决策（band steering / BTM）
+                                        │
+        ┌───────────────────────────────┴───────────────────────────────┐
+        │  OWL（Arcadyan SON）                                          │
+        │  参数在 glbcfg 的 ARC_OWL_*（27 个，见前面那一节）             │
+        └───────────────────────────────┬───────────────────────────────┘
+                                        │  mgmt frame
+        ┌───────────────────────────────┴───────────────────────────────┐
+        │  IEEE 1905.1                                                  │
+        │  libArc1905_tx_owl_mgmt_frame / _rx_owl_mgmt_frame            │
+        │  libArc1905_ObtainDeviceId / obtain_device_MAC                │
+        │  libArc1905_obtain_owl_tplg_map（拓扑映射）                    │
+        │  Ieee1905NeighborNumberOfEntries / 1905id                     │
+        └───────────────────────────────┬───────────────────────────────┘
+                                        │  内核：drv_atdp.ko + arc_oshal.ko
+        ┌───────────────────────────────┴───────────────────────────────┐
+        │  ATDP = Arcadyan Topology Discovery Protocol                  │
+        │  libArcShareATDP.so                                           │
+        │  内核里：owl_build_beacon_ie / owl_insert_tlv（信标 IE 的 TLV）│
+        └───────────────────────────────┬───────────────────────────────┘
+                                        │  厂商私有消息
+        ┌───────────────────────────────┴───────────────────────────────┐
+        │  Broadcom 底层能力                                            │
+        │  bcm_wifi_get_assoc_list / get_rssi / get_channel_overload    │
+        │  bcm_wifi_rrm_enable_disable（802.11k）                       │
+        │  chanim_stats（信道干扰统计）· bsd_proc_event（带宽 Steering） │
+        └───────────────────────────────────────────────────────────────┘
+```
+
+## ★ 厂商私有消息：`wlpvt`，**按 OUI 校验**
+
+`libArcOWLcore.so` 里有一句非常说明问题的校验失败信息：
+
+```
+bsd_validate_wlpvt_message: not BRCM OUI
+```
+
+- **`wlpvt`** 是一种**厂商私有消息**（WLAN vendor-tagged 报文）
+- 它**按 OUI 校验来源** —— "不是 BRCM 的 OUI 就拒收"
+
+⇒ **这些私有报文用的是 Broadcom 的 OUI**，而且校验很直接（比对 OUI）。
+这也解释了为什么 OWL 在**同厂设备之间**能互通、在别家设备上无效。
+
+## OWL 的「词汇表」（从 libArcOWLcore 提取的属性/字段名）
+
+```
+bssid  bssid_2g  bssid_5g  channel  bandwidth  chanload_report  chanim_stats
+active_period  active_tresh  active_backlist_expire  backlist_expire  block_time
+check_bandsteer_mac  check_blacklist_mac  check_conn_mac
+rssi  assoc_list  ssid  channel_overload  rrm  beacon_ie
+add_data_to_tx_list  assign_data_ready_status  add_app_log  all_data
+boardcast / broadcast  accept  action  actframe
+```
+
+**这套词汇表就是 OWL 报文里能传的东西** —— 客户端的 RSSI、关联列表、各频段的 BSSID、
+信道负载、邻居拓扑，以及"要不要把这个 MAC 拉黑/触发漫游"的决策指令。
+
+## 与前面「owl_* 在 extender 内核里」的呼应
+
+extender 的内核符号里有 `owl_build_beacon_ie` / `owl_insert_tlv` / `Set_OWL_*_Proc`，
+正好对上这张图的最下面两层 —— **TLV 装在信标 IE 里走空口**。
+所以：
+
+> **OWL 是空口协议（信标 IE 的 TLV + IEEE1905 管理帧），不是云端 MQTT。**
+> 云端那套（`mqtt.wifi-analytics.singnet.com.sg`）是另一条完全独立的线。
