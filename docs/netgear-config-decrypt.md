@@ -277,3 +277,92 @@ PWD_question2（第二个槽位，共 8 个选项）
 `quest2_1..quest2_8` 这些语言变量填充下拉框）。
 
 这样解出来的配置才算**完整**：字段名 → 值 → **值是什么含义**。
+
+---
+
+# ★ 附：R7800 的登录机制（从 rootfs 脚本读出来的）
+
+解出 R7800 的固件 rootfs 后，`bin/login` 和 `usr/sbin/update_user` 把整套认证讲清楚了。
+**而且它从"系统怎么用这些哈希"这一侧，独立印证了前面所有破解结果。**
+
+## 1. ★ telnet 密码 = 管理密码（明文），进去就是 root
+
+`/bin/login`（POSIX shell）：
+
+```sh
+echo -n "telnet password:"
+read telnet_passwd
+telnet_passwd_hashed=$(/usr/sbin/hash-data -e "$telnet_passwd")     # ← 算 SHA256
+if [ -n "$telnet_passwd_hashed" ]; then telnet_passwd="$telnet_passwd_hashed"; fi
+if [ "$telnet_passwd" = "$(/bin/config get http_passwd)" ]; then
+    exec /bin/ash --login                                           # ← 直接 root shell
+else
+    echo "The password is not correct"; exit 0
+fi
+```
+
+所以：
+
+- **输入的是管理密码本身**（不是哈希），由 `hash-data -e` 转成 SHA256 后与 `http_passwd` 比
+  —— 这反证了 `http_passwd = SHA256(明文)` ✓（与前面 hashcat 破出来的映射完全一致）
+- **验过就给 `/bin/ash --login`**，即 root shell
+- 登录后的提示语也说明了该怎么处理：
+
+  ```
+  === IMPORTANT ============================
+   Use 'passwd' to set your login password
+   this will disable telnet and enable SSH
+  ------------------------------------------
+  ```
+
+  **即：一旦用 `passwd` 设了密码，telnet 就关掉、SSH 打开。**
+
+## 2. ★ 三个哈希各自的用途（脚本层面确认）
+
+`/usr/sbin/update_user`：
+
+```sh
+http_passwd=$($config get http_passwd)
+adduser -G admin admin -H ... << EOF
+$http_passwd
+$http_passwd
+EOF
+# ★ 系统 admin 的 shadow 密码随后被换成 dhx2_passwd
+sed -i "s#<上面那个>#$(/bin/config get dhx2_passwd)#g" /tmp/config/shadow
+
+# ★ samba 的 admin 密码被换成 samba_passwd
+sed -i "s#<原值>#:$(/bin/config get samba_passwd):[#g" /etc/samba/smbpasswd
+```
+
+| 字段 | 落到哪 | 印证 |
+|---|---|---|
+| `http_passwd` | 先给 `adduser`，随后被替换 | = **SHA256(明文)**，用于 telnet/web |
+| `dhx2_passwd` | **系统 `admin` 用户的 `/etc/shadow`** | = **MD5-crypt** ✓ |
+| `samba_passwd` | **`/etc/samba/smbpasswd` 的第 4 字段（NT 哈希位）** | = **NTLM** ✓ |
+
+**这正是前面从密文里破出来的三个映射 —— 现在两边对上了。**
+
+另外 ReadyCLOUD 的云用户口令也被直接写进 smbpasswd 的 NT 哈希字段：
+
+```sh
+echo "$username:$id:XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX:$userpasswd:[U          ]:LCT-00000001:" >> $SMB_PASSWD_DIR
+```
+
+（`XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX` 是 LM 哈希的占位，`$userpasswd` 是 NT 哈希位。）
+
+## 3. 设备身份（rootfs 顶层就是明文小文件）
+
+```
+firmware_version   V1.0.2.90
+firmware_region    （空）
+module_name        R7800
+hardware_version   R7800
+hw_id              29764958+0+128+512+4x4+4x4+cascade
+cloud_version      20161026
+```
+
+`hw_id` 与固件 `.img` 文本头里的 `hd_id` 是同一个值 ✓
+
+> **⚠️ 提醒**：`bin/login` 这条路要能连上 telnet 才有用 ——
+> 而 telnet 是否在监听取决于固件设置（默认是不开的）。
+> 本文只记录机制，不涉及开启方法。
