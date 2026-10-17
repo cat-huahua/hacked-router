@@ -744,3 +744,55 @@ extender 的内核符号里有 `owl_build_beacon_ie` / `owl_insert_tlv` / `Set_O
 
 > **OWL 是空口协议（信标 IE 的 TLV + IEEE1905 管理帧），不是云端 MQTT。**
 > 云端那套（`mqtt.wifi-analytics.singnet.com.sg`）是另一条完全独立的线。
+
+---
+
+# ★ 附：`arc_board` 的完整键表（板级数据的 schema）
+
+前面说过管理密码来自 `arc_board get gui-pwd`。把 `arc_board` 二进制的字符串提出来，
+**它的键表就是板级数据（board data）的完整 schema** —— 共 18 个键：
+
+```
+# 身份
+basemac        sn             model          hwver
+ccode          tcode          dect-rfpi
+# 出厂口令（★ 这几个就是"读出来"的那几个）
+gui-pwd             wifi-24g-pwd   wifi-5g-pwd    wifi-bh-pwd
+wps-pin
+# 出厂 SSID
+wifi-24g-ssid       wifi-5g-ssid   wifi-bh-ssid
+# 产线/其它
+clone-flag     mptest          tempboot
+gpon-sn        gpon-pwd
+```
+
+**读取方式**：`arc_board get <键>`，底层读 **`/dev/brcmboard`**
+（Broadcom 的板级 NVRAM 设备）—— 也就是说这些值是**产线烧进 flash 的板级区**，
+不是从配置里算出来的。
+
+⇒ 这就是为什么 `ARC_SYS_Password` 算不出来却能**读出来**：
+它来自板级数据，键名 `gui-pwd`。
+
+> 与 `arc_glbcfg` 里那三条"可离线算"的规则对照：
+> | 东西 | 来源 |
+> |---|---|
+> | root/SSH 密码 = `s1ngt3l`+SN后6位 | **算**（`arc_board get sn` 拿到 SN 即可） |
+> | `ARC_ROOT_Passwd` = MD5(上面那个) | **算** |
+> | `ARC_UI_WEB_REMOTEMN_Password` = MD5(SN) | **算** |
+> | `ARC_SYS_Password` = `arc_board get gui-pwd` | **读**（板级区） |
+> | WiFi 口令 / WPS PIN | **读**（`wifi-*-pwd` / `wps-pin`） |
+
+## 附带：Mesh Router 的内核模块（108 个，`extra/` 下 25 个）
+
+```
+★ Arcadyan 自己的：  arc_netlink.ko  arc_oshal.ko  drv_atdp.ko
+Broadcom DSL：        bcm_enet  bcm_ingqos  bcm_usb  bcmmcast  bcmvlan  bdmf
+                      chipinfo  dhd  otp  pktflow  pktrunner  pwrmngtd
+                      rdpa  rdpa_cmd  rdpa_gpl  rdpa_gpl_ext  rdpa_mw
+                      wfd  wl  wlcsm  wlemf  nciTMSkmod
+```
+
+- `rdpa*` = Broadcom 的 **RDP 加速器**（数据面卸载）—— 这台是 DSL SoC
+- `dhd` / `wl` / `wlcsm` / `wlemf` / `wfd` = Broadcom 无线栈
+- **只有三个 `arc_*` 模块** —— 厂商自己的东西主要在**用户态 agent** 里，
+  内核只放了 mesh 相关的那三个（正好和前面的 dbus/OWL 架构对上）
