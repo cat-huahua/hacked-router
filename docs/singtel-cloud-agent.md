@@ -300,6 +300,55 @@ PC: ... parental member over limit, blocking...
 超额后同一个链直接 `-j REJECT`。这套规则是**独立的**，和 `arc_firewalld` 的
 访问控制（`ARC_FIREWALL_AC_*`）不是一回事。
 
+### 5.3 测量组件（测速 / 延迟 / 邻居扫描 / 信道统计）
+
+**`speedtest`（32 KB）** —— 明显是从 **Ookla speedtest CLI** 改的：
+
+```
+c.speedtest.net
+www.speedtest.net
+speedtest-config.php
+speedtest-servers-static.php?
+speedtest-servers-custom
+GET  /%s HTTP/1.0       ← 下载
+POST /%s HTTP/1.0       ← 上传
+Download speed: %0.2lf Mbps
+Upload speed: %0.2lf Mbps
+/tmp/speedtest_log
+```
+
+它还支持 “Local Speedtest Server” / “custom servers” 列表。
+
+**`pingtest`（14 KB）** —— 自己发的 ICMP 探测：
+
+```
+Usage: pingtest [-c client] [-i interface] [-P packet size] [-R packet per second]
+                [-j jitter time] [-t throughput test time] [-f flood] [-s WAN speedtest]
+ICMP minimum/maximum/average latency
+ICMP latency jitter
+ICMP packet Sent/received
+ICMP throughput pak/bytes success
+/tmp/pingtestResult_%s
+/tmp/speed_pingtestResult
+```
+
+**`broadband_ssl`（1.6 MB）** —— 带 OpenSSL 的 HTTP 下载/上传线程：
+
+```
+download_thread / speedtest_download
+serverurl / global_custom_server
+http://%[^/]  /  http://%[^/]/%s
+```
+
+**`dhcp_scan`（203 KB）** —— libpcap 抓 DHCP，结果写
+`/tmp/dhcp_<iface>_<mac>`，用来发现 LAN 上的客户端。
+
+**`chanim_stats`（9 KB）** —— 读 Broadcom 的 chanim 表：
+`chanspec / tx / inbss / obss / nocat / nopkt / doze / txop / glitch / knoise / idle / timestamp`。
+
+> 也就是说：云端不仅能配置设备，还能**实测宽带速率、延迟抖动、邻居干扰**，
+> 并把结果上报。这些测量是“真实执行”的，不是读现成计数器。
+
 ---
 
 ## 6. 自动重启策略（比想象中激进）
