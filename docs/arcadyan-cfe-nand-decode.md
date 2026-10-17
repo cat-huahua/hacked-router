@@ -403,3 +403,56 @@ BpGetAFELDPwrBoostGpio  BpGet1ppsStableGpio  BpGetBatteryEnable ...
 比从字符串里捞要系统和完整得多。
 
 工具：[`kallsyms_extract.py`](../kallsyms_extract.py)（两台真机内核上实测通过）
+
+---
+
+# 附四：DSL-AC87VG 的 CFE 出厂配置菜单（完整）
+
+`cferam.000` 的串口控制台里有**两段** provisioning 菜单：
+
+## ① `--- Set Arcadyan Manufacture Data ---`（字段名是 `Arcadyan *`，不是 `ARC_*`）
+
+```
+Arcadyan Serial Number            :        Invalid Serial Number
+Arcadyan DECT RFPI                :
+Arcadyan Manuf Model              :        Invalid Model Name
+Arcadyan Manuf Hw_Ver             :        Invalid Hardware Version
+Arcadyan Image Clone flag[0|12|21]:        Invalid flag
+Arcadyan MPTEST                   :        Invalid value
+Arcadyan WLAN Country Code        :        Invalid Country Code
+Arcadyan WLAN Territory Code      :        Invalid Territory Code
+```
+
+**内联的出厂默认值**：
+
+| 项 | 默认值 |
+|---|---|
+| 板名 | **`963138_GFAST`** ← ★ BCM963138 + **GFAST**（这是台 **G.fast** DSL 网关） |
+| 序列号 | `ARCADYAN2015000001` |
+| 型号 | `DSL-AC87VG` |
+| 国家/版本 | `DE/01` |
+| 语音芯片 | `Si32260_LCQC`（Silicon Labs Si32260 编解码器） |
+| 其它 | `0016814500` · `BRCM12345678`（疑似默认口令） · `12345670`（默认 WPS PIN） |
+
+> `963138_GFAST` 正好解释了我们解出的 `963138_debug.dtb` ✓
+
+## ② Broadcom 板级参数
+
+```
+Board Id                          :    Invalid board ID
+Number of MAC Addresses (1-32)    :    Invalid MAC addresses number: 1 - 32
+Base MAC Address                  :    eg. 12:34:56:ab:cd:ef or 123456abcdef
+PSI Size (1-128) KBytes           :    (1-64) Kbytes
+Enable Backup PSI [0|1]           :
+System Log Size (0-256) KBytes    :
+Auxillary File System Size Percent:    (0-80)
+GPON Serial Number / GPON Password:
+MC / TM / DHD 0,1,2 memory allocation (MB)
+Device Pin                        :    Invalid WPS Device Pin
+Voice Board Configuration (0-#)   :
+DECT Type Installed (0-#)         :    No DECT / Internal DECT / External DECT
+Partition 1..4 Size (MB) (Data)   :    Invalid parition size
+```
+
+菜单行为：`Press: <enter> to use current value` / `'x' to exit this command` /
+`%s; Try again!`（输错就重问）—— 这是**产线刷写时逐项确认**的界面。
