@@ -456,3 +456,72 @@ Partition 1..4 Size (MB) (Data)   :    Invalid parition size
 
 菜单行为：`Press: <enter> to use current value` / `'x' to exit this command` /
 `%s; Try again!`（输错就重问）—— 这是**产线刷写时逐项确认**的界面。
+
+---
+
+# 附五：★ Web UI 的加密方案在两个设备上是**同一份代码**
+
+从 DSL-AC87VG 的 rootfs 里翻出 `www/js/global.js`，发现它和 **Singtel Mesh Router**
+的那份**是同一套代码** —— 连混淆过的 blob 都一字不差。
+
+## 1. 登录哈希：`ArcMD5`
+
+```js
+function ArcMD5(_s){
+    var s = calcMD5(_s);                    // MD5，输出 hex
+    var shaObj = new jsSHA(s, "ASCII");
+    s = shaObj.getHash("SHA-512","HEX");    // 再 SHA-512
+    return s;
+}
+```
+
+**`ArcMD5(x) = SHA512_hex(MD5_hex(x))`** —— 与 [singtel-mesh-login-lock.md](singtel-mesh-login-lock.md)
+里那份逐行相同 ✓ 也与 [Arcadyan 配置](arcadyan-singtel-config-format.md)里
+`ARC_SYS_Password = SHA512(MD5(明文))` 的存法一致 ✓
+
+## 2. token：`ArcBase._t()`
+
+```js
+// 取页面里第一个 src 以 "data:" 开头的 <img>（那张 1×1 GIF），
+// 对 src.substring(78) 做 base64 解码
+ArcBase._tt = function(){ ... }
+```
+
+**混淆手法与 Mesh Router 完全相同**：base64 解码 → 每字节 XOR 3 → `unescape` →
+去掉前 19 字符 → `eval`。**混淆串本身一字不差**（`ZXZtYHdqbG0mMTNkZndXbGhmbSYx...`）。
+
+## 3. ★ 表单字段的"加密"：AES-CBC，**密钥就是同一页面里的 token，IV 全零**
+
+```js
+function do_encode(_s){
+    var iv  = [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0];   // ★ 全零 IV
+    var k   = ArcBase._t();                          // ★ 密钥 = 页面里的 token
+    var key = ArcAES.IntToByteArray(k, 32);
+    var ct  = ArcAES.IntToByteArray(_s);
+    var pt  = ArcAES.create('CBC', key, iv).encrypt(ct);
+    return ArcAES.byteArrayToHTML(pt);
+}
+// do_decode 是反过程（hex 输入、长度必须是 16 的倍数、否则原样返回）
+```
+
+**这是混淆，不是保密。** 因为：
+
+- 密钥 `k` **就在同一个页面里**（那张 GIF 的 data URI）——
+  任何能看到页面的人都能拿到密钥和算法；
+- IV **固定全零**，没有随机性；
+- 它保护的只是"密码不在浏览器的表单提交里明文出现"这件事
+  （防的是**肩窥/代理日志**，不是防攻击者读页面）。
+
+> 顺带：`do_decode` 的入参要求 `length % 16 == 0` 且是 hex，否则**原样返回** ——
+> 所以拿到配置项密文时，判断"有没有被加密"的判据就是**长度是否 16 的倍数且是纯 hex**。
+
+## 4. 意义：三台设备共享同一套前端
+
+| 设备 | `ArcMD5` | `ArcBase._t` 混淆串 | 表单加密 |
+|---|---|---|---|
+| Singtel Mesh（extender） | ✓ 相同 | ✓ 相同 | `encode()` 每字符 +97 |
+| Singtel Mesh Router | ✓ 相同 | ✓ **一字不差** | `do_encode` AES-CBC |
+| NETGEAR DSL-AC87VG | ✓ 相同 | ✓ **一字不差** | `do_encode` AES-CBC |
+
+**⇒ 解一个就等于解全部。** 这也是这一路"同一家厂商多台设备"反复印证的事：
+`arc_glbcfg` 的结构、`glbcfg` 的明文格式、`arc_board` 的字段、Web UI 的 JS —— 全是同一套。
