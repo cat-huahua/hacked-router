@@ -251,18 +251,70 @@ private            eac         config     location
 timestamp
 ```
 
-分派逻辑里能看到两个字符串比较（`0x4E944` / `0x4E958`）：
+分派逻辑里能看到两个字符串比较（`0x4E944` / `0x4E958`），
+字段是 **`type` 和 `statetype`**（不是 `method`）：
 
 ```
-strcmp(<某字段>, "accesspoint") == 0
-strcmp(<某字段>, "desired_state") == 0
+json_object_get(json, "type")       → strcmp(type, "accesspoint") == 0
+json_object_get(json, "statetype")  → strcmp(statetype, "desired_state") == 0
     ↓ 命中
-写 config/location（0x3DD80），然后刷新 embedur/accesspoint 配置
+json_object_get(json, "location") → strncpy → 0x3DD80("accesspoint","config","location",值)
 ```
 
 也就是说：**云端和本地 App 用的是同一套 JSON 形态**，只是承载方式不同
 （MQTT vs UDP/JSON socket）。这解释了为什么 `mqtt_spy` 的 topic 对了，
-但发纯文本命令没反应 —— 它期待的是带 `method` 的 JSON 对象。
+但发纯文本命令没反应 —— 它期待的是带 `type`/`statetype` 的 JSON 对象。
+
+**最简的一条真实命令**：
+
+```json
+{"type":"accesspoint","statetype":"desired_state","id":"<MAC>","location":"Living Room"}
+```
+
+#### 报文外层（envelope）
+
+同一份二进制里还有一个**构造上报报文**的函数（`0x272AC`），
+它逐字段 `json_object_set_new`，可以直接读出外层结构：
+
+```json
+{
+  "id": "<MAC>",
+  "statetype": "runtime",
+  "type": "accesspoint",
+  "category": "device",
+  "next_update_time": <int>,
+  "timestamp": <int>,
+  "device_time": <int>,
+  ...
+}
+```
+
+所以：
+
+| 方向 | topic | `statetype` | 关键字段 |
+|---|---|---|---|
+| 设备 → 云 | `devices/data/<id>` | `runtime` | `id/type/category/timestamp/device_time/next_update_time` |
+| 云 → 设备 | `devices/<id>/desired_state` | **`desired_state`** | `type=accesspoint` + `location` 等 |
+| 云 → 设备 | `devices/<id>/direct` | 待确认（很可能也是 envelope） | 待确认 |
+| 云 → 设备 | `devices/<id>/image` | — | 固件升级 |
+| 组 | `groups/<gid>/desired_state` | `desired_state` | 组级配置 |
+
+**一条“真正能生效”的命令长这样**（最小可用示例，改设备位置）：
+
+```json
+{
+  "type": "accesspoint",
+  "statetype": "desired_state",
+  "id": "<设备 MAC>",
+  "location": "Living Room"
+}
+```
+
+发到 `devices/<MAC>/desired_state`。
+
+> 注意：`location` 是反汇编里**唯一能确认会被写进配置**的 desired_state 字段
+> （写入 `accesspoint/config/location`）。其它字段（`members`、`radio_24`、
+> `radio_5`、`enh_steer_config`…）会被读出来，但具体落到哪个配置键还没有逐个确认。
 
 ### 5.2 ★ 家长控制（按 DNS 关键字拦截 + 流量配额）
 
@@ -495,9 +547,10 @@ cat /data/reboot.log 2>/dev/null | tail
 
 ## 11. 还没解的
 
-1. **命令 JSON schema**：已经拿到解析器的字段清单（`method`/`session_id`/`members`/
-   `config`/`location`/…，见 §5.1）和 `accesspoint`+`desired_state` 的分派；
-   还差**每个 method 的完整参数语义**（哪些字段必填、类型、嵌套）。
+1. **命令 JSON schema**：外层 envelope（`id`/`type`/`statetype`/`category`/`timestamp`）
+   和 `accesspoint`+`desired_state` 的分派已确认，`location` 的写入路径也确认；
+   还差 **`desired_state` 其它字段**（`members`/`radio_24`/`radio_5`/`enh_steer_config`）
+   和 **`direct` / `image` 的 payload** 具体落到哪些配置键。
 2. **adornment 的完整结构**：只拿到片段（`ap/ssid/bssid/state/timer`）。
 3. **`broadband_ssl` 的具体协议**：是测速还是探测，尚未逐函数看。
 4. **签名/加密固件包的格式**：`image_manager` 的解密参数还没逆。
