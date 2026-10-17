@@ -160,9 +160,17 @@ PUBLISH   devices/data/shadow                zlib 压缩的身份上报
 - [`docs/arcadyan-singtel-config-format.md`](docs/arcadyan-singtel-config-format.md) —— ★
   **Arcadyan / Singtel 的配置与密码机制**：glbcfg **是明文**、密码派生规则
   （`s1ngt3l` + 序列号后 6 位，已实证）、extender rootfs 为什么解不开（附完整证据链）
+- [`docs/config-recovery.md`](docs/config-recovery.md) —— ★★ **配置恢复包**：
+  四层配置结构（rootfs 出厂包 / tmpfs / `pricfg` 分区 / `data` JFFS2）、
+  **web 备份 `Settings.CFG` 的离线解密**（`aes-256-cbc` + 固件里写死的口令，
+  **必须 `-md md5`**）、以及从 rootfs / flash dump 里恢复配置的完整流程。
+  工具：`cfgpack.py`
 
 **三种设计的安全强度依次递增**：NETGEAR 把种子写在文件头里（所以能解）→
 华为把密钥放设备上（一机一密）→ Arcadyan 把密钥放 bootloader 里（最靠下，最难拿）。
+
+`cfgpack.py` 是 **Arcadyan/Singtel 配置恢复包**：分析 rootfs、解析 `glbcfg` 字段、
+**离线解密/生成 web 备份 `Settings.CFG`**、从 flash dump 里 carve 配置 tar.gz。
 
 统一工具 `routercfg.py` **五种格式**都认：NETGEAR 配置 / **NETGEAR 官方固件** /
 华为配置 / Arcadyan .trx / Arcadyan glbcfg（含华为的 **HMAC 密钥验证器**）；
@@ -193,7 +201,7 @@ sudo python3 mqtt_spy/broker_tls.py            # 1883 明文 + 8883 TLS
 ## 目录
 
 ```
-docs/           三份逆向笔记（登录锁 / 固件分析 / u-boot 恢复模式）
+docs/           逆向笔记（登录锁 / 固件 / JFFS2 / 三种配置格式 / 配置恢复 / SPI dump）
 singtel_mesh/   Arcadyan mesh 工具集（★ 主要在这里）
 hw_q2s/         华为 Q2S REST API 客户端
 mqtt_spy/       假云端 MQTT broker（含 TLS）
