@@ -186,3 +186,63 @@ PSI Size / System Log Size / Auxillary File System Size Percent
 **这四条每一条都会表现为"解析失败/结果是垃圾"，而看起来都像"数据被加密了"。**
 所以我现在的习惯是：**每解出一步就立刻用已知量验证**（CRC、magic、文件大小、字符串），
 不验证就直接往下走，很可能整条链都建在错的偏移上。
+
+---
+
+# 附：同一套方法用于 NETGEAR DSL-AC87VG（2026-10-17）
+
+**结论：`jffs2_extract.py` 不需要改一行就能解另一台设备** —— 证明这个"小端 JFFS2"不是个例，
+而是这一代 Broadcom/Arcadyan 固件的**共同特征**。
+
+## 素材与结果
+
+```
+FW_DSL_AC87VG_10518305.zip → DSL-AC87VG_v1.05.18_build305_cferom_fs_image_128_ubi.w  (55MB)
+FW_DSL_AC87VG_10519307.zip → DSL-AC87VG_v1.05.19_build307.w                         (55MB)
+```
+
+```
+$ python3 jffs2_extract.py DSL-AC87VG_v1.05.19_build307.w -o fs
+  试 大端(标准)   节点 0     CRC通过 0
+  试 小端(非标准) 节点 617   CRC通过 616     ← 自动选中
+  写出 4 个文件:
+    cferam.000     420620 字节
+    vmlinux.lz    2002927 字节
+    image_version       8 字节   = "0.01.01"
+    etc/              （目录）
+```
+
+`vmlinux.lz` 同样是 **20 字节 BRCM 头 + LZMA**（偏移 20）：
+
+```
+BRCM 头: 0xC0008000 0xC0008000 2002907 "BRCM" 0     ← 第三个字段 = 有效数据长度 2002907
+偏移 0x14: 6d 00 00 40 ...                          ← props=0x6d, dict=4MB
+→ 解出 8,610,404 字节内核，config 60,384 字节
+```
+
+## 与 Singtel Mesh Router 的对比
+
+| | Singtel Mesh Router | NETGEAR DSL-AC87VG |
+|---|---|---|
+| JFFS2 端序 | **小端**（非标准） | **小端**（同样）✓ |
+| 内核容器 | BRCM 头 + LZMA | BRCM 头 + LZMA（同） |
+| 内核里的品牌 | — | **没有 NETGEAR 字样** |
+| 加密选项 | 无 `ARC_SQUASHFS_FS_CRYPTO` | 无 |
+| rootfs | UBIFS（**不加密**，已完整解出） | UBI 卷 0，398 LEB / 48MB |
+
+**判读**：`DSL-AC87VG_..._.w` 里装的是**Broadcom/Arcadyan 的 SDK 参考构建**，
+不是 NETGEAR 自己那套（内核里没有 NETGEAR 品牌串）。换牌子主要换的是 rootfs（web UI/配置）。
+
+## 这次**没能**做完的（如实记录）
+
+DSL 的 rootfs 是 48MB 的 UBIFS，**UBIFS 的完整提取需要专门的解析器**
+（超块 + master node + index B-tree + LEB 重组），而当前环境里没有 `ubireader` 之类的工具。
+
+退而求其次做了**原始 LEB 字符串扫描**，拿到 8142 条可读串（未压缩的碎片），
+能看到文件清单与模板（`/usr/sbin/httpd`、`/usr/sbin/key.pem`、`/var/ipsec/psk.txt`、
+`chap-secrets`、`Main_Password.htm`、`arca.dbus.homeplud:MSG_HOMEPLUG_PASSWORD_SET`、
+`#USERNAME PROVIDER PASSWORD IPADDRESS` 模板），**但没有捞出默认口令**
+（UBIFS 里的文件多数是压缩的，所以要完整提取才能定论）。
+
+> **下次要接着做的话**：装 `ubi_reader`（`pip install ubi_reader`）或用 `ubireader_extract_files`，
+> 就能把卷 0 完整解出来。这一步不需要硬件。
