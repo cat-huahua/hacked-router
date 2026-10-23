@@ -163,6 +163,9 @@ PUBLISH   devices/data/shadow                zlib 压缩的身份上报
 - [`docs/arcadyan-singtel-config-format.md`](docs/arcadyan-singtel-config-format.md) —— ★
   **Arcadyan / Singtel 的配置与密码机制**：glbcfg **是明文**、密码派生规则
   （`s1ngt3l` + 序列号后 6 位，已实证）、extender rootfs 为什么解不开（附完整证据链）
+- [`docs/singtel-leds-and-buttons.md`](docs/singtel-leds-and-buttons.md) —— ★ **LED 与按键**：
+  GPIO 映射（低电平有效）、`arc_led` 命令、`arc_ledd`/`arc_gpiod` 守护；
+  ★ GPIO32 按住 8 秒 = 恢复出厂，短按 = 重启
 - [`docs/singtel-tr069.md`](docs/singtel-tr069.md) —— ★★ **TR-069 / CWMP**：
   Arcadyan CWMP 客户端、ACS `bs-hdm.singnet.com.sg`、默认 `singtel/singtel`、
   **45 秒一次 Inform**、30005 反向连接 + STUN、完整 RPC 列表、固件下载签名校验、
