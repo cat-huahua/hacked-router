@@ -165,7 +165,52 @@ hostapd_cli -i wlan0 wps_pin any <pin> 120
 
 ---
 
-## 8. 证据索引
+## 8. `libwps.so` 的 WSC 消息/TLV API
+
+`/lib/libwps.so` 是实际的 WSC 编解码库，导出（节选）：
+
+### 8.1 消息（M1–M8）
+
+```
+reg_msg_m7ap_parse / write / del        M7 (AP 侧)
+reg_msg_m7enr_parse / write / del       M7 (Enrollee 侧)
+reg_msg_m8ap_parse / write / del        M8 (AP 侧)
+reg_msg_m8sta_parse / write / del       M8 (STA 侧)
+reg_msg_m8sta_write_key                 ★ 把凭据写回 STA
+reg_msg_nonce_parse / write              Nonce
+reg_msg_es_*                             EAP-Start / EAP-Response
+```
+
+### 8.2 TLV
+
+```
+tlv_credentialInit / Parse / ParseAKey / Write / Delete
+tlv_encrSettingsParse / Write
+tlv_oobDevPwdParse / Write
+tlv_primDeviceTypeParse / Write
+tlv_reqDeviceTypeWrite
+tlv_vendorExtParse / Write / set
+subtlv_new / set / write / serialize / dserialize / getid / getLength
+```
+
+### 8.3 加密/密钥派生
+
+```
+reg_proto_encrypt_data / decrypt_data
+reg_proto_validate_keywrapauth     ← WSC Key Wrap Authenticator 校验
+reg_proto_generate_psk / derivekey
+aes_cbc_encrypt_pad
+```
+
+即：**WSC 的 M1–M8、Credential、EncrSettings、OOB Device Password、
+Key Wrap 全在 `libwps.so` 里**；`wps_monitor` 只是状态机 + 平台适配。
+
+> 具体 TLV 的数值 ID（0x104A 等）是 Wi-Fi Alliance 规范定义的，
+> 本固件没有把它们做成字符串，所以这里只能到函数/结构层。
+
+---
+
+## 9. 证据索引
 
 | 内容 | 位置 |
 |---|---|
