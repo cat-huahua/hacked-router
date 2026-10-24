@@ -106,6 +106,32 @@ HDM_INFORMATION {
 
 ---
 
+## 3.1 本地拓扑守护：`arc_tplgd`
+
+`/tmp/arc_tplg_path` 是拓扑守护进程的本地命令通道。`arc_tplgd` 的数据来源：
+
+```
+/tmp/dhcpd.leases        DHCP 租约
+/tmp/etc/dhcpd.leases
+/tmp/dhcp_mac.txt        MAC 列表
+/tmp/nbt_XXXXXX          NetBIOS 扫描结果
+/tmp/.ssdp_devices       SSDP 设备
+nbtscan -q -t 300 <网段>  ← 用 NetBIOS 补主机名
+```
+
+它还会写：
+
+```
+mngcli tmp_set TMP_WBD_TPLG_CCNum=%d
+```
+
+`arc_tplg_cli` 通过 `/tmp/arc_tplg_path` 查询/触发拓扑。
+
+> **注意**：这里的 `tplg` 是 **topology（拓扑）**，不是“template（模板）”。
+> 它和 OWL 的 `/status/tplg` 是同一份拓扑数据的不同入口。
+
+---
+
 ## 4. Band steering（从字符串还原）
 
 `libArcOWLcore.so` 里的日志直接写出了决策原因：
