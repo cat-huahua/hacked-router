@@ -163,6 +163,9 @@ PUBLISH   devices/data/shadow                zlib 压缩的身份上报
 - [`docs/arcadyan-singtel-config-format.md`](docs/arcadyan-singtel-config-format.md) —— ★
   **Arcadyan / Singtel 的配置与密码机制**：glbcfg **是明文**、密码派生规则
   （`s1ngt3l` + 序列号后 6 位，已实证）、extender rootfs 为什么解不开（附完整证据链）
+- [`docs/singtel-tr069-mapping.md`](docs/singtel-tr069-mapping.md) —— ★★ **TR-069 参数 → ARC 键映射**：
+  `tr69` 直接调用 `arc_cfg_get/set`；ACS 可写 telnet/SSH/JSON API/
+  管理密码/root 口令/自动升级 URL 等键
 - [`docs/singtel-owl-1905.md`](docs/singtel-owl-1905.md) —— ★★ **OWL 的 1905 传输与 steering**：
   `libArc1905_*` 拓扑/收发、assoc/unassoc 列表的 hton/JSON 编解码、
   BTM vs Legacy steering 的触发条件/禁止时间/记录文件
