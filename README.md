@@ -181,6 +181,9 @@ PUBLISH   devices/data/shadow                zlib 压缩的身份上报
 - [`docs/singtel-cms-auth.md`](docs/singtel-cms-auth.md) —— ★★ **CMS 控制台认证**：
   `LOGIN_CFG`(0xC30) 三个账号槽位、`cmsDal_authenticate` 的 **明文 `strcmp`**、
   结果码 0x0A/2/1、与 web/SSH 密码三套独立
+- [`docs/singtel-tls-stack.md`](docs/singtel-tls-stack.md) —— ★ **TLS 栈**：
+  `libarc-ssl` = OpenSSL **1.0.1t** + `as_client_*`/`as_load_key_cert` 封装、
+  cipher `ALL:!EXPORT:!LOW:!aNULL:!eNULL:!SSLv2`、TR-069 与 OWL 各用一套 TLS
 - [`docs/singtel-utility-libraries.md`](docs/singtel-utility-libraries.md) —— ★ **通用库**：
   `libarc-validation`（规则表/ipv4-range/multiPort）、`libarc-conversion`、
   `libarc-shared`（CRC8/16/32、ether_atoe、CTF IPC、get_ip_list_by_mac）、
