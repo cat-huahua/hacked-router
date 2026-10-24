@@ -163,6 +163,9 @@ PUBLISH   devices/data/shadow                zlib 压缩的身份上报
 - [`docs/arcadyan-singtel-config-format.md`](docs/arcadyan-singtel-config-format.md) —— ★
   **Arcadyan / Singtel 的配置与密码机制**：glbcfg **是明文**、密码派生规则
   （`s1ngt3l` + 序列号后 6 位，已实证）、extender rootfs 为什么解不开（附完整证据链）
+- [`docs/singtel-board-data.md`](docs/singtel-board-data.md) —— ★★ **板级数据（`arc_board`）**：
+  完整键表与 NVRAM 名对照（`gui-pwd`/`arc_gui_pwd`、`wps-pin`/`wpsDevicePin`、
+  `wifi-*-pwd`、`gpon-pwd`…）；一机一密的真正来源
 - [`docs/singtel-config-key-universe.md`](docs/singtel-config-key-universe.md) —— ★★ **暴力枚举配置键**：
   2,155 个模板展开出 **38,193 个可能键**（`.glbcfg` 只有 2,361 个）；
   ★ 发现隐藏开关 `ARC_HTTPD_JSONAPI_Enable` 与 `json.cgi` / `/api/` 的
