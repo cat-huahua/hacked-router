@@ -181,6 +181,10 @@ PUBLISH   devices/data/shadow                zlib 压缩的身份上报
 - [`docs/singtel-cms-auth.md`](docs/singtel-cms-auth.md) —— ★★ **CMS 控制台认证**：
   `LOGIN_CFG`(0xC30) 三个账号槽位、`cmsDal_authenticate` 的 **明文 `strcmp`**、
   结果码 0x0A/2/1、与 web/SSH 密码三套独立
+- [`docs/singtel-utility-libraries.md`](docs/singtel-utility-libraries.md) —— ★ **通用库**：
+  `libarc-validation`（规则表/ipv4-range/multiPort）、`libarc-conversion`、
+  `libarc-shared`（CRC8/16/32、ether_atoe、CTF IPC、get_ip_list_by_mac）、
+  `libArcCom`（utilIp*、osTime*、drv*InfoGet）
 - [`docs/singtel-cms-dal-qdm.md`](docs/singtel-cms-dal-qdm.md) —— ★ **CMS DAL/QDM 函数地图**：
   `libcms_dal.so` 302 个函数（dalWan 41 / dalLan 36 / dalPMap 19 / dalSec 16 …）、
   `libcms_qdm.so` 180 个（qdmIpIntf 57 / qdmIntf 25 …）、TR-098/181 的 `_igd`/`_dev2` 双份实现
