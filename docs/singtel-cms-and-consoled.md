@@ -40,18 +40,46 @@ cmsLck_*   锁（acquire/release/dump）
 cmsLog_*   安全日志（cmsLog_security/getSecurityLog）
 ```
 
-### 配置 flash 格式（从字符串）
+### 配置 flash 格式（反汇编确认）
+
+真正的头部字符串在 `.rodata`：
 
 ```
-addCrcHeader
+<compressed alg=lzw len=<len>>
+<crc=0x<hex>>
+```
+
+所以一个配置块的布局是：
+
+```
+[可选] <compressed alg=lzw len=N>      ← 仅当内容被 LZW 压缩
+<crc=0xXXXXXXXX>                        ← CRC32（crc_getCrc32）
+<文本配置>                              ← NUL 结尾，MDM 解析
+```
+
+关键函数/行为：
+
+| 函数 | 行为 |
+|---|---|
+| `cmsMgm_validateConfigBuf` | 检查最后一个字节是否 0，不是就 realloc 补 NUL；然后 `mdm_validateConfigBuf` |
+| `oal_readConfigFlashToBuf` | 从 config flash 读（`devCtl_boardIoctl(0xC0184201)`），解析上面的头 |
+| `cmsLzw_decode` / `cmsLzw_initDecoder` | **LZW 解压**（不是 zlib！） |
+| `cmsLzw_initEncoder` / `cmsLzw_encode` | 写入前 LZW 压缩 |
+| `crc_getCrc32` | CRC32 校验 |
+| `cmsMgm_saveConfigToFlash` | 写回 primary config flash |
+
+错误串：
+
+```
+could not allocate %d bytes for compressed buf
+compressed len=%d uncompressed len=%d
 crc header detected, crc=0x%x
-compressed header detected, len=%d
 crc header detected (after compression header), crc=0x%x
 crc check for config %s failed, calculated=0x%x headerCrc=0x%x
+cannot fit config buf into flash, max=%d got=%d
 ```
 
-即：配置块可以带 **CRC 头**，也可能先压缩再带 CRC 头；
-`cmsMgm_validateConfigBuf` 负责校验，`cmsMgm_saveConfigToFlash` 写回。
+> **注意**：这里用的是 **LZW**，不是 zlib/gzip —— 和 `.config.tgz` 那条链不同。
 
 ---
 
