@@ -413,6 +413,46 @@ icmp_timeout = 30
 
 ---
 
+## 10.1 CTF（Cut-Through Forwarding）加速
+
+Broadcom 的 CTF 让已建立的流绕过部分 netfilter 路径，用户态通过
+`/proc/net/ctf_ipc_option` 控制：
+
+```
+FilterAdd
+SetWanIP <ip>
+DelByIp <ip> / <ip_start> <ip_end>
+DelByMac <mac>
+DelByPort <proto> <port_start> <port_end>
+```
+
+对应 `libarc-shared.so` 的函数：
+
+```
+ctf_add_filter
+ctf_set_wanip
+ctf_ipc_del_by_ip_range
+ctf_ipc_del_by_mac
+ctf_ipc_del_by_port_range
+clear_ctf_entries
+```
+
+相关文件：
+
+```
+/proc/net/ctf_ipc_option     命令入口
+/proc/net/arp                ARP 表
+/proc/net/route              路由表
+/proc/net/if_inet6           IPv6 地址
+/proc/sys/net/ipv6/conf/<if>/<param>
+```
+
+★ 安全点：CTF 表是**用户态可写**的（`/proc/net/ctf_ipc_option`，root 权限）。
+删错/加错 filter 可能让流量**绕过防火墙/访问控制**，或者让已建立的流
+继续走旧路径（策略更新不生效）。
+
+---
+
 ## 11. 安全观察
 
 1. **抗 DoS 默认关**（`ARC_FIREWALL_IDS_AntiDOS=0`），WAN ping 默认放行。
