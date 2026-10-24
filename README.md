@@ -163,6 +163,9 @@ PUBLISH   devices/data/shadow                zlib 压缩的身份上报
 - [`docs/arcadyan-singtel-config-format.md`](docs/arcadyan-singtel-config-format.md) —— ★
   **Arcadyan / Singtel 的配置与密码机制**：glbcfg **是明文**、密码派生规则
   （`s1ngt3l` + 序列号后 6 位，已实证）、extender rootfs 为什么解不开（附完整证据链）
+- [`docs/singtel-atdp-tlv.md`](docs/singtel-atdp-tlv.md) —— ★★★ **ATDP TLV 精确结构**：
+  从 `drv_atdp.ko` 的 DWARF 读出 `Cmdu_Header`(8B)、`ARC_vSpf_31`(10B)、
+  `ARC_vSpf_35`(44B)、`FUTURE_EXTENSION_01`(131B)、`LinkMetric`(318B) 的全部字段偏移
 - [`docs/singtel-atdp.md`](docs/singtel-atdp.md) —— ★★ **ATDP 传输层**：
   `drv_atdp.ko` + `/dev/ATDP_CDRV`、VendorSpecific TLV 31/35、控制命令
   （LOOSE_UPLINK/TPLG_CHNAGE）、内置测速模式、上行/回传跟踪
