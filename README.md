@@ -163,6 +163,9 @@ PUBLISH   devices/data/shadow                zlib 压缩的身份上报
 - [`docs/arcadyan-singtel-config-format.md`](docs/arcadyan-singtel-config-format.md) —— ★
   **Arcadyan / Singtel 的配置与密码机制**：glbcfg **是明文**、密码派生规则
   （`s1ngt3l` + 序列号后 6 位，已实证）、extender rootfs 为什么解不开（附完整证据链）
+- [`docs/singtel-cms-and-consoled.md`](docs/singtel-cms-and-consoled.md) —— ★★ **CMS 数据模型与控制台**：
+  `libcms_*` 五库、config flash 的 CRC/压缩头、`/bin/consoled`
+  （`cmsCli_authenticate`/`cmsCli_run`，smd 失败会 drop to shell）、`cfgview`
 - [`docs/singtel-wps-monitor.md`](docs/singtel-wps-monitor.md) —— ★★ **WPS 状态机**：
   EAPOL M1–M8 + UPnP WFAWLANConfig + 1905 三条入口、`wps_*` nvram 键、
   ★ `wps_aplockdown` PIN 爆破锁定（start/forever 计数）、状态码

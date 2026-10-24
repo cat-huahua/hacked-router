@@ -1,0 +1,162 @@
+# Singtel 的 Broadcom CMS 数据模型与 `consoled` 控制台
+
+> 设备：Arcadyan WG9116AEAC23-ST（v5.02.00 build09b）
+> 材料：`libcms_core.so`、`libcms_dal.so`、`libcms_qdm.so`、`libcms_cli.so`、
+> `libcms_util.so`、`/bin/consoled`、`/usr/sbin/cfgview`
+> 一句话：**除了 Arcadyan 的 `.glbcfg`，设备里还有一套 Broadcom CMS
+> 配置数据模型（TR-098/181），并带一个认证控制台 `consoled`。**
+
+---
+
+## 1. 两套配置系统
+
+| 系统 | 存储 | 入口 | 用途 |
+|---|---|---|---|
+| **Arcadyan `.glbcfg`** | `/etc/config/.glbcfg` + `pricfg` 分区 | `mng_cli` → `midcore` | 设备自身所有配置 |
+| **Broadcom CMS** | config flash（CRC 头） | `consoled` / `cfgview` / TR-069 | TR-098 数据模型、TR-069 参数 |
+
+两者并存；TR-069 参数通过 CMS 映射到实际网络配置。
+
+---
+
+## 2. CMS 各库
+
+| 库 | 作用 |
+|---|---|
+| `libcms_core.so` (766 KB) | 核心：MDM 数据模型、对象、配置 flash、锁、安全日志 |
+| `libcms_dal.so` (220 KB) | 数据访问层：WAN/LAN/DNS/syslog/login 配置 |
+| `libcms_qdm.so` (86 KB) | 查询/映射：接口 full path ↔ ifname、VLAN、DHCP 选项 |
+| `libcms_cli.so` (107 KB) | CLI 命令实现（`cliCmd_*`） |
+| `libcms_util.so` (181 KB) | 镜像/配置校验（见 firmware-update 文档） |
+| `libcms_msg.so` | 与 `smd` 的消息通信 |
+
+### `libcms_core` 的主要函数组
+
+```
+cmsMdm_*   数据模型（path descriptor / IID / 对象）
+cmsObj_*   对象实例（add/get/set/delete/dump）
+cmsMgm_*   配置 flash（read/save/validate/invalidate）
+cmsLck_*   锁（acquire/release/dump）
+cmsLog_*   安全日志（cmsLog_security/getSecurityLog）
+```
+
+### 配置 flash 格式（从字符串）
+
+```
+addCrcHeader
+crc header detected, crc=0x%x
+compressed header detected, len=%d
+crc header detected (after compression header), crc=0x%x
+crc check for config %s failed, calculated=0x%x headerCrc=0x%x
+```
+
+即：配置块可以带 **CRC 头**，也可能先压缩再带 CRC 头；
+`cmsMgm_validateConfigBuf` 负责校验，`cmsMgm_saveConfigToFlash` 写回。
+
+---
+
+## 3. `consoled`：CMS 控制台
+
+`/bin/consoled`：
+
+```
+usage: consoled [-v num] [-m shmId]
+       v: set verbosity, where num==0 is LOG_ERROR,
+          1 is LOG_NOTICE, all others is LOG_DEBUG
+```
+
+流程：
+
+```
+cmsLog_initWithName / cmsLog_setDestination
+cmsMdm_initWithAcc
+cmsMsg_initWithFlags
+cmsLck_acquireLockWithTimeoutTraced
+cmsCli_authenticate      ← 认证
+cmsCli_printWelcomeBanner
+cmsCli_run               ← 交互式 CLI
+```
+
+错误路径：
+
+```
+could not connect to CMS smd (ret=%d) == drop to shell for debug
+could not get shmId from smd (r2=%d) == drop to shell for debug
+failed to get lock, ret=%d
+get of CONSOLED_CFG object failed, ret=%d
+```
+
+★ **“drop to shell for debug”**：如果 `smd` 连不上，`consoled` 可能直接落到 shell。
+这需要能启动 `consoled`（串口/tty），不是远程入口，但值得记录。
+
+### `libcms_cli` 的命令
+
+从导出函数看：
+
+```
+cliCmd_configLanIp_igd / _dev2
+cliCmd_configDhcpClient_igd / _dev2
+cliCmd_configDhcpServer_igd / _dev2
+cliCmd_showDhcpServer_igd / _dev2
+cliCmd_updateDhcpServer_igd / _dev2
+addobj / dump / save / reload
+cmsCli_authenticate
+```
+
+还有 `btrmcfg`（bootrom 配置）等调试命令。
+
+---
+
+## 4. `cfgview`
+
+`/usr/sbin/cfgview` 是一个更简单的工具：
+
+```
+dump
+save
+reload
+Error: configure file is not exist!!
+Can not open configure file
+```
+
+用来直接查看/保存 CMS 配置文件。
+
+---
+
+## 5. 安全日志
+
+`libcms_core` 提供：
+
+```
+cmsLog_security
+cmsLog_getSecurityLog
+cmsLog_printSecurityLog
+cmsLog_resetSecurityLog
+```
+
+即 Broadcom CMS 自带安全日志（登录失败、配置变更等），
+可通过 CMS CLI 或 TR-069 读取。
+
+---
+
+## 6. 安全观察
+
+1. **`consoled` 有认证**（`cmsCli_authenticate`），但认证实现和凭据来源未逐函数确认。
+2. **“drop to shell for debug”**：smd 异常时可能落到 shell，属于本地/串口风险。
+3. **CMS 配置 flash 有 CRC**，但 CRC 只防损坏，不防篡改（无签名）。
+4. **两套配置系统**意味着同一个设置可能有两份来源（`.glbcfg` 与 CMS），
+   改错一边可能被另一边覆盖。
+5. **安全日志**可用于审计，但也可能被 `cmsLog_resetSecurityLog` 清空。
+
+---
+
+## 7. 证据索引
+
+| 内容 | 位置 |
+|---|---|
+| CMS 核心 | `/lib/libcms_core.so`（`cmsMdm_*`/`cmsObj_*`/`cmsMgm_*`） |
+| 配置 flash CRC | `addCrcHeader`、`crc header detected`、`compressed header detected` |
+| 控制台 | `/bin/consoled`（`cmsCli_authenticate`/`cmsCli_run`） |
+| CLI 命令 | `/lib/libcms_cli.so`（`cliCmd_*`） |
+| 简单查看 | `/usr/sbin/cfgview`（dump/save/reload） |
+| 安全日志 | `cmsLog_security` / `cmsLog_getSecurityLog` |
