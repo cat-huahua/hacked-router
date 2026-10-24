@@ -163,6 +163,9 @@ PUBLISH   devices/data/shadow                zlib 压缩的身份上报
 - [`docs/arcadyan-singtel-config-format.md`](docs/arcadyan-singtel-config-format.md) —— ★
   **Arcadyan / Singtel 的配置与密码机制**：glbcfg **是明文**、密码派生规则
   （`s1ngt3l` + 序列号后 6 位，已实证）、extender rootfs 为什么解不开（附完整证据链）
+- [`docs/singtel-lan-and-wifi-insight.md`](docs/singtel-lan-and-wifi-insight.md) —— ★ **LAN 主机表与 WiFi Insight**：
+  `pc_list_cli print/add/del`、`vis-cli -r/-b --chcapacity`、`/tmp/db/visdata.db`、
+  RRM/STA/chanim 采集；均为本地数据（未见上云）
 - [`docs/singtel-autofw.md`](docs/singtel-autofw.md) —— ★★ **自动固件升级**：
   `autofw` 的时间窗、`/GetFirmwareVersion` / `FirmwareDownloadResult` /
   `FirmwareUpgradeResult`、JSON 版本字段、下载后调 `fw_upgrade`、
