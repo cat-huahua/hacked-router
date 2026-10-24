@@ -127,6 +127,26 @@ cgi_token_pass / url_token_pass
 
 把 web 操作转成 OWL 命令（拓扑/漫游/LED）。
 
+### 5.6 `cli_tbl` 不是 CGI 表
+
+`httpd` 里的日志格式串：
+
+```
+cli_tbl[%d]=[%s], from=[%d], ip=[%s], name=[%s]
+```
+
+顺着 `movw sl,0x9928; movt sl,4` 找到引用点（`0x1D77C`）后确认：
+它是 **`get_client_list()` 的客户端列表** 的打印逻辑：
+
+```
+entry 大小 0x70（112 字节）
+  +0x50  名称字符串
+  +0x68  值/来源
+```
+
+也就是说 `cli_tbl` 是“客户端信息表”，**不是 CGI 命令分发表**。
+CGI 命令的分发是分散在各 `*_cgi` 函数里的，没有一张统一的 handler 表。
+
 ---
 
 ## 6. 安全观察
