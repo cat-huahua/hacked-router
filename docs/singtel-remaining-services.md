@@ -149,6 +149,36 @@ mng_cli action wan_start="wan_idx=0 wan_idx=1 ..."
 mng_cli action wan_stop="..."
 ```
 
+### `arc_link_state` / `arc_lanmon`
+
+`arc_link_state` 是 xDSL/WAN 的链路状态机：
+
+```
+xDSL_handler
+ARC_WAN_0_BridgeEnable  → wan_bridge_stop
+wan_idx=0 wan_idx=1
+eth0
+wan_start / wan_stop
+ARC_WAN_100_Enable / ARC_WAN_100_IP4_Proto
+DHCP waiting for %d seconds
+CMD_LINK_UP    → touch /tmp/link_up
+CMD_LINK_DOWN  → rm /tmp/link_up
+CMD_UPDATE
+```
+
+然后触发 `link_up` / `link_down` / `update` 动作。
+
+`arc_lanmon` 监控 LAN 接口：
+
+```
+ARC_LAN_0_BridgedIfname
+get_link_state
+Lan interfaces are undefined.
+unable to parse lan ifnames %s
+```
+
+即：解析 `ARC_LAN_0_BridgedIfname` 里的接口列表，逐个查 link state。
+
 ### `arc_dialing_rule`
 
 ```
