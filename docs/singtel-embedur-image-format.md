@@ -20,16 +20,26 @@ if (argc != 6) {
 
 即 `image_manager` 需要 **6 个参数**（argv[0] + 5 个）。从后续寄存器用法看：
 
-| 参数 | 用途（推断） |
+| 参数 | 用途（从 `main` 的寄存器用法确认） |
 |---|---|
-| `argv[1]` | 输入镜像文件 |
-| `argv[2]` | `sig_key.pub`（公钥）/ 或 key 文件 |
-| `argv[3]` | key 文件（`fcn_13C44` 的 `arg2`） |
-| `argv[4]` | 型号/目标 |
-| `argv[5]` | 输出文件 |
+| `argv[1]` | 输入镜像文件（`r6`） |
+| `argv[2]` | 第二个输入文件（`fcn_1410C` 的 `arg2`，很可能是证书/签名文件） |
+| `argv[3]` | key 文件（`fcn_13C44` 的 `arg2`，`fseek` 到 0x6C 读密钥） |
+| `argv[4]` | 证书/签名文件（`fcn_13C44` 开头 `ldr r1,[r4,0x10]` → `0x143BC` 加载） |
+| `argv[5]` | 输出文件（`r7`，存到 `sp+0xC0`） |
 
-> 具体顺序还没在调用方（`rrm_bcm_arm`）里逐行确认，但 `fcn_13C44`
-> 明确把 `argv[3]` 当 key 文件读，`fcn_1410C` 把 `argv[2]` 当另一个输入文件。
+`main` 的调用顺序：
+
+```c
+fcn_13C44(argv[1], argv[3], buf);     // 检查+解密+MD5
+load_cert(argv[4]);                   // 0x143BC
+memcpy(sp, sp+0xD8, 0xBD);            // 189 字节签名相关数据
+fcn_14428(...);                       // magic + model
+fcn_1410C(argv[1], argv[2], buf2);    // 解密到输出
+```
+
+> 具体哪个文件是 RSA 公钥、哪个是 AES key，还没有在调用方
+> `rrm_bcm_arm` 里逐行确认；但 `argv[3]` 一定是 key 文件（偏移 0x6C）。
 
 ---
 
