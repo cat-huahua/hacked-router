@@ -169,6 +169,9 @@ PUBLISH   devices/data/shadow                zlib 压缩的身份上报
 - [`docs/singtel-atdp.md`](docs/singtel-atdp.md) —— ★★ **ATDP 传输层**：
   `drv_atdp.ko` + `/dev/ATDP_CDRV`、VendorSpecific TLV 31/35、控制命令
   （LOOSE_UPLINK/TPLG_CHNAGE）、内置测速模式、上行/回传跟踪
+- [`docs/singtel-tr069-parameters.md`](docs/singtel-tr069-parameters.md) —— ★★ **TR-069 参数树**：
+  203 条完整路径、TR-098 + TR-181 双模型、★ Singtel 扩展
+  `X_SINGTEL_COM_Telnet` / `WEB_Login` / `SpeedService` / `Channel_Capacity_Diagnostic`
 - [`docs/singtel-tr069-mapping.md`](docs/singtel-tr069-mapping.md) —— ★★ **TR-069 参数 → ARC 键映射**：
   `tr69` 直接调用 `arc_cfg_get/set`；ACS 可写 telnet/SSH/JSON API/
   管理密码/root 口令/自动升级 URL 等键
