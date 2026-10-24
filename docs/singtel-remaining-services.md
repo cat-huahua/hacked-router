@@ -227,8 +227,12 @@ strongSwan 的 `_updown` 脚本：
 | `arc_siplog_callout_clear` | `sip_config TEL_LOG_Del_CallOUT_Record` |
 | `arc_sip_alg` | 按 `ARC_SYS_SIPALG_Enable` 加载 `nf_conntrack_sip`/`nf_nat_sip`，并清 5060 的 conntrack |
 
-`/usr/sbin/sip_config` 是 BrnSIP 的配置客户端；`sip_config` 的实际参数语义
-还没逐条解（见 §11）。
+`/usr/sbin/sip_config` 是 BrnSIP 的配置客户端。
+
+> ★ **实测：这个二进制在 rootfs 里不存在**（`find` 全盘只找到调用它的脚本，
+> 没有 `sip_config` / `sipd` / `brnsip`）。也就是说 **VOIP/SIP 这一整套脚本
+> 在这个固件里是“死代码”** —— 没有电话端口/语音功能的机型不会运行它们。
+> 参数语义因此不再深挖（见 §11）。
 
 ---
 
