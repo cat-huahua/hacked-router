@@ -384,13 +384,25 @@ ICMP throughput pak/bytes success
 /tmp/speed_pingtestResult
 ```
 
-**`broadband_ssl`（1.6 MB）** —— 带 OpenSSL 的 HTTP 下载/上传线程：
+**`broadband_ssl`（1.6 MB）** —— 带 OpenSSL 的宽带检测/测速：
 
 ```
-download_thread / speedtest_download
+get_ipv4_addr / FAILED DNS LOOKUP
+ping -4 -c 3 <host> | grep -ri 'round-trip'     ← get_ping_results
+get_http_file / get_https_file / download_thread / speedtest_download
 serverurl / global_custom_server
-http://%[^/]  /  http://%[^/]/%s
 ```
+
+结果写到：
+
+```
+/tmp/https_result     echo RESULTS %lld >> ...
+/tmp/ttfbs_result     echo RESULTS %lld >> ...   （ttfbs = time to first byte）
+                      echo ERROR %s   >  ...
+```
+
+即：**DNS 解析 → ping 3 包 → HTTP/HTTPS 下载 → 记录耗时/速率**，
+失败时写 `ERROR <原因>`。
 
 **`dhcp_scan`（203 KB）** —— libpcap 抓 DHCP，结果写
 `/tmp/dhcp_<iface>_<mac>`，用来发现 LAN 上的客户端。
