@@ -395,6 +395,54 @@ arc_cfg_qcsapi_app
 但全盘 `find` **没有** `qcsapi` / `Quantenna` / `call_qcsapi_sockrpc`。
 ⇒ **`arc_qtn_init` 在这个机型上是死代码**（给带 Quantenna 5G 模块的别的型号用的）。
 
+### `arc_route_table`：静态 IPv4 路由
+
+配置键：
+
+```
+ARC_ROUTE_STATIC_IP4_Enable
+ARC_ROUTE_STATIC_IP4_MaxNum
+ARC_ROUTE_STATIC_IP4_%d_Enable
+ARC_ROUTE_STATIC_IP4_%d_DstIP
+ARC_ROUTE_STATIC_IP4_%d_DstNetmaskLen
+ARC_ROUTE_STATIC_IP4_%d_NextHop
+ARC_ROUTE_STATIC_IP4_%d_ViaIf
+```
+
+运行时用 `TMP_ROUTE_STATIC_IP4_*` 记录实际生效值，`CMD_DEL_ROUTE` 删除。
+实现是 `route add/del` + `ifconfig <if> | grep "inet addr"`。
+
+### `arc_ntpdaemon`：NTP
+
+```
+ARC_SYS_NTP_Enable
+ARC_SYS_NTP_SERVER_%d
+ARC_SYS_NTP_SyncInterval
+ARC_SYS_TimeZone
+```
+
+成功时：
+
+```
+Successfully got the time, would renew the time after %d sec.
+echo "get_time_state=1" > /tmp/ntp_status
+```
+
+失败会按间隔重试；TR-069 可以用 `tr69_trigger findntp` 触发一次。
+
+### `arc_ltqcpe`：Lantiq 死代码
+
+`arc_ltqcpe` 是 **Lantiq/Infineon** 平台的初始化脚本：
+
+```
+mknod /dev/ifx_ppa c 181 0
+ppacmd init / addlan / addwan / addvlanrange
+/proc/driver/ifx_gphy/phyfirmware
+```
+
+本机是 **Broadcom BCM963138**，没有 `/dev/ifx_ppa` / `ppacmd` /
+`ifx_gphy` —— **这个脚本在本机型上是死代码**（和 `arc_qtn_init` 一样）。
+
 ### ★ `owl-tplg`：OWL 拓扑的真实接口
 
 ```sh
