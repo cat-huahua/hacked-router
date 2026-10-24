@@ -163,6 +163,10 @@ PUBLISH   devices/data/shadow                zlib 压缩的身份上报
 - [`docs/arcadyan-singtel-config-format.md`](docs/arcadyan-singtel-config-format.md) —— ★
   **Arcadyan / Singtel 的配置与密码机制**：glbcfg **是明文**、密码派生规则
   （`s1ngt3l` + 序列号后 6 位，已实证）、extender rootfs 为什么解不开（附完整证据链）
+- [`docs/singtel-certificates.md`](docs/singtel-certificates.md) —— ★★ **证书体系**：
+  ★ 固件自带 `www.singtel.com` 自签证书**及私钥**（httpd HTTPS）、
+  OWL 的 `server.crt/server.key` + `ca.crt`、`create-*-cert.sh`（SHA-1 签发）、
+  RootCA/WebServer/FTPS 动态证书
 - [`docs/singtel-cms-and-consoled.md`](docs/singtel-cms-and-consoled.md) —— ★★ **CMS 数据模型与控制台**：
   `libcms_*` 五库、config flash 的 CRC/压缩头、`/bin/consoled`
   （`cmsCli_authenticate`/`cmsCli_run`，smd 失败会 drop to shell）、`cfgview`
