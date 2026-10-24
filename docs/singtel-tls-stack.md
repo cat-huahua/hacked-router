@@ -91,7 +91,86 @@ OpenSSL 1.0.1t 本身也**不支持 TLS 1.3**。
 
 ---
 
-## 6. 证据索引
+## 6. `libsslap`：Arcadyan 的 SSL 封装
+
+`/usr/lib/libsslap.so.0.1` 同时提供客户端和服务端 SSL：
+
+```
+Init_SSLClient / Init_SSLClient_Data / sslc_conf_init
+init_ssl_client_connection
+Init_SSLServer / Init_SSLServer_Data / ssld_conf_init
+init_ssl_connection
+LoadCACertificate / LoadCACertificateFromFile       ← 加载 CA
+LoadServerCertAndKey / FromFile / FromPKCS12Format  ← 加载服务端证书
+GetSSLClientCertificateError / GetSSLServerCertificateError
+FreeSSLClientSession / FreeSSLServerSession
+```
+
+- 支持 **最多 3 个 CA**（`1stCA / 2ndCA / 3rdCA`）；
+- 支持 PEM 和 PKCS#12；
+- 还有 FTP / POP3 / SMTP / WebDav 的 SSL 客户端封装
+  （`Init_FTP_SSLServer`、`Init_POP3_SSLClient`、`Init_SMTP_SSLClient`、
+  `Init_WebDav_SSLClient`）。
+
+内部字符串：
+
+```
+CaCert.pem
+MyCertificate=%s
+[%d] CaCertificate=%s
+[%d] fn_caCertificate=%s
+[%d] fn_myCerttificate=%s
+```
+
+即证书路径/内容由调用方传入。
+
+---
+
+## 7. `libhttpclt`：HTTP/HTTPS 客户端
+
+`/usr/lib/libhttpclt.so.0.1`：
+
+```
+http_clt_get / http_clt_post / http_clt_download
+http20_apns_post
+parse_url / parse_url_get_host_path
+connect_web_server
+ht_build_request_header / ht_client_send / process_http_response
+ht_update_cookie / ht_search_cookie / ht_clear_cookie
+DigestCalcHA1 / DigestCalcResponse / parse_digest_challenge
+```
+
+特性：
+
+- HTTP/1.x，支持 **Digest 认证**（`WWW-Authenticate`、nonce、qop=auth/auth-int）；
+- Cookie（`Set-Cookie`、`HttpOnly`）；
+- 重定向（`%s: redirect to %s, close current socket`）；
+- HTTPS 通过 `libsslap` 的 `init_ssl_client_connection`；
+- `http20_apns_post` 用：
+
+```
+-cert /etc/postapns/cacert.pem -token %s -payload %s -port 443 -debug -tvoice
+```
+
+> ★ `/etc/postapns/cacert.pem` 在 rootfs 里**不存在** ——
+> 说明这个 APNS 路径要么是别的机型用的，要么运行时才生成。
+
+安全相关：
+
+```
+SSL_get_verify_result
+pSSL=0x%x, SSL->verify_result=%ld
+route add -host %s dev %s
+route add -host %s gw %s dev %s
+```
+
+即：会读 `SSL_get_verify_result`，并给目标主机加一条 host 路由；
+**是否强制 `SSL_VERIFY_PEER` 取决于 `libsslap` 的 `sslc_conf_init` 实现**
+（字符串层看不到 `SSL_VERIFY_NONE` 的硬编码）。
+
+---
+
+## 8. 证据索引
 
 | 内容 | 位置 |
 |---|---|
