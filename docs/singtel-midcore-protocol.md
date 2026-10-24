@@ -68,9 +68,11 @@ send(buf, 长度);
 
 | opcode | 动作 | 底层调用 |
 |---:|---|---|
+| 0 | 成功/空操作（回显请求 ID） | 设置回包长度后返回 |
 | 1 | 读配置 | `pcscfg_get`（`MID_MNG_Get: %s Fail`） |
 | 2 | 测试/校验 | `pcscfg_test` |
 | 3 | 删除 | `pcscfg_del` |
+| 4 / 8 / 9 | **未知请求** | 日志 `MNG_Unknown request: code %d name %s`，状态置 `0xFFFF0FFF` |
 | 5 | 备份 | `pcscfg_backup` |
 | 6 | 恢复 | `pcscfg_restore` + `pcscfg_commit` |
 | 7 | 提交 | `pcscfg_commit`（日志 `%s call commit`） |
@@ -79,10 +81,14 @@ send(buf, 长度);
 | 13 | 批量写 | 按 0x284 字节/记录遍历 |
 | 14 | 批量删除/标记 | 按 0x284 字节/记录遍历 |
 | 15 | `default` | 比较 payload 里的 `"default"` → `pcscfg_restore("/etc/config/glbcfg.dft")` + commit + `arccfg default` |
+| 16 | 保存/同步 | `CFG_SearchCfgElmCache` + `CFG_CalConfigSpace` + `CFG_SaveConfigure` |
+| 17 | 统计/转储 | `malloc_stats` + `CFG_CalAllParameters` + `CFG_ShowCacheHit`，写文件 |
+| 18 | 配置复制/导出 | `0x12A54` + `strcpy` |
+| 19 | 简单复制 | （无外部调用） |
 | 20 | 测试 | `pcscfg_test` |
-| 21 | 恢复 | `pcscfg_restore` |
+| 21 | 恢复默认 | `pcscfg_restore("/etc/config/glbcfg.dft")` + `arccfg default` |
 
-> 其余 case（0/4/8/9/16..19）是空/保留/返回错误。
+> 跳转表在 `0x1271C`（22 个绝对地址）；上面每一项都对应表里的目标地址。
 
 ### 记录大小 0x284 = 644 字节
 
