@@ -236,15 +236,26 @@ rootfs 是紧随其后的 squashfs（`hsqs`）。
 
 ### 关于 `0x08` 的 32 位校验值
 
-`0xD5E90D3B` 这个值试过：
+先确认了设备自己的 CRC 实现：`/lib/libbcm_crc.so` 的 `crc_getCrc32`
+是**标准反射 CRC-32（表驱动，poly 0xEDB88320，无最终 XOR，init 由调用方给）**：
 
-- zlib CRC32（init 0 / 0xFFFFFFFF，带/不带最终 XOR）
-- Adler-32
-- MD5 / SHA1 / SHA256 的前 4 字节 / 后 4 字节（大小端）
-- 分段：kernel 段、rootfs 段、payload 段、整段
-- 两段 CRC 的 XOR / 加法 / 减法组合
+```c
+crc = table[(crc ^ byte) & 0xff] ^ (crc >> 8);
+```
 
-**都对不上。** 可能是厂商自定义多项式，或覆盖范围不是连续区间。
+用这个精确实现 + 多种多项式，对 `0xD5E90D3B` 做过以下尝试：
+
+| 维度 | 试过 |
+|---|---|
+| 多项式 | IEEE / Castagnoli / Koopman / CRC-32Q / XFER |
+| 方向 | 反射 / 非反射 |
+| init | 0 / 0xFFFFFFFF |
+| 最终 XOR | 有 / 无 |
+| 范围 | 整段 / 去签名块 / payload / kernel / rootfs / rootfs+96 |
+| 其它 | Adler-32、MD5/SHA1/SHA256 前后 4 字节、两段 CRC 的 XOR/加/减 |
+
+**全部未命中。** 说明它不是“标准 CRC + 连续区间”的组合；
+可能是打包工具的自定义校验，或覆盖范围包含/排除了某些头字段。
 如实记录在这里，不再猜。
 
 > 之前我一度因为“尾部 98.96% 是零”而把“签名块”这个判断撤回了；
