@@ -163,6 +163,9 @@ PUBLISH   devices/data/shadow                zlib 压缩的身份上报
 - [`docs/arcadyan-singtel-config-format.md`](docs/arcadyan-singtel-config-format.md) —— ★
   **Arcadyan / Singtel 的配置与密码机制**：glbcfg **是明文**、密码派生规则
   （`s1ngt3l` + 序列号后 6 位，已实证）、extender rootfs 为什么解不开（附完整证据链）
+- [`docs/singtel-web-cgi-map.md`](docs/singtel-web-cgi-map.md) —— ★ **web 端点与 CGI 地图**：
+  `login/logout/setpwd/setpwd2/apply_abstract/get_info/get_topology_clients/json/owl_cmd/upload/mt`
+  等端点、`get_*`/`set_*` 函数清单、认证辅助
 - [`docs/singtel-arc-nvram-map.md`](docs/singtel-arc-nvram-map.md) —— ★★ **ARC 配置 ↔ nvram 映射**：
   `ARC_WLAN_*` → `wl0_*`/`wl1_*`/`fh_*`/`bh_*` 的键名对照、前缀/VAP 规则、
   `do_sync` 命令码、`nvram_set_brcm`/`wl -i` 链路
