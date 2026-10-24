@@ -163,6 +163,10 @@ PUBLISH   devices/data/shadow                zlib 压缩的身份上报
 - [`docs/arcadyan-singtel-config-format.md`](docs/arcadyan-singtel-config-format.md) —— ★
   **Arcadyan / Singtel 的配置与密码机制**：glbcfg **是明文**、密码派生规则
   （`s1ngt3l` + 序列号后 6 位，已实证）、extender rootfs 为什么解不开（附完整证据链）
+- [`docs/singtel-autofw.md`](docs/singtel-autofw.md) —— ★★ **自动固件升级**：
+  `autofw` 的时间窗、`/GetFirmwareVersion` / `FirmwareDownloadResult` /
+  `FirmwareUpgradeResult`、JSON 版本字段、下载后调 `fw_upgrade`、
+  重启窗口与 `ARC_SYS_AUTOFW_*`；模板默认指向明文 HTTP 测试服务器
 - [`docs/singtel-embedur-image-format.md`](docs/singtel-embedur-image-format.md) —— ★ **EmbedUR 镜像格式**：
   `image_manager` 的 6 参数、magic `0x112358D1`/`0x52237598`、32 字节 model 绑定、
   AES-CBC + MD5 + PKCS#7、0x100 签名块；与 `fw_upgrade` 是两条独立的升级链
