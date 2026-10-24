@@ -167,7 +167,57 @@
 
 ---
 
-## 9. 枚举值（同样来自 DWARF）
+## 9. DMR 消息（Data Measurement Request）
+
+### `atdp_dmr_packet_t`（9 字节）
+
+| 偏移 | 类型 | 字段 |
+|---:|---|---|
+| 0 | u8 | `op` |
+| 1 | u16 | `length` |
+| 3 | u8 | `current_use` |
+| 4 | u32 | `channel` |
+| 8 | u8 | `BW` |
+
+### `DMR_NOP_Timeout_T`（16 字节）
+
+| 偏移 | 类型 | 字段 |
+|---:|---|---|
+| 0 | u32 | `hit_channel` |
+| 4 | u32 | `channel` |
+| 8 | u8 | `BW` |
+| 12 | u32 | `time_down_ctr` |
+
+### `DMR_ARC_TPLG_CHANGE_INFO_T`（12 字节）
+
+| 偏移 | 类型 | 字段 |
+|---:|---|---|
+| 0 | u32 | `change_reason` |
+| 4 | u8[6] | `tplg_change_device_mac` |
+
+### `DMR_Message_T`（20 字节）
+
+| 偏移 | 类型 | 字段 |
+|---:|---|---|
+| 0 | u32 | `message_type` |
+| 4 | union(16) | `union_data` |
+
+`union_data` 的成员：
+
+```
+mgmt_cmd
+dmr_monitored_pkts   (atdp_dmr_packet_t)
+d_Channel
+nop_Channel          (DMR_NOP_Timeout_T)
+tplg_notification    (DMR_ARC_TPLG_CHANGE_INFO_T)
+```
+
+> DMR 是 ATDP 的“测量/控制”消息通道：信道测量、NOP 超时、
+> 拓扑变化通知都从这里走。
+
+---
+
+## 10. 枚举值（同样来自 DWARF）
 
 ### `_ARC_ATDP_CTRL_MGMT_CMD_ENUM`
 
@@ -218,7 +268,7 @@
 
 ---
 
-## 10. 怎么用这些结构
+## 11. 怎么用这些结构
 
 - **解码 1905 抓包**：按 `Cmdu_Header` 读 messageType，
   再按 TLV 的 `tlvType/tlvLength` 遍历；
@@ -228,7 +278,7 @@
 
 ---
 
-## 11. 证据索引
+## 12. 证据索引
 
 | 内容 | 位置 |
 |---|---|
