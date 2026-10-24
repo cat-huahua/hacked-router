@@ -163,6 +163,9 @@ PUBLISH   devices/data/shadow                zlib 压缩的身份上报
 - [`docs/arcadyan-singtel-config-format.md`](docs/arcadyan-singtel-config-format.md) —— ★
   **Arcadyan / Singtel 的配置与密码机制**：glbcfg **是明文**、密码派生规则
   （`s1ngt3l` + 序列号后 6 位，已实证）、extender rootfs 为什么解不开（附完整证据链）
+- [`docs/singtel-cms-auth.md`](docs/singtel-cms-auth.md) —— ★★ **CMS 控制台认证**：
+  `LOGIN_CFG`(0xC30) 三个账号槽位、`cmsDal_authenticate` 的 **明文 `strcmp`**、
+  结果码 0x0A/2/1、与 web/SSH 密码三套独立
 - [`docs/singtel-cms-dal-qdm.md`](docs/singtel-cms-dal-qdm.md) —— ★ **CMS DAL/QDM 函数地图**：
   `libcms_dal.so` 302 个函数（dalWan 41 / dalLan 36 / dalPMap 19 / dalSec 16 …）、
   `libcms_qdm.so` 180 个（qdmIpIntf 57 / qdmIntf 25 …）、TR-098/181 的 `_igd`/`_dev2` 双份实现
