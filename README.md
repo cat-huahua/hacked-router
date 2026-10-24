@@ -163,6 +163,10 @@ PUBLISH   devices/data/shadow                zlib 压缩的身份上报
 - [`docs/arcadyan-singtel-config-format.md`](docs/arcadyan-singtel-config-format.md) —— ★
   **Arcadyan / Singtel 的配置与密码机制**：glbcfg **是明文**、密码派生规则
   （`s1ngt3l` + 序列号后 6 位，已实证）、extender rootfs 为什么解不开（附完整证据链）
+- [`docs/singtel-config-engine.md`](docs/singtel-config-engine.md) —— ★★ **配置引擎**：
+  `mng`/`mng_cli` 完整命令表（get/set/test/mget/mset/del/action/backup/
+  restore/default/commit/tmp_*/dft_*/pget/stats）、`x`/`y` 索引与
+  `%d`/`%02d` 格式、事务与落盘、默认值与升级迁移
 - [`docs/singtel-leds-and-buttons.md`](docs/singtel-leds-and-buttons.md) —— ★ **LED 与按键**：
   GPIO 映射（低电平有效）、`arc_led` 命令、`arc_ledd`/`arc_gpiod` 守护；
   ★ GPIO32 按住 8 秒 = 恢复出厂，短按 = 重启
