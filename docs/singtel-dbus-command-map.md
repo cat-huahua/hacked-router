@@ -175,7 +175,61 @@ dbus-arca-cli --command --dest=arca.dbus.misc "led power on"
 
 ---
 
-## 6. 证据索引
+## 6. agent 框架 API（`libagent-api.so`）
+
+所有 `arca-*-agent.so` 都链接这个库：
+
+```
+agent_register / agent_unregister
+agent_message_loop
+agent_send_command / agent_send_command2
+agent_send_enquire / agent_send_enquire2
+agent_send_notify
+agent_forward
+agent_set_timer
+```
+
+内部处理器：
+
+```
+_command_handler
+_enquire_handler
+_notify_handler
+_forward_handler
+```
+
+dbus 细节：
+
+```
+bus name: arca.dbus.service
+path:     /arca/dbus/instance
+日志:     /tmp/arca_action.log
+```
+
+`libagent-shared.so` 提供：
+
+```
+dns_to_resolv / dns_to_resolv2      写 resolv.conf
+is_guestnetwork_enabled             查 guest 网络
+```
+
+## 7. `arca-agent-loader`
+
+```
+Usage: arca-agent-loader [path]
+```
+
+- 默认扫描 `/usr/agents/*.so`，`dlopen` 后调用里面的注册函数；
+- 成功后 touch `/tmp/.arca-agent-loader.ok`；
+- 环境变量 `ARC_AGENT_DEBUG` 控制调试；
+- 启动日志：`Try to load agent : %s`。
+
+★ 安全点：loader 会 `dlopen` 指定目录下的 `.so` ——
+如果 `path` 参数可控且目录可写，等于任意代码执行（需要 root）。
+
+---
+
+## 8. 证据索引
 
 | 内容 | 位置 |
 |---|---|
