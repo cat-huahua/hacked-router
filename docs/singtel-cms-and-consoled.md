@@ -117,21 +117,63 @@ get of CONSOLED_CFG object failed, ret=%d
 ★ **“drop to shell for debug”**：如果 `smd` 连不上，`consoled` 可能直接落到 shell。
 这需要能启动 `consoled`（串口/tty），不是远程入口，但值得记录。
 
-### `libcms_cli` 的命令
+### `libcms_cli` 的命令（90 个导出函数）
 
-从导出函数看：
+按功能分组：
+
+**配置类**
 
 ```
 cliCmd_configLanIp_igd / _dev2
+cliCmd_deleteLanIp_igd / _dev2
 cliCmd_configDhcpClient_igd / _dev2
 cliCmd_configDhcpServer_igd / _dev2
 cliCmd_showDhcpServer_igd / _dev2
 cliCmd_updateDhcpServer_igd / _dev2
-addobj / dump / save / reload
-cmsCli_authenticate
 ```
 
-还有 `btrmcfg`（bootrom 配置）等调试命令。
+**显示类**
+
+```
+processLanHostsCmd      LAN 主机列表
+processWanCmd           WAN 状态
+processUptimeCmd        运行时长
+processMeminfoCmd       内存信息
+processSwVersionCmd     软件版本
+processSyslogCmd        系统日志
+processMdmCmd           MDM 数据模型
+processVirtualServerCmd 虚拟服务器（端口转发）
+cli_wanShowInterfaces_igd / _dev2
+cli_wanShowServices / Sub
+cli_wanShowDslServices
+virtualServerShow / virtualServerEnableDisable
+```
+
+**调试/工厂类**
+
+```
+cmdArpAddDel / cmdArpHelp                  ARP 表操作
+cmdBtrmCfgHelp / cmdBtrmMrktId /
+cmdBtrmSingleBit                           bootrom (btrm) 配置
+cmdDefaultGatewayHelp / cmdDhcpServerHelp / cmdDnsHelp
+cli_processHiddenCmd                       ★ 隐藏命令入口
+cli_sendMsgToSsk                           ＊ 发消息给 SSK
+cli_waitForInputAvailable / cli_waitForContinue
+```
+
+**校验器**（说明支持哪些字段）
+
+```
+cli_isIpAddress / cli_isMacAddress / cli_isNumber
+cli_isValidVpi / cli_isValidVci / cli_isValidVlanId
+cli_isValidWanId / cli_isValidWanServiceName
+cli_isValidPppUserName / cli_isValidPppPassword
+cli_isValidL2IfName_dev2 / _igd
+cli_isValidIdleTimeout / cli_isValidService / cli_isValidState
+```
+
+> `cli_processHiddenCmd` 是另一条隐藏命令路径；具体命令词表没有导出符号，
+> 需要看 `libcms_cli.so` 内部字符串（目前只确认它存在）。
 
 ---
 
