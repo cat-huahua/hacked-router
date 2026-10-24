@@ -163,6 +163,9 @@ PUBLISH   devices/data/shadow                zlib 压缩的身份上报
 - [`docs/arcadyan-singtel-config-format.md`](docs/arcadyan-singtel-config-format.md) —— ★
   **Arcadyan / Singtel 的配置与密码机制**：glbcfg **是明文**、密码派生规则
   （`s1ngt3l` + 序列号后 6 位，已实证）、extender rootfs 为什么解不开（附完整证据链）
+- [`docs/singtel-owl-api.md`](docs/singtel-owl-api.md) —— ★★ **OWL 本地 HTTP API**：
+  `/status/{DevInfo,MasterInfo,NetworkTime,stainfo,Wificonfig,tplg}`、
+  `127.0.0.1:55761`、band steering 的 BTM/Legacy 决策、App 控制面、客户端证书
 - [`docs/singtel-remaining-services.md`](docs/singtel-remaining-services.md) —— ★★ **剩余服务脚本**：
   DHCP/DNS、桥接/AP 模式、WAN/WLAN（`iwpriv` 细节、BSSID 规则、WPS）、
   L2TP/IPsec 钩子、VOIP/SIP、ALG、时区/DNS、恢复出厂、
