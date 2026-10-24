@@ -163,6 +163,9 @@ PUBLISH   devices/data/shadow                zlib 压缩的身份上报
 - [`docs/arcadyan-singtel-config-format.md`](docs/arcadyan-singtel-config-format.md) —— ★
   **Arcadyan / Singtel 的配置与密码机制**：glbcfg **是明文**、密码派生规则
   （`s1ngt3l` + 序列号后 6 位，已实证）、extender rootfs 为什么解不开（附完整证据链）
+- [`docs/singtel-midcore-protocol.md`](docs/singtel-midcore-protocol.md) —— ★★ **midcore 本地协议**：
+  Unix socket `/tmp/arc-middle/core_trnx`、16 字节头（opcode@0x0A、length@0x0C）、
+  opcode 1/2/3/5/6/7/10–15/20/21、0x284 字节记录、pcscfg_*/CFG_* API
 - [`docs/singtel-web-cgi-map.md`](docs/singtel-web-cgi-map.md) —— ★ **web 端点与 CGI 地图**：
   `login/logout/setpwd/setpwd2/apply_abstract/get_info/get_topology_clients/json/owl_cmd/upload/mt`
   等端点、`get_*`/`set_*` 函数清单、认证辅助
