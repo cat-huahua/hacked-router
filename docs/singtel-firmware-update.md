@@ -208,22 +208,44 @@ arca_verifyDigitalSignature
 | `0x04` | `0x00DE3000`（LE） | 镜像长度（= 文件大小 − 0x10000） |
 | `0x08` | `0xD5E90D3B` | 32 位校验值（**算法尚未对上**，见 §7） |
 | `0x0C` | `0x00010000` | 版本 / 标志 |
-| `0x10` | `0x0000001C` | 头长度 = 28 |
-| `0x14` | `0x002D001C` | 两个 u16：`0x001C`、`0x002D` |
+| `0x10` | `0x0000001C` | **kernel 偏移** = 28 |
+| `0x14` | `0x002D001C` | **rootfs 偏移** = 0x2D001C |
 | `0x18` | `0x00000000` | 保留 |
 | `0x1C` | `27 05 19 56` | **uImage 魔数**（大端 `0x27051956`） |
 
-所以：
+实际布局（逐段验证过）：
 
 ```
-]Cot 头（28 字节）
-  └─ uImage（kernel + rootfs）
-       └─ … 一直到 0x00DE3000
-0x00DE3000 – 0x00DF3000：64 KB 签名块（尾部）
+0x00000  ]Cot 头（28 字节）
+0x0001C  uImage（kernel）
+           magic  0x27051956
+           hcrc   0x5477A2E7   ← CRC32(header) 校验通过 ✓
+           size   0x002CFFC0   （约 2.95 MB）
+           dcrc   0xC7F8F6C5   ← CRC32(data) 校验通过 ✓
+0x2D0000 0xFF 填充（0x1C 字节）
+0x2D001C squashfs（rootfs）  magic "hsqs"
+0xDE3000 结束（= 文件大小 − 0x10000）
+0xDE3000 – 0xDF3000：64 KB 签名块（尾部）
 ```
+
+★ **uImage 的 hcrc 和 dcrc 都是对的**，说明 kernel 段是完整的标准 uImage；
+rootfs 是紧随其后的 squashfs（`hsqs`）。
 
 这和 `arca_validateImage` 的 `len - 0x10000 - 0x14` 完全对得上 ——
 **最后的 64 KB 就是签名块**。
+
+### 关于 `0x08` 的 32 位校验值
+
+`0xD5E90D3B` 这个值试过：
+
+- zlib CRC32（init 0 / 0xFFFFFFFF，带/不带最终 XOR）
+- Adler-32
+- MD5 / SHA1 / SHA256 的前 4 字节 / 后 4 字节（大小端）
+- 分段：kernel 段、rootfs 段、payload 段、整段
+- 两段 CRC 的 XOR / 加法 / 减法组合
+
+**都对不上。** 可能是厂商自定义多项式，或覆盖范围不是连续区间。
+如实记录在这里，不再猜。
 
 > 之前我一度因为“尾部 98.96% 是零”而把“签名块”这个判断撤回了；
 > 现在从校验函数的反汇编看，**它确实是签名块**，只是大部分是零填充。
