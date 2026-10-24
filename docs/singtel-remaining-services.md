@@ -323,6 +323,35 @@ rm -rf /data/dhcpd.leases*
 | `arc_ntpclient` | 起/停 `arc_ntpdaemon` |
 | `arc_routes6` | 清 IPv6 路由表 200 |
 
+### `swmdk`：Broadcom Switch MDK
+
+`/bin/swmdk`（由 `arc_swmdk` 启动）是 Broadcom **Switch MDK / BMD**，
+面向 **BCM6300 / BCM63100** 交换芯片，负责：
+
+```
+PHY 配置 / link status
+VLAN（BMD_CONFIG_DEFAULT_VLAN、port default vlan）
+QoS（DSCP→priority、WRR、rate control、egress queue）
+port STP / port mode / port MAC
+DMA / IMP / Higig
+```
+
+字符串里能看到 `bcm6300_a0_bmd_*` / `bcm63100_a0_bmd_*` 和 `binding socket`，
+即它通过 socket 接受命令、直接操作交换芯片寄存器。
+
+### Quantenna（`qcsapi`）：本机型不存在
+
+`arc_qtn_init` 引用了：
+
+```
+call_qcsapi_sockrpc
+arc_cfg_qcsapi_app
+/usr/sbin/Quantenna/
+```
+
+但全盘 `find` **没有** `qcsapi` / `Quantenna` / `call_qcsapi_sockrpc`。
+⇒ **`arc_qtn_init` 在这个机型上是死代码**（给带 Quantenna 5G 模块的别的型号用的）。
+
 ### ★ `owl-tplg`：OWL 拓扑的真实接口
 
 ```sh
@@ -355,7 +384,7 @@ dbus/1905 描述更直接 —— 想读 mesh 拓扑，直接 GET 这个地址即
 | `httpd` 的 `cli_tbl` 全表 | 只解了字段映射（webmap） |
 | `libcms_core/dal/qdm` | 未解 |
 | `pc_list_daemon` / `vis-*` / `async_event` 的内部 | 未解 |
-| `swmdk` / `qcsapi`（Quantenna） | 未解 |
+| `swmdk` / `qcsapi`（Quantenna） | ✅ 已确认：`swmdk` = BCM6300/63100 交换芯片 MDK；`qcsapi` 本机型不存在（死代码） |
 
 ---
 
