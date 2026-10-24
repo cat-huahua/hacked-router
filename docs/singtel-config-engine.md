@@ -88,6 +88,30 @@ Could not start a transaction to arc middle, possible reasons are:
     - Insufficient socket resource
 ```
 
+### 2.1 `arc_cfg_cli`：数字 ID 版
+
+`/usr/sbin/arc_cfg_cli` 直接用 **`(模块<<16)|字段`** 的数字 ID 操作配置：
+
+```
+abscfg showID [cfgID]                 # 列出/显示 cfgID
+abscfg get cfgID [index1] [index2]
+abscfg set cfgID [index1] [index2] <value>
+abscfg unset cfgID [<idx1 min> <idx1 max>] [<idx2 min> <idx2 max>]
+abscfg get_idx_limit cfgID
+abscfg testapi                        # 跑 arc_cfg_* 自测
+```
+
+例子（`ARC_LAN_x_IP4_Addr` 的 ID 是 `0x20004`）：
+
+```sh
+abscfg get 0x20004 0        # 读 ARC_LAN_0_IP4_Addr
+abscfg set 0x20004 0 192.168.3.2
+abscfg get_idx_limit 0x20004
+```
+
+它还带一套 `Test API: arc_cfg_get/set/match/cmp ...` 自测，
+以及 `showID`（配合 `webmap.py` 的数字 ID 表查名字）。
+
 ---
 
 ## 3. 键的命名与索引
