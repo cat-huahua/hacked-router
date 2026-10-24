@@ -93,22 +93,15 @@ POST /cgi-bin/toplogy.cgi
 `encode(pwd)` = **每个字符 +97、空格分隔**。`change_pwd.htm` 里那段 packed JS 的
 字典里有个 `wg7005d` 是**诱饵**，真正用的是 `key="a"`。
 
-### ★ 管理密码为什么改不了（2026-10-14 查实）
+### 管理密码更改失败：历史解释尚未证明
 
-**两条路径完全不同：**
-
-| 路径 | 命令 | 实际效果 |
-|---|---|---|
-| 强制路径 `change_pwd.htm` | `syncpasswdconfig2`，`data=encode(新)` | **只清掉"必须改密码"闸门，根本不写密码** |
-| 正常路径 `system_p.htm` | ① `POST setpwd.cgi`（`pws=ArcMD5(新)`/`chk=ArcMD5(旧)`）② `syncpasswdconfig`（`data=encode(旧)+"?"+encode(新)`） | **`setpwd.cgi` 才是真正写密码的那一步** |
-
-**所以走强制路径改密码后，新旧密码都进不去** —— 密码停在一个半提交的坏状态。
-浏览器里的表现也是"紫灯闪一下然后没下文"（浏览器流程最后那步提交到 `login.exe`，
-而 `.exe` 在这台设备上是废的）。
-
-**正确做法**：恢复出厂 → 用出厂密码登录（返回 `/change_pwd.htm` 也算成功，
-**闸门只拦 `.htm` 页面，写接口照样能用**）→ 直接用 `final_apply.py` 写配置，
-**完全不需要改密码**。
+归档记录了强制改密后新旧密码均无法登录。当前extender页面先调用
+`syncpasswdconfig2`，成功后进入`subForm`；其默认`genfrm=1`会生成并提交
+`apply_abstract.cgi`表单，不能只看原始form的`login.exe`属性。正常改密还有`setpwd.cgi`路径。
+但此前把“只清闸门”“密码半提交”及“.exe是废的”写成查实，证据不足。
+旧复现脚本还在两个POST间复用一次性token，可能混淆失败原因；
+持久登录锁也须单独排除。需核实当前extender后端写配置和commit调用后再制作修补。
+见[重新核查记录](docs/singtel-extender-password-change.md)。
 
 ### ★ 登录锁
 
@@ -285,8 +278,8 @@ PUBLISH   devices/data/shadow                zlib 压缩的身份上报
   **必须 `-md md5`**）、以及从 rootfs / flash dump 里恢复配置的完整流程。
   工具：`cfgpack.py`
 
-**三种设计的安全强度依次递增**：NETGEAR 把种子写在文件头里（所以能解）→
-华为把密钥放设备上（一机一密）→ Arcadyan 把密钥放 bootloader 里（最靠下，最难拿）。
+Extender rootfs已按kernel真实byte变换完整解出，无需flash key；
+旧版AES/bootloader-key推断已纠正，见[证据与提取方法](docs/singtel-extender-crypto-path.md)。
 
 `cfgpack.py` 是 **Arcadyan/Singtel 配置恢复包**：分析 rootfs、解析 `glbcfg` 字段、
 **离线解密/生成 web 备份 `Settings.CFG`**、从 flash dump 里 carve 配置 tar.gz。
@@ -297,7 +290,8 @@ PUBLISH   devices/data/shadow                zlib 压缩的身份上报
 
 统一工具 `routercfg.py` **五种格式**都认：NETGEAR 配置 / **NETGEAR 官方固件** /
 华为配置 / Arcadyan .trx / Arcadyan glbcfg（含华为的 **HMAC 密钥验证器**）；
-`arckey.c` 是 Arcadyan squashfs 的 **AES 密钥搜索器**（已锁定靶子与判据，dump 到手一条命令）；
+`extender_rootfs.py` + `arc_xz_shim.c` 可离线提取extender的自定义XZ squashfs；
+`arckey.c` 保留作通用AES候选搜索工具，已不适用于该extender的解码路径；
 `hwkey.c` 是华为 aescrypt2 的**高速密钥破解器/验证器**（C + 多线程，约 2400 条/秒，判据是 256 位 HMAC，零误判）。
 
 ---
@@ -333,3 +327,9 @@ netgear_r7800/  NETGEAR SOAP API 客户端
 ```
 
 **固件本体不进 git**（`.gitignore` 已排除 `*.trx`/`*.bin`/`*.sqsh` 等）。
+
+
+2026-10-24 extender更新：已完整提取WE410443-ST rootfs（1247 files），
+见[真实byte算法与证据](docs/singtel-extender-crypto-path.md)；
+[extender更新协议](docs/singtel-extender-autofw.md)对应`autofw_server.py`本机服务。
+`extender_rootfs.py`只提取，`autofw_server.py`只供文件；尚未生成经验证可刷入的自定义镜像。

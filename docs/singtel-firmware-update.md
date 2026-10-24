@@ -306,11 +306,11 @@ ARC_SYS_SIMPLE_FW_UPGRADE done: %s
 - `.trx` = `]Cot` + uImage + 64 KB 签名块
 - HDR0 结构位于 `len - 0x10000`；CRC/chip trailer 位于其前 20 字节；跨型号兼容未证实
 
+- `]Cot` 头`0x08`的CRC已由extender真实代码恢复并命中原厂样本，
+  详见[extender autofw证据](singtel-extender-autofw.md)；其它变体仍须分别验证。
+
 **未解（如实记录）：**
 
-- `]Cot` 头 `0x08` 处的 32 位校验值算法 —— 试过 zlib CRC32（多种 init/xor）、
-  CRC-32/MPEG-2、BZIP2、POSIX、JAMCRC，都对不上；
-  可能是厂商自定义多项式，或只覆盖某个子区间（kernel/rootfs 分段）。
 - HDR0 的 `0x290` 字节和 envelope 分区已还原，见 [逐字段说明](singtel-firmware-footer.md)；
   extender 的匹配 key 与余区字段仍未解。
 - `image_manager` 的容器已另有[格式说明](singtel-embedur-image-format.md)，实际 key 仍缺失。

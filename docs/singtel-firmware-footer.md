@@ -96,8 +96,8 @@ CRC helper 是无 final XOR 的反射 CRC-32；Python 等价计算是
 仅在本机内存中以主路由六个 slot 尝试对本 extender 样本的两个包装块做 RSA
 解包装检查，均未得到合法的 type-2 padding；没有输出密钥或解密内容。
 这只说明本次跨型号材料未匹配，不能据此宣布该样本签名有效或无效，也不能据此
-推导 extender 的 rootfs 加密 key。主路由的 key slot 与此前“extender rootfs 的
-flash key”是两个独立问题。
+推导 extender 的 rootfs 加密 key。主路由的 key slot 与extender的XZ byte变换是两个独立问题，
+后者已完整解出，见[crypto路径](singtel-extender-crypto-path.md)。
 
 旧文档把“尾部存在 64 KiB”与“必然满足主路由完整校验器”直接等同，这一步证据
 不足。本样本确实符合 `HDR0` 外层布局，但没有通过以上主路由 trailer / key 检查。
@@ -120,8 +120,10 @@ python3 -I fwfooter.py /path/to/firmware.trx
 
 - extender 本身的匹配 key slot、真实校验器行为与尾区剩余字段。
 - S+4 / +0xc / +0x10 的设计含义；当前主路由校验路径没有使用它们。
-- `]Cot` 头 +8 的校验算法，仍未找到；不能拿本篇 CRC 算法代替。
-- 没有完成 extender envelope 的解密验证，也没有取得 rootfs flash key。
+- `]Cot` 头+8已在extender真实客户端恢复并命中原厂样本：
+  `zlib.crc32(image[12:declared_length]) ^ 0xffffffff`；见[精确范围和代码证据](singtel-extender-autofw.md)。
+  它与本篇主路由trailer是不同校验范围。
+- 没有完成 extender envelope 的解密验证；rootfs已独立解出，不需要flash key。
 
 ## 证据索引
 

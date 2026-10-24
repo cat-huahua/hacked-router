@@ -1,14 +1,9 @@
-# SPI Flash 读取指南 —— 唯一能突破那三条的路
+# SPI Flash 读取与备份指南
 
-**为什么写这份**：目前有三样东西解不开，而它们**卡在同一个地方**：
-
-| 目标 | 卡在哪 |
-|---|---|
-| 华为 Q2S 的 `.conf` | 密钥 `hex:...` 在设备 `/etc/wap/aes_string` |
-| Singtel extender 的 rootfs | 密钥在 flash 的 `u-boot`(0x0)–`u-boot-env`(0x30000) |
-| extender 的 MQTT 命令格式 | 解码器（云 agent）在加密的 rootfs 里 → 同一个密钥 |
-
-**这三个的钥匙都在同一块 SPI flash 芯片里。** 把 flash 读出来，三个一起解开。
+**2026-10-24 更正：** extender rootfs 已可从固件完整提取，不需要SPI key。
+旧版“三个目标卡在同一块SPI flash”的说法也不成立：华为Q2S与Singtel是不同设备。
+华为配置key、原始bootloader备份等仍可能需要各自设备的flash材料。
+见[extender解码证据](singtel-extender-crypto-path.md)。
 
 > ⚠️ **前提**：只对**你自己拥有**的设备做。见 [NOTICE.md](../NOTICE.md)。
 > 拆机可能影响保修；在板读取（in-circuit）需要设备**完全断电**。
@@ -99,39 +94,13 @@ head -c 400 glbcfg.bin
 **这一条很可能不用破任何哈希，直接就看到密码了。**
 （同厂设备的 `glbcfg.dft` 实测就是纯 ASCII。）
 
-### ② ★ 找 extender rootfs 的 AES 密钥 → 一条命令就够
+### ② Extender rootfs 已不需要 flash key（2026-10-24 更正）
 
-**这一项现在已经不需要"摸索"了** —— 2026-10-17 把已知条件全部锁定：
-
-| 已知 | 值 | 依据 |
-|---|---|---|
-| 加密算法 | **AES-ECB**（很可能） | 内核 config 里 `CONFIG_ARC_SQUASHFS_FS_CRYPTO=y` + `CONFIG_CRYPTO_ECB=y`，而 **CBC 未启用** |
-| 密文靶子 | `TRX[0x2D001C+110 : +126]` = `aafc96879745454d0e54b3f45d43f111` | 超块(96B)与 comp_opts 块(14B)都是明文，数据块从 **+110** 开始 |
-| 该块**明文** | 必然以 `fd 37 7a 58 5a 00` 开头 | squashfs 的每个 xz 数据块都是【完整 xz 流】 |
-| 密钥位置 | **不在固件里** | 实测：内核/`.trx`/`.w` 共 **1 亿+** 个 16/32 字节候选全部未命中 |
-
-**所以只剩一个可能：密钥在 flash 里**（`factory` 或 `u-boot-env` 分区 —— 注意
-`get_decrypt_keys` 这个函数名是复数 "keys"）。
-
-**dump 到手后，一条命令：**
-
-```bash
-# 把 dump 里每一个 16/32 字节窗口都当密钥，用 AES-ECB 解那个靶子，
-# 看解出来是不是 xz 魔数（48 位判据，误判率 2^-48）
-cc -O3 -march=native -o arckey arckey.c -lcrypto
-./arckey --selftest                                            # 先验 AES 实现（FIPS-197 向量）
-./arckey flash-original.bin aafc96879745454d0e54b3f45d43f111 --hex-ascii
-```
-
-- 会在**几秒内**给出密钥的**偏移和值**（32MB 的 dump ≈ 6700 万候选）
-- 也顺带试"32 位十六进制**字符串**"形式的密钥
-- 拿到密钥后就能解整个 rootfs：`CONFIG_ARC_SQUASHFS_FS_CRYPTO` 是 AES-ECB，
-  对 `[+110, bytes_used)` 逐 16 字节块 ECB 解密，再 `unsquashfs` 即可
-
-> **如果 `arckey` 也没中**，说明密钥不是"dump 里连续的 16/32 字节"，
-> 那就要去读 `get_decrypt_keys` 的代码：它在 file `0x53A878`
-> （内核虚拟地址 `0x8153A878`，基址实测 `0x81000000`，即 `vaddr = 0x81000000 + fileoff`），
-> 反汇编这个函数就能看出密钥到底从哪读。
+旧版AES-ECB推断与“只剩flash key”结论已被真实kernel路径推翻。
+`get_decrypt_keys` 原定位是字符串，实际算法为两层固定byte变换包裹XZ。
+现在使用 `extender_rootfs.py` 即可离线提取；证据见
+[extender crypto路径](singtel-extender-crypto-path.md)。`arckey.c` 保留为通用候选验证工具，
+不再作为本extender的解码方法。SPI dump仍可用于备份和研究bootloader。
 
 ### ③ 华为 Q2S —— 同样先看有没有明文
 

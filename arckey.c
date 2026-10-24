@@ -1,10 +1,9 @@
 /* arckey.c —— 在"候选来源文件"里暴力找 AES 密钥
  *
- * 用途：Arcadyan 的 squashfs 加密（内核选项 CONFIG_ARC_SQUASHFS_FS_CRYPTO=y，
- *       且 CONFIG_CRYPTO_ECB=y / CBC 未启用 → 很可能是 AES-ECB）。
- *       squashfs 的每个 xz 数据块都是【完整的 xz 流】，所以
- *       第一个数据块的明文前 6 字节必然是  fd 37 7a 58 5a 00。
- *       拿这个当判据（48 位，误判率 2^-48）。
+ * 用途：通用AES候选验证实验工具，以已知XZ magic作为判据。
+ * 更正（2026-10-24）：WE410443-ST squashfs不使用此处假设的AES-ECB，
+ * 已还原为固定byte变换+XZ，使用extender_rootfs.py；不再需要flash key。
+ * 证据见 docs/singtel-extender-crypto-path.md。
  *
  * 做法：把候选文件里【每一个 16/32 字节窗口】都当一次密钥，
  *       用 AES-ECB 解那 16 字节密文，看解出来是不是以 xz 魔数开头。

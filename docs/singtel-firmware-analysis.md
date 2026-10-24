@@ -177,9 +177,6 @@ echo -ne "HDR0" | dd of=$@.tail bs=1 seek=0x10c count=4
   后面全是 0）—— 我一开始差点把它当成 squashfs 起点
 - 对比：OpenWrt 的同类镜像 rootfs 就在 `0x440000`，**能正常解开** → 反证
 
-**推论：rootfs 的加密是 Arcadyan 在打包【之前】自己做的，跟容器无关。**
-解密发生在设备启动时（bootloader / kernel），所以密钥在 flash 的
-`u-boot`(0x0) 或 `u-boot-env`(0x30000) —— **不在固件包里**。
-
-这跟 NETGEAR 正好相反：NETGEAR 把种子写在文件头里（所以能解），
-Arcadyan 把密钥放在设备上（所以不能）。
+**2026-10-24 更正：** rootfs自定义变换确实在kernel，但旧版“key在flash”的推断错误。
+已按真实XZ wrapper完整提取，不需要AES key；见
+[算法与完整提取证据](singtel-extender-crypto-path.md)。

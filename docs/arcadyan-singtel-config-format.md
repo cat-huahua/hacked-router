@@ -9,7 +9,7 @@
 |---|---|
 | **glbcfg 配置** | ★ **纯明文** `key=value`，不需要解密 |
 | **密码派生机制** | ★ **已完整破译**（见第 2 节）—— root/SSH 密码是**可算的** |
-| **extender 的 rootfs** | **加密 squashfs**（内核选项 `CONFIG_ARC_SQUASHFS_FS_CRYPTO=y`，疑似 AES-ECB）。<br>解密代码**在内核里**，但**密钥不在固件里**（实测 1 亿+候选全不中）→ 最可能在 **flash** 里，**没有 dump 就解不开** |
+| **extender 的 rootfs** | 固定byte变换包裹XZ；已完整提取，见[更正与证据](singtel-extender-crypto-path.md) |
 | **厂商共用默认物** | 有共用私钥 + 默认账户哈希（见第 6 节） |
 
 ---
@@ -91,64 +91,13 @@ Location: /change_pwd.htm
 返回 `change_pwd.htm`"其实**已经算登录成功**，之后照样能调 `sync*` 写接口。
 这一点在 [singtel-mesh-login-lock.md](singtel-mesh-login-lock.md) 里也有记录。
 
-## 3. extender 的 rootfs：加密的 squashfs（附完整证据）
+## 3. extender rootfs：已完整提取（2026-10-24 更正）
 
-**容器不加密**（`otrx` 生成的普通 TRX，源码里没有任何加密代码）：
-
-```
-magic 0x746F435D | len | crc32 | flag | off1(kernel) | off2(rootfs) | off3
-```
-
-**内核不加密**（LZMA，非标准参数 `lc=1/lp=2/pb=2`、dict 8MB，`FORMAT_ALONE` 直接解）。
-
-**rootfs 是"半明文"的** —— 超块明文，其后全部加密：
-
-| 偏移（相对 rootfs 起点） | 内容 | 状态 |
-|---|---|---|
-| +0 | `hsqs` 超块（96 字节） | ★ **明文**（inodes=1679 block=131072 comp=4 flags=0x06c0 bytes_used 全合法） |
-| +96 | comp_opts 元数据块（14 字节 = 2 头 + 12 载荷） | ★ **也是明文**（与 NETGEAR 健康镜像同位置逐字节同格式） |
-| **+110** | 第一个数据块 —— **加密从这里开始** | **已加密** |
-| 其后 | 数据块 / inode 表 / 目录表 | **已加密** |
-
-**判断"是加密而不是压缩参数问题"的证据链**（每一条都实测过）：
-
-1. **★ 真正的硬证据：`unsquashfs` 真去解会失败**，报的是
-
-   ```
-   xz uncompress failed with error code 7
-   read_block: failed to read block @0xb118e6
-   read_fragment_table: failed to read fragment table index
-   FATAL ERROR: File system corruption detected
-   ```
-
-   即"数据块解不开"，而不是"压缩器选项读不到"。
-
-   > **⚠️ 本文档早先把下面这条当成了加密证据，是错的，已删：**
-   > `xz: error reading stored compressor options from filesystem!`
-   > **这条只是无害警告。** 对照实验：**官方 NETGEAR R7800 固件的 rootfs 也报一模一样的话，
-   > 但 `unsquashfs` 照样解出 3245 个文件。** 所以它不能作为任何结论的依据。
-   > 教训：**判据要能区分"良性"和"恶性"，不能只看到一句 error 就下结论。**
-2. 数据区**没有任何压缩魔数**（XZ/GZIP/LZ4/ZSTD/BZIP2 全 0 命中；
-   对照：NETGEAR 那份健康镜像有 **434 个 XZ 魔数**）；
-3. 熵 7.999（注意：**熵高本身不说明问题**，压缩后的数据也是 8.0，必须靠"能不能解"判断）；
-4. 手写暴力 5616 种解压参数组合（LZMA1/LZMA2 × 偏移 × 字典 × 参数 × BCJ）全失败；
-5. **不是重复密钥 XOR**：单字节 256 种全试失败；自相关找周期，最大只有 1.4×（自然重复水平）；
-6. **不是常见候选密钥的 AES**：41 个候选密钥（厂商名/型号/`s1ngt3l`/全零/全 FF/TRX 魔数/各类哈希）×
-   ECB / CBC(IV=0) / CBC(header IV) 全失败。
-
-**密钥在哪**：flash 的 `u-boot`(0x0)–`u-boot-env`(0x30000)。
-
-> **⚠️ 我们手上没有它。** 实测：`Singtel-MeshRG.w`、`ubi_vuln.img`、`ubi_patched.img`
-> 里搜 `U-Boot` / `bootdelay` / `bootcmd` **全部 0 命中** —— 那些是运行系统的 UBI 镜像，
-> **不含 bootloader**。
->
-> **所以：没有 SPI flash 物理读取，这块 rootfs 解不开。** 这不是方法问题，是信息不存在。
-
-对比意义：**NETGEAR 把种子写在文件头里**（所以能解）、**华为把密钥放设备上**（一机一密）、
-**Arcadyan 把解密做进内核、密钥放 flash 里**（代码给你看、钥匙不给你）。
-三种设计的安全强度依次递增 —— 而 Arcadyan 这种"算法公开、密钥外置"其实是最讲究的做法：
-**它不靠隐藏算法来保证安全**（算法在明文内核里，随便看），
-**只靠那把 128 位的钥匙**。所以拿到 flash 就等于全破，拿不到就一点都进不去。
+旧版根据高熵、AES候选不命中和kernel config推断“key在flash”，该结论错误。
+真实路径是 `squashfs_xz_uncompress` 的固定 XOR/rotate → XZ → byte substitution。
+完整样本已提取1247 files、98 directories、334 symlinks，无需SPI dump。
+详见[算法、地址与提取证据](singtel-extender-crypto-path.md)。
+不能对 `+110` 后全部数据统一变换：squashfs索引与未压缩块须由正常reader处理。
 
 ## 4. 怎么验证一把 rootfs 密钥（方法论）
 
@@ -201,8 +150,8 @@ ARC_OWL_CLOUD_URL=https://stage1.arciot.com:55668      ← ★ 注意 stage1 = �
 > 负载还是 zlib 压缩的。**两者不是同一套协议** —— 实测这台设备的 rootfs 里
 > `wifi-analytics` / `adornment` / `desired_state` / `mqtt` **全部 0 命中**。
 >
-> 所以那份 MQTT 协议只存在于 **extender 自己那份【加密】的 rootfs** 里
-> —— 又回到第 3 节那个结论：**没有 flash dump 就解不开**。
+> 这段只比较当时使用的不同样本，不能证明MQTT只存在于extender。
+> 2026-10-24：extender rootfs已从固件完整解出，不需要flash dump，见第3节。
 
 顺带一提：**正式固件里指向 `stage1` 测试环境**，这本身是个工程质量问题
 （测试后端可能不具备生产级的安全与容量保障）。
@@ -330,86 +279,12 @@ ARC_USB_DONGLE_PinState=-1  PinLock=0  PinTimes=3     ← 3G/4G 上网卡 SIM �
 [singtel-mesh-login-lock.md](singtel-mesh-login-lock.md)（登录锁）·
 [huawei-config-format.md](huawei-config-format.md)（另一种设计：密钥在设备上）
 
-## ★ 解密到底在哪一层（2026-10-17 重大更正）
+## Extender kernel 路径的更正
 
-> **⚠️ 本文档早先写过一段「内核不解密，所以是 bootloader」的推理 —— 那是错的，已删除。**
-> 我当时的理由是"内核里 squashfs 只有标准解压器，没有自定义的'先解密再解压'包装器"。
-> **这个推理从根上就错了**：Arcadyan 的加密根本不是"解压器"，而是
-> **一个独立的 squashfs 编译选项**，从解压器列表里当然看不出来。
-
-### 真凭实据：内核里就有 Arcadyan 的 squashfs 加密
-
-内核自带 config（`IKCFG_ST`…`IKCFG_ED` 段，gzip，位置 file 0x5334A0，可解出 42247 字节）：
-
-```
-CONFIG_ARC_SQUASHFS_FS_CRYPTO=y       ← ★★ "ARC" = Arcadyan，厂商定制的 squashfs 加密
-CONFIG_CRYPTO=y
-CONFIG_CRYPTO_AES=y
-CONFIG_CRYPTO_ECB=y                   ← ★ ECB 启用了
-# CONFIG_CRYPTO_CBC is not set        ← ★ CBC 没启用 → 很可能就是 AES-ECB
-```
-
-**所以解密代码确实在内核里**（我们手上这份明文内核），入口函数是 `get_decrypt_keys`
-（在 file 0x53A878，内核虚拟地址 `0x8153A878`，基址实测为 `0x81000000`）。
-
-### ★ 另一个重要更正：加密从哪个字节开始
-
-早先我以为超块之后的 comp_opts 块就被加密了 —— **错了**。拿
-**NETGEAR 的健康镜像做对照**（它同样是 `comp=4(xz)` + `flags=0x06c0`），
-两份镜像的 comp_opts 块**开头两字节完全一样**：
-
-```
-NETGEAR (健康) :  0c80 | 140009009000400000000400 | fd377a585a00...   ← 数据块从这里开始，明文
-extender(加密) :  0c80 | 000006008300400000000200 | aafc9687974545...  ← 数据块从这里开始，已加密
-                   ↑ 元数据头(未压缩,12字节)          ↑ 偏移 +110
-```
-
-- 超块（96 字节）**明文** ✓
-- comp_opts 块（14 字节：2 头 + 12 载荷）**也是明文** ✓
-- **真正的加密从 `+110` 开始**（comp_opts 结束之后、第一个数据块）
-
-> 这也说明 `unsquashfs` 那句 `xz: error reading stored compressor options` 确实无关
-> —— 健康镜像也报（见 [netgear-config-decrypt.md](netgear-config-decrypt.md)）。
-
-### ★ 由此得到一个精确可验证的靶子
-
-squashfs 的**每一个 xz 数据块都是完整的 xz 流**，所以第一个数据块的明文前 6 字节必然是
-
-```
-fd 37 7a 58 5a 00        （XZ 魔数）
-```
-
-于是这个 16 字节就是**已知明文**：
-
-```
-密文 = TRX[0x2D001C + 110 : +126] = aafc96879745454d0e54b3f45d43f111
-明文应以 fd 37 7a 58 5a 00 开头
-```
-
-**拿到任何候选密钥，一次 AES 解密就能判定**（48 位判据）。工具：`arckey.c`。
-
-### ★ 密钥不在我们手上的任何文件里（实测）
-
-用上面这个靶子，把**所有手上二进制的每一个 16/32 字节窗口**都当密钥试过：
-
-| 来源 | 候选数 | 结果 |
-|---|---|---|
-| 内核（已解压 7.7MB） | 1548 万 | 未命中 |
-| 内核（LZMA 压缩态 2.9MB） | 590 万 | 未命中 |
-| 整个 `.trx`（14MB） | 2925 万 | 未命中 |
-| `Singtel-MeshRG.w`（43MB） | **8926 万** | 未命中 |
-| ubi 镜像等 | — | 未命中 |
-| 内核里所有文本串的 hex/base64/MD5/SHA256 | 8031 | 未命中 |
-| 由超块 / TRX 头 / uImage 头派生 | 138 | 未命中 |
-
-**结论**：密钥既不是硬编码常量、也不是文本、也不在容器头里。
-结合 `get_decrypt_keys` 这个函数名（复数的 "keys"），最可能是
-**启动时从 flash 某个固定位置读出来的**（`factory` 或 `u-boot-env` 分区）。
-
-**所以：仍然需要 SPI flash dump —— 但现在这件事变得非常容易了**：
-dump 到手后跑一条命令即可（见 [spi-flash-dump-guide.md](spi-flash-dump-guide.md) 第四节）。
-
----
+早期把 file `0x53a878` 当作函数地址，实际是日志字符串。
+正确kernel load为 `0x81001000`，wrapper VA为 `0x81134cc0`；
+`CONFIG_CRYPTO_ECB=y` 不能证明squashfs调用AES。
+完整证据与可复现工具见[extender crypto路径](singtel-extender-crypto-path.md)。
 
 # ★ 附：Arcadyan 的服务架构是「dbus agent 框架」（与 NETGEAR 完全不同）
 

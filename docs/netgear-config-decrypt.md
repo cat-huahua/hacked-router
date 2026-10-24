@@ -658,7 +658,7 @@ cbc.ko（AES-CBC）· bonding.ko · act_*（流量整形）· cls_*（分类）�
 | 服务 | **61 个传统 init 脚本** | **1 个** `arcadyan-agent-loader` + **36 个 dbus agent** |
 | 配置 | `/bin/config`（`datalib`）、nvram | `mng_cli` / `arc_glbcfg` / glbcfg 文本 |
 | 云 agent | ★ **运行时下载**（aws-iot / rae / rcagent） | 烧在 rootfs 里（`arca-*` agent） |
-| 加密 | 配置 = `rand()` XOR；另有 LUKS 安全分区 | 配置 = 明文 glbcfg；extender rootfs = AES |
+| 加密 | 配置 = `rand()` XOR；另有 LUKS 安全分区 | 配置 = 明文 glbcfg；extender rootfs = 固定byte变换+XZ（已解） |
 
 ---
 

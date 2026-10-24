@@ -9,8 +9,8 @@ routercfg —— 家用路由器配置备份的【统一识别 + 解码】工具
   ② 华为 .conf          格式完全破译（aescrypt2）；★ 密钥在设备的 /etc/wap/aes_string。
                         老光猫全网共用一把，消费级机型一机一密 —— 文件本身解不开。
                         本工具带 **HMAC 密钥验证器**（256 位判据，零误判）
-  ③ Arcadyan .trx       容器是普通 TRX（otrx，无加密）；rootfs 是 Arcadyan 自家 AES，
-                        密钥在 bootloader —— 只有物理读 flash 才能拿到
+  ③ Arcadyan .trx       容器是普通 TRX（otrx，无加密）；WE410443-ST rootfs为两层byte变换+XZ，
+                        可用 extender_rootfs.py 从提取出的 squashfs 完整解码
   ④ Arcadyan glbcfg     ★ 纯明文 key=value（管理密码/WiFi 口令都在里面，不用解密）
   ⑤ NETGEAR 官方固件    容器明文，rootfs 是普通 squashfs，能直接解（--extract）
 
@@ -259,9 +259,9 @@ SINGTEL_NOTE = (
     "  容器 = 普通 TRX（OpenWrt 的 otrx 生成，源码里【没有任何加密】）\n"
     "  头 = magic(4) len(4) crc32(4) flag(4) off1(4) off2(4) off3(4)\n"
     "  kernel  = LZMA，非标准参数 lc=1/lp=2/pb=2 + dict 8MB → FORMAT_ALONE 直接解\n"
-    "  rootfs  = ★ 半明文：squashfs 超块明文，其后（comp_opts 起）全部加密\n"
-    "            密钥在 flash 的 u-boot(0x0) / u-boot-env(0x30000)，【不在固件包里】\n"
-    "            ⇒ 没有 SPI 物理读取，这块解不开（不是参数问题，是信息不存在）\n"
+    "  rootfs  = WE410443-ST使用固定byte变换包裹XZ；超块/comp_opts明文\n"
+    "            已完整提取，无需flash AES key；使用 extender_rootfs.py\n"
+    "            证据见 docs/singtel-extender-crypto-path.md\n"
     "  ⚠ 判断加密要看【能不能解】，别靠熵（压缩数据熵也是 8.0）\n"
     "  ⚠ 有些镜像里 `hsqs` 是脚本 echo 进去的【假标记】，后面全是 0"
 )

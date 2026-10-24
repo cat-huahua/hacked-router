@@ -115,9 +115,10 @@ cgi_token_pass / url_token_pass
 ### 5.3 `setpwd.cgi` vs `setpwd2.cgi`
 
 - `setpwd.cgi` = 正常改密（真正写 `passwd`/`ARC_SYS_Password`）；
-- `setpwd2.cgi` = 强制改密闸门（只清“必须改密”标志，可能不写密码）。
+- `setpwd2.cgi` 与强制改密流程有关；其配置写入效果不能仅凭页面流程确认。
 
-这正是 README 里“管理密码为什么改不了”的根因。
+2026-10-24更正：旧版将半提交解释称为根因，证据不足；旧脚本还存在一次性token复用。
+当前extender流程与未知项见[改密核查](singtel-extender-password-change.md)。
 
 ### 5.4 `apply_abstract.cgi`
 
