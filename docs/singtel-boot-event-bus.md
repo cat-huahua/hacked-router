@@ -120,7 +120,9 @@ ttyS0::askfirst:/bin/login        ← 串口控制台
 - 内核模块（9）**早于**网络接口（16–19），符合依赖顺序。
 - `wlan`（31）在 `dhcpd`（30）之后、`httpd`（33）之前。
 - `embedur` 是**最后**启动的 —— 它会等整机就绪再连云端。
-- `wanmode` / `async_event` / `iptvled` / `wbd` 在这个机型上被禁用了。
+- `wanmode` / `async_event` / `iptvled` / `wbd` 的此处启动行被注释。
+  `async_event` 的标准 netlink 组、`eth0` ioctl 与动作映射已补充到
+  [async_event 分析](singtel-async-event.md)；实际运行情况仍需设备侧确认。
 
 ---
 

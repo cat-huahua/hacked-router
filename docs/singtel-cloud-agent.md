@@ -384,25 +384,13 @@ ICMP throughput pak/bytes success
 /tmp/speed_pingtestResult
 ```
 
-**`broadband_ssl`（1.6 MB）** —— 带 OpenSSL 的宽带检测/测速：
+**`broadband_ssl`（1.6 MB）** —— 实际入口是 HTTPS 建连和首批数据等待计时：
 
-```
-get_ipv4_addr / FAILED DNS LOOKUP
-ping -4 -c 3 <host> | grep -ri 'round-trip'     ← get_ping_results
-get_http_file / get_https_file / download_thread / speedtest_download
-serverurl / global_custom_server
-```
-
-结果写到：
-
-```
-/tmp/https_result     echo RESULTS %lld >> ...
-/tmp/ttfbs_result     echo RESULTS %lld >> ...   （ttfbs = time to first byte）
-                      echo ERROR %s   >  ...
-```
-
-即：**DNS 解析 → ping 3 包 → HTTP/HTTPS 下载 → 记录耗时/速率**，
-失败时写 `ERROR <原因>`。
+`main(hostname, mode)` 只在 mode 包含大写 `HTTPS` 时，对 `hostname:443` 发送
+`GET / HTTP/1.0\r\n\r\n`，结果写 `/tmp/https_result` 和 `/tmp/ttfbs_result`。
+第一段计时包括 TLS 建连和请求写入；第二段含 read 后一条 shell 日志的开销。
+文件中保留的 ping / HTTP 下载 / speedtest 函数不能当作入口调用链。
+逐函数还原、结果语义和证据见 [broadband_ssl](singtel-broadband-ssl.md)。
 
 **`dhcp_scan`（203 KB）** —— libpcap 抓 DHCP，结果写
 `/tmp/dhcp_<iface>_<mac>`，用来发现 LAN 上的客户端。
@@ -564,8 +552,10 @@ cat /data/reboot.log 2>/dev/null | tail
    还差 **`desired_state` 其它字段**（`members`/`radio_24`/`radio_5`/`enh_steer_config`）
    和 **`direct` / `image` 的 payload** 具体落到哪些配置键。
 2. **adornment 的完整结构**：只拿到片段（`ap/ssid/bssid/state/timer`）。
-3. **`broadband_ssl` 的具体协议**：是测速还是探测，尚未逐函数看。
-4. **签名/加密固件包的格式**：`image_manager` 的解密参数还没逆。
+3. **`broadband_ssl`**：实际入口与应用函数已[逐函数分析](singtel-broadband-ssl.md)；
+   仍缺云代理构造命令及外层 timeout / 清理策略的确切调用点。
+4. **签名/加密固件包**：[image_manager 容器](singtel-embedur-image-format.md) 已有结构说明，
+   实际 key 与调用方参数角色仍待证实。
 
 这些都不影响“它在干什么”的判断，只影响“能不能自己伪造命令”。
 

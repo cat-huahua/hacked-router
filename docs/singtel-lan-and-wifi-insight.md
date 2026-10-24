@@ -47,7 +47,9 @@ pc_list_cli add aa:bb:cc:dd:ee:ff "客厅电视"
 pc_list_cli del aa:bb:cc:dd:ee:ff
 ```
 
-手动名字存在配置里，`print` 会把它和 DHCP 租约合并。
+手动名字通过 `libumng` 写 `/etc/config/pc_list_save` 的 `manual_name` section。
+共享二进制表是 `/tmp/pc_list`，256×`0x218` 字节；落盘格式、字段偏移和 NAT 同步函数见
+[pc_list 内部](singtel-pc-list-internals.md)。
 
 ---
 

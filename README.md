@@ -220,6 +220,16 @@ PUBLISH   devices/data/shadow                zlib 压缩的身份上报
 - [`docs/singtel-lan-and-wifi-insight.md`](docs/singtel-lan-and-wifi-insight.md) —— ★ **LAN 主机表与 WiFi Insight**：
   `pc_list_cli print/add/del`、`vis-cli -r/-b --chcapacity`、`/tmp/db/visdata.db`、
   RRM/STA/chanim 采集；均为本地数据（未见上云）
+- [`docs/singtel-httpd-config-upload.md`](docs/singtel-httpd-config-upload.md) —— **配置上传分支**：
+  multipart 类型、临时文件、restore/commit/reboot 及返回值检查边界
+- [`docs/singtel-pc-list-internals.md`](docs/singtel-pc-list-internals.md) —— **pc_list 内部**：
+  备注名落盘格式、256×0x218 共享表、IPv4 NAT 地址同步算法与调用边界
+- [`docs/singtel-async-event.md`](docs/singtel-async-event.md) —— **async_event**：
+  RTMGRP_LINK、固定 eth0 查询、wan_start/wan_stop 与默认启动边界
+- [`docs/singtel-broadband-ssl.md`](docs/singtel-broadband-ssl.md) —— **HTTPS 探测**：
+  main 的实际调用链、BIO 重试、计时结果；保留测速函数与入口分开说明
+- [`docs/singtel-firmware-footer.md`](docs/singtel-firmware-footer.md) —— **HDR0 footer**：
+  两个 envelope、RSA/Triple-DES/SHA-256、CRC trailer；`fwfooter.py` 离线结构检查
 - [`docs/singtel-autofw.md`](docs/singtel-autofw.md) —— ★★ **自动固件升级**：
   `autofw` 的时间窗、`/GetFirmwareVersion` / `FirmwareDownloadResult` /
   `FirmwareUpgradeResult`、JSON 版本字段、下载后调 `fw_upgrade`、

@@ -15,14 +15,15 @@ web 表单
   → upload.cgi / cgi-bin/upgrade.exe
   → httpd（把镜像放共享内存）
   → /bin/fw_upgrade <len> [分区]
-       ├─ arca_validateImage()        ← BCM tag / CRC / chip id / RSA 签名
+       ├─ arca_validateImage()        ← BCM tag / CRC / chip id / HDR0 envelope
        ├─ arca_writeValidatedImageEx()
        └─ devCtl_setImageState()      ← A/B 分区切启动状态
   → reboot
 ```
 
-**校验是真实存在的**：非 Broadcom tag 的镜像会走 **SHA-256 + RSA 数字签名**；
-Broadcom tag 镜像则走 **tag CRC + 长度 + 芯片 ID**。
+非 Broadcom tag 路径会检查 **HDR0 envelope、SHA-256 摘要前 20 字节、CRC、chip id 和型号文本**；
+BCM tag 走独立的 tag 校验路径。尾部的逐字段还原及跨型号样本限制见
+[固件 footer](singtel-firmware-footer.md)。
 
 ---
 
@@ -166,45 +167,24 @@ cfeAddress: ...
 
 ### 3.2 非 Broadcom tag 路径
 
-`arca_validateImage()` 的反汇编（`0x12BE8`）：
+`arca_validateImage()`（VA / file offset `0x12be8`）的非 BCM-tag 路径：
 
-```c
-if (len <= 0x100) return 0;
-
-if (verifyBroadcomFileTag(img, 1, len) == 0) {   /* 是 BCM tag */
-    if (len <= flash_size + tag_size) ok;
-} else {
-    if (len <= 0x10000) return 0;
-
-    /* 1) 数字签名 */
-    if (arca_verifyDigitalSignature(img, len) != 0) return 0;
-
-    /* 2) 尾部签名块：len - 0x10000 - 0x14 */
-    r7 = len - 0x10000 - 0x14;
-    sl = img + r7;
-    if (*(uint32_t *)sl != crc_getCrc32(img, r7, -1)) return 0;
-
-    /* 3) 芯片 ID */
-    if (*(uint32_t *)(sl + 8) != devCtl_getChipId() &&
-        *(uint32_t *)(sl + 8) != 0x63138) return 0;
-
-    /* 4) 64 字节 RSA 签名 */
-    arca_getSignature(img, r7, sig, 0x40);
-    ... RSA 验签 ...
-}
+```text
+len > 0x10014
+  → 内部 helper 0x11f78 检查 T = len - 0x10000 处的 HDR0 结构
+  → S = len - 0x10000 - 0x14
+  → 比较 S+0 的 CRC 与 crc_getCrc32(image, S, -1)
+  → 比较 S+8 的 chip id
+  → arca_getSignature(image, S, buffer, 0x40)
+  → 将 buffer 与设备型号文本 strcmp，成功返回类型 2
 ```
 
-库里能看到的原语：
-
-```
-sha256_init / sha256_update / sha256_final
-RSAPublicDecrypt / RSAPublicEncrypt
-R_VerifyBlockSignature / R_VerifyPEMSignature
-arca_verifyDigitalSignature
-```
-
-**结论：镜像尾部有 64 KB 的签名块 + 20 字节头，里面含 CRC32、芯片 ID、RSA 签名。**
-（`0x10000` = 65536 = 64 KB，正好解释 `.trx` 最后那 64 KB 几乎全是零/签名数据。）
+**校正**：`0x40` 是型号文本 buffer 大小，不是 RSA 签名长度。
+`arca_getSignature → getSignature → nandGetSignature` 从 NAND 文件系统内容取型号。
+真正的数字校验结构在 T，两个 `0x140` 字节 envelope 经 RSA 包装密钥解封和
+Triple-DES-CBC 解码后，与 SHA-256 的前 20 字节比较。
+S 是 T **之前**的独立 20 字节 trailer，CRC/chip 字段不在 T 的开头。
+完整偏移、符号、样本差异见 [固件 footer](singtel-firmware-footer.md)。
 
 ---
 
@@ -248,8 +228,9 @@ arca_verifyDigitalSignature
 ★ **uImage 的 hcrc 和 dcrc 都是对的**，说明 kernel 段是完整的标准 uImage；
 rootfs 是紧随其后的 squashfs（`hsqs`）。
 
-这和 `arca_validateImage` 的 `len - 0x10000 - 0x14` 完全对得上 ——
-**最后的 64 KB 就是签名块**。
+样本最后 64 KiB 的起点为 T=`0xde3000`，带 `HDR0` 结构；
+主路由校验器另读 T 前 20 字节的 CRC/chip trailer，该样本此处全零且 CRC 不匹配。
+所以只能确认外层布局，不能据此断言 extender 样本满足主路由的完整校验流程。
 
 ### 关于 `0x08` 的 32 位校验值
 
@@ -275,8 +256,8 @@ crc = table[(crc ^ byte) & 0xff] ^ (crc >> 8);
 可能是打包工具的自定义校验，或覆盖范围包含/排除了某些头字段。
 如实记录在这里，不再猜。
 
-> 之前我一度因为“尾部 98.96% 是零”而把“签名块”这个判断撤回了；
-> 现在从校验函数的反汇编看，**它确实是签名块**，只是大部分是零填充。
+> 尾部大部分为零不妨碍它承载 envelope，但 `0x290` 之后仍有非零字段；
+> 不应把整个剩余区域一概称作 padding。
 
 ---
 
@@ -323,16 +304,16 @@ ARC_SYS_SIMPLE_FW_UPGRADE done: %s
 - A/B 分区与失败回退
 - `libcms_util.so` 的校验流程（BCM tag / CRC / chip id / RSA / SHA-256）
 - `.trx` = `]Cot` + uImage + 64 KB 签名块
-- 签名块位置 = `len - 0x10000`，与校验代码一致
+- HDR0 结构位于 `len - 0x10000`；CRC/chip trailer 位于其前 20 字节；跨型号兼容未证实
 
 **未解（如实记录）：**
 
 - `]Cot` 头 `0x08` 处的 32 位校验值算法 —— 试过 zlib CRC32（多种 init/xor）、
   CRC-32/MPEG-2、BZIP2、POSIX、JAMCRC，都对不上；
   可能是厂商自定义多项式，或只覆盖某个子区间（kernel/rootfs 分段）。
-- 64 KB 签名块内部的精确字段布局（CRC 在 `sl`、chip id 在 `sl+8` 已确认，
-  其余偏移还没逐字节核对）。
-- `image_manager`（EmbedUR 那条链）的加密容器格式。
+- HDR0 的 `0x290` 字节和 envelope 分区已还原，见 [逐字段说明](singtel-firmware-footer.md)；
+  extender 的匹配 key 与余区字段仍未解。
+- `image_manager` 的容器已另有[格式说明](singtel-embedur-image-format.md)，实际 key 仍缺失。
 
 ---
 
@@ -343,6 +324,6 @@ ARC_SYS_SIMPLE_FW_UPGRADE done: %s
 | web 升级页 | `www/upgrade.htm`、`www/cgi/cgi_upgrade.js` |
 | 升级执行 | `/bin/fw_upgrade`（ELF） |
 | 校验库 | `/lib/libcms_util.so` → `arca_validateImage` @ `0x12BE8`、`cmsImg_isBcmTaggedImage` @ `0x13358`、`verifyBroadcomFileTag` @ `0x1224C`、`cmsImg_parseImgHdr` @ `0x133FC` |
-| 签名原语 | `sha256_*`、`R_VerifyBlockSignature`、`RSAPublicDecrypt` |
+| 实际 envelope 原语 | helper `0x11f78` / `0x11dd0`、`R_OpenInit`、`RSAPrivateDecrypt`、`DES3_CBCInit`、`sha256_hash`；详见 footer 文档 |
 | 结果字段 | `ARC_SYS_TempUpgradeResult`、`ARC_SYS_SIMPLE_FW_UPGRADE` |
 | 样本 | `WE410443-ST_v6.02.00_build14.trx`（`]Cot`，0xDE3000 + 0x10000） |

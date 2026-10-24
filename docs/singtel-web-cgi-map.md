@@ -135,18 +135,22 @@ cgi_token_pass / url_token_pass
 |---|---:|---|
 | `name="restore"` | 2 | **配置恢复**（`mapi_ccfg_restore`） |
 | `name="plcfile"` | 6 | **固件升级**（共享内存 + `fw_upgrade`） |
-| 其它 | 3 / 4 | 未知 / 文件错误 |
+| `name="file"` | 1 / 4 | 按该行是否含 `.rom` 分别调用同一 helper 的 mode 0 / 1 |
+| 未命中且扫描结束 | 3 | fallback / 错误路径；外部可达条件待核对 |
 
-反汇编（`0x25FF0`–`0x260B8`）里就是两个 `strstr`：
+反汇编（`0x25FF0`–`0x260B8`）先检查 `name="file"`，然后检查 restore / plcfile：
 
 ```c
-if (strstr(header, "name=\"restore\"")) type = 2;
+if (strstr(header, "name=\"file\""))
+    type = strstr(header, ".rom") ? 4 : 1;
+else if (strstr(header, "name=\"restore\"")) type = 2;
 else if (strstr(header, "name=\"plcfile\"")) type = 6;
-else type = 3;
+// 未命中时继续扫描；扫描结束后走 type 3 路径。
 ```
 
-也就是说：**同一个 `upload.cgi` 既能刷固件也能恢复配置**，
-只差一个字段名。
+同一个 `upload.cgi` 分派固件与配置恢复。非固件分支的固定临时文件、
+restore → commit → reboot 顺序和错误判断见
+[配置上传分析](singtel-httpd-config-upload.md)。
 
 ### 5.6 `cli_tbl` 不是 CGI 表
 

@@ -500,11 +500,11 @@ dbus/1905 描述更直接 —— 想读 mesh 拓扑，直接 GET 这个地址即
 | `sip_config` 的参数语义 / BrnSIP 协议 | 只知道调用点，没解参数 |
 | `libArcOWLcore.so` / `libArcOWLapi.so` 的消息层 | 只确认分层与端口 55761 |
 | `image_manager` 的加密容器格式 | 只确认 MD5+签名+解密 |
-| `broadband_ssl` 的逐函数协议 | 只确认 HTTP 下载/上传线程 |
+| `broadband_ssl` 的逐函数协议 | [应用函数已还原](singtel-broadband-ssl.md)；入口为 HTTPS 计时，仍缺外层调用点 |
 | `wps_monitor` 内部状态机 | 只确认 Broadcom WSC 结构 |
 | `httpd` 的 `cli_tbl` 全表 | 只解了字段映射（webmap） |
 | `libcms_core/dal/qdm` | 未解 |
-| `pc_list_daemon` / `vis-*` / `async_event` 的内部 | 未解 |
+| `pc_list_daemon` / `vis-*` / `async_event` 的内部 | [pc_list 备注格式/共享表/NAT 算法](singtel-pc-list-internals.md)、[async_event 订阅和动作](singtel-async-event.md) 已补；pc_list 剩余字段/运行调用链待核对 |
 | `swmdk` / `qcsapi`（Quantenna） | ✅ 已确认：`swmdk` = BCM6300/63100 交换芯片 MDK；`qcsapi` 本机型不存在（死代码） |
 
 ---
