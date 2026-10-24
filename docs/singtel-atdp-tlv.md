@@ -167,7 +167,58 @@
 
 ---
 
-## 9. 怎么用这些结构
+## 9. 枚举值（同样来自 DWARF）
+
+### `_ARC_ATDP_CTRL_MGMT_CMD_ENUM`
+
+| 值 | 名字 |
+|---:|---|
+| 0 | `_ARC_ATDP_CTRL_MGMT_CMD_TPLG_CHNAGE` |
+| 1 | `_ARC_ATDP_CTRL_MGMT_CMD_LOOSE_UPLINK` |
+| 2 | `_ARC_ATDP_CTRL_MGMT_TOTAL_CMDS` |
+
+### `_P19051_ARC_SNIFF_CMD_MSG_TYPE_ENUM`
+
+| 值 | 名字 |
+|---:|---|
+| 0 | `P19051_ARC_SNIFF_RX_DHCPV4_CMD` |
+| 1 | `P19051_ARC_SNIFF_RX_DHCPV6_CMD` |
+| 2 | `P19051_ARC_SNIFF_DUMP_CMD` |
+| 3 | `P19051_ARC_SNIFF_OBTAIN_IPV4_CLIENT_LIST_CMD` |
+| 4 | `P19051_ARC_SNIFF_OBTAIN_IPV6_CLIENT_LIST_CMD` |
+| 5 | `P19051_ARC_SNIFF_TOTAL_CMDS` |
+
+### `ARC_ATDP_SPEED_TEST_MODE_TYPE`
+
+| 值 | 名字 |
+|---:|---|
+| 1 | `ARC_ATDP_SPEED_TEST_TX_MODE` |
+| 2 | `ARC_ATDP_SPEED_TEST_RX_MODE` |
+| 3 | `ARC_ATDP_SPEED_TEST_RESET_MODE` |
+| 4 | `ARC_ATDP_SPEED_TEST_OBTAIN_THROUGHPUT_MODE` |
+| 5 | `ARC_ATDP_SPEED_TEST_RELAY_MODE` |
+| 6 | `ARC_ATDP_SPEED_TEST_LOOPBACK_MODE` |
+| 7 | `ARC_ATDP_SPEED_TEST_MAX_NO_OF_MODES` |
+
+### `p19051_statistic_counters_s`（148 字节）
+
+| 偏移 | 字段 |
+|---:|---|
+| 0 | `illegal_intf_rcv_ctr` |
+| 4 | `not_arcadyan_19051_pkt_ctr` |
+| 8 | `illegal_drop_pkt_ctr` |
+| 12 | `tplg_discover_rx_ctr` |
+| 16 | `tplg_discover_tx_ctr` |
+| 20 | `tplg_notification_rx_ctr` |
+| 24 | `tplg_notification_tx_ctr` |
+| 28 | `tplg_notification_rx_hello_ctr` |
+| 32 | `tplg_notification_tx_hello_ctr` |
+| 36 | `tplg_query_rx_ctr` |
+| … | 其余查询/响应/链路度量计数器 |
+
+---
+
+## 10. 怎么用这些结构
 
 - **解码 1905 抓包**：按 `Cmdu_Header` 读 messageType，
   再按 TLV 的 `tlvType/tlvLength` 遍历；
@@ -177,7 +228,7 @@
 
 ---
 
-## 10. 证据索引
+## 11. 证据索引
 
 | 内容 | 位置 |
 |---|---|
