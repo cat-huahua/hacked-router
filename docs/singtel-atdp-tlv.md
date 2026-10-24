@@ -285,3 +285,37 @@ tplg_notification    (DMR_ARC_TPLG_CHANGE_INFO_T)
 | DWARF | `drv_atdp.ko`（未 strip，`readelf --debug-dump=info`） |
 | 结构名 | `Cmdu_Header_t`、`AlMacAddressType_TLV_t`、`ARC_vSpf_31/35`、`FUTURE_EXTENSION_01`、`RxLinkMetric_TLV_t`、`LinkMetric_TLV_t` |
 | 打包/解包 | `arc_pack_VendorSpecific_TLV_tx`、`arc_decode_VendorSpecific_TLV_tx` |
+
+---
+
+## 13. 附录：`p19051_device_type`（拓扑设备记录，11308 字节）
+
+这是 `drv_atdp.ko` 里保存的**单个 1905 设备记录**，DWARF 直接给出：
+
+| 偏移 | 类型 | 字段 |
+|---:|---|---|
+| 0 | u8 | `state` |
+| 1 | u8 | `queryState` |
+| 2 | u8 | `Dev_Property` |
+| 3 | u8 | `Master` |
+| 4 | u8[6] | `DeviceId` |
+| 10 | u8 | `keep_alive_counter` |
+| 12 | u32 | `DeviceId_OUI` |
+| 16 | u32 | `DeviceId_Non_OUI` |
+| 20 | 28B | `msgID` |
+| 48 | u32 | `Version` |
+| 52 | u32 | `LastChanged` |
+| 56 | u32 | `InterfaceNumberOfEntries` |
+| 60 | u32 | `BridgingTuplesNumberOfEntries` |
+| 64 | char[32] | `friendlyName` |
+| 96 | `interface_list[12]` | 每个接口的记录（10752 字节） |
+| 10752 | `bridging_tuple_list[2]` | 桥接元组（224 字节） |
+| 10976 | `available_lintf[12]` | 可用本地接口 |
+| 11120 | `query_intf_list` | 查询中的接口 |
+| 11196 | u32 | `topologylnkMetricRetryCount` |
+| 11200 | u32 | `topologyQueryRetryCount` |
+| 11204… | — | 各接口的 Link_Result / MAC / RSSI / DataRate / link_rate |
+| 11304 | u8 | `hop_count` |
+
+> 这个结构就是 OWL/1905 拓扑在**内核里的数据库记录**：
+> 每个邻居设备一条，包含 12 个接口的链路状态与速率。
