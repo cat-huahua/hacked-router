@@ -170,7 +170,40 @@ route add -host %s gw %s dev %s
 
 ---
 
-## 8. 证据索引
+## 8. `arc_util_cert_gen`：嵌入式证书/密钥生成器
+
+`/usr/sbin/arc_util_cert_gen` 把**编译进二进制的证书数据**写到 `/tmp/<name>`：
+
+```
+SSLAP_server_PKCS12_DATA
+SSLAP_client_PKCS12_DATA
+SSLAP_server_CA_DATA
+SSLAP_client_CA_DATA
+SSLAP_3RDCA_DATA
+SSLAP_VERISIGNCA_DATA
+```
+
+行为：
+
+```
+SSLAP_write_all_keys> create %s successful.
+SSLAP_write_all_keys> open %s failed!!
+/tmp/%s
+/tmp/myPass
+```
+
+即：它会生成/写出 server/client 的 PKCS#12、CA 证书，以及一个口令文件
+`/tmp/myPass`。
+
+★ **二进制里有一个 32 位十六进制的硬编码口令常量**（此处不公开），
+用于保护/导入这些 PKCS#12。**该值只记录在私有笔记里**。
+
+这解释了为什么 rootfs 里没有 `libsslap` 需要的客户端证书文件 ——
+它们由这个工具在运行时从二进制里“释放”出来。
+
+---
+
+## 9. 证据索引
 
 | 内容 | 位置 |
 |---|---|
