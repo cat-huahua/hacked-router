@@ -163,6 +163,10 @@ PUBLISH   devices/data/shadow                zlib 压缩的身份上报
 - [`docs/arcadyan-singtel-config-format.md`](docs/arcadyan-singtel-config-format.md) —— ★
   **Arcadyan / Singtel 的配置与密码机制**：glbcfg **是明文**、密码派生规则
   （`s1ngt3l` + 序列号后 6 位，已实证）、extender rootfs 为什么解不开（附完整证据链）
+- [`docs/singtel-config-key-universe.md`](docs/singtel-config-key-universe.md) —— ★★ **暴力枚举配置键**：
+  2,155 个模板展开出 **38,193 个可能键**（`.glbcfg` 只有 2,361 个）；
+  ★ 发现隐藏开关 `ARC_HTTPD_JSONAPI_Enable` 与 `json.cgi` / `/api/` 的
+  `json_get_*`/`json_set_*` API
 - [`docs/singtel-lan-and-wifi-insight.md`](docs/singtel-lan-and-wifi-insight.md) —— ★ **LAN 主机表与 WiFi Insight**：
   `pc_list_cli print/add/del`、`vis-cli -r/-b --chcapacity`、`/tmp/db/visdata.db`、
   RRM/STA/chanim 采集；均为本地数据（未见上云）
@@ -228,6 +232,8 @@ PUBLISH   devices/data/shadow                zlib 压缩的身份上报
 **离线解密/生成 web 备份 `Settings.CFG`**、从 flash dump 里 carve 配置 tar.gz。
 `webmap.py` 把 web 界面的 `ABS_MAP` 数字 ID 翻译成真正的 `ARC_*` 配置键
 （直接读 `libarccfg.so` 的模块表/字段表）。
+`cfgkeys.py` 把字段表按索引上限全部展开，暴力枚举出 **38,193 个可能配置键**
+（并找出 `.glbcfg` 里没有的隐藏开关）。
 
 统一工具 `routercfg.py` **五种格式**都认：NETGEAR 配置 / **NETGEAR 官方固件** /
 华为配置 / Arcadyan .trx / Arcadyan glbcfg（含华为的 **HMAC 密钥验证器**）；
