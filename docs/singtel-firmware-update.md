@@ -108,8 +108,25 @@ fw_upgrade 0 FilePath
 fw_upgrade 0 FilePath Partition
 ```
 
-镜像通过 **共享内存** 从 httpd 传进来（`shmget` / `shmat`），
-错误串里能看到 `share memory key=%d`。
+镜像通过 **System V 共享内存** 从 httpd 传进来：
+
+```
+echo 0x3C00000 > /proc/sys/kernel/shmmax
+shmget(0x12345, 0x3C00000, IPC_CREAT | 0666)
+shmat(shmid, NULL, 0)
+memset(buf, 0, 0x3C00000)
+read(upload_fd, buf, size)
+```
+
+- **key = `0x12345`**
+- **size = `0x3C00000`（60 MB）**
+- **权限 = `0666`（任何本地进程都能 attach/读写）**
+- 升级期间还会 `arc_led power on`、`arc_led power_r off`
+- 错误写 `/tmp/httpd_err.log`
+
+★ **安全点**：`0666` 的共享内存意味着本机任何进程都能在上传完成到
+`fw_upgrade` 读取之间**篡改固件镜像**（或读取它）。虽然路由器上通常没有
+普通用户，但这仍是一个本地攻击面。
 
 ---
 
