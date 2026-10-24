@@ -40,6 +40,49 @@ route del -net <dns> netmask 255.255.255.255 gateway <gw> dev <if>
 
 防止 4G dongle 和有线 WAN 的 DNS 路由打架。
 
+### `ddns_client`（Singtel 专用 DDNS）
+
+`/usr/sbin/ddns_client` 是 Singtel 自己的 DDNS 客户端：
+
+```
+服务端: ddnsapi.singnethome.com
+请求:   GET /nic/update?hostname=%s&myip=%s[&myip6=%s]
+认证:   -u <name:password>（HTTP Basic）
+UA:     User-Agent: %s - %s - %s
+```
+
+命令行：
+
+```
+-h/--host <hostname>
+-4/--ipv4 <address>
+-6/--ipv6 <address>
+-s/--service <name>
+-u/--user <name:password>
+```
+
+返回码处理（原样）：
+
+```
+good / nohost / abusive / 911 / notfqdn / nochg / badauth / dnserr
+```
+
+对应错误串：
+
+```
+SingTel ddns: Update good and successful, IP updated.
+SingTel ddns: The hostname specified does not exist.
+SingTel ddns: wrong username or password
+SingTel ddns: No changes, update considered abusive.
+...
+```
+
+它直接用 OpenSSL（`SSL_CTX_new` / `SSL_connect` / `SSL_CTX_set_cipher_list`），
+不是 `libhttpclt`。
+
+> 凭据来自 `.glbcfg` 的 `ARC_DDNS_*`（`UserName` / `Password`），
+> 运行时由 `arc_ddns` 或 web/TR-069 触发。
+
 ---
 
 ## 2. 桥接与 AP 模式
