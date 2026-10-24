@@ -127,6 +127,27 @@ cgi_token_pass / url_token_pass
 
 把 web 操作转成 OWL 命令（拓扑/漫游/LED）。
 
+### 5.5 `upload.cgi` 的字段分派
+
+`upload.cgi` 是 multipart 上传，靠 **表单字段名** 区分用途：
+
+| 字段名 | 类型码 | 用途 |
+|---|---:|---|
+| `name="restore"` | 2 | **配置恢复**（`mapi_ccfg_restore`） |
+| `name="plcfile"` | 6 | **固件升级**（共享内存 + `fw_upgrade`） |
+| 其它 | 3 / 4 | 未知 / 文件错误 |
+
+反汇编（`0x25FF0`–`0x260B8`）里就是两个 `strstr`：
+
+```c
+if (strstr(header, "name=\"restore\"")) type = 2;
+else if (strstr(header, "name=\"plcfile\"")) type = 6;
+else type = 3;
+```
+
+也就是说：**同一个 `upload.cgi` 既能刷固件也能恢复配置**，
+只差一个字段名。
+
 ### 5.6 `cli_tbl` 不是 CGI 表
 
 `httpd` 里的日志格式串：
