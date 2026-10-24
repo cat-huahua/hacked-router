@@ -163,6 +163,9 @@ PUBLISH   devices/data/shadow                zlib 压缩的身份上报
 - [`docs/arcadyan-singtel-config-format.md`](docs/arcadyan-singtel-config-format.md) —— ★
   **Arcadyan / Singtel 的配置与密码机制**：glbcfg **是明文**、密码派生规则
   （`s1ngt3l` + 序列号后 6 位，已实证）、extender rootfs 为什么解不开（附完整证据链）
+- [`docs/singtel-atdp.md`](docs/singtel-atdp.md) —— ★★ **ATDP 传输层**：
+  `drv_atdp.ko` + `/dev/ATDP_CDRV`、VendorSpecific TLV 31/35、控制命令
+  （LOOSE_UPLINK/TPLG_CHNAGE）、内置测速模式、上行/回传跟踪
 - [`docs/singtel-tr069-mapping.md`](docs/singtel-tr069-mapping.md) —— ★★ **TR-069 参数 → ARC 键映射**：
   `tr69` 直接调用 `arc_cfg_get/set`；ACS 可写 telnet/SSH/JSON API/
   管理密码/root 口令/自动升级 URL 等键
