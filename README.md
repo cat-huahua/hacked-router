@@ -163,6 +163,9 @@ PUBLISH   devices/data/shadow                zlib 压缩的身份上报
 - [`docs/arcadyan-singtel-config-format.md`](docs/arcadyan-singtel-config-format.md) —— ★
   **Arcadyan / Singtel 的配置与密码机制**：glbcfg **是明文**、密码派生规则
   （`s1ngt3l` + 序列号后 6 位，已实证）、extender rootfs 为什么解不开（附完整证据链）
+- [`docs/singtel-wps-monitor.md`](docs/singtel-wps-monitor.md) —— ★★ **WPS 状态机**：
+  EAPOL M1–M8 + UPnP WFAWLANConfig + 1905 三条入口、`wps_*` nvram 键、
+  ★ `wps_aplockdown` PIN 爆破锁定（start/forever 计数）、状态码
 - [`docs/singtel-midcore-protocol.md`](docs/singtel-midcore-protocol.md) —— ★★ **midcore 本地协议**：
   Unix socket `/tmp/arc-middle/core_trnx`、16 字节头（opcode@0x0A、length@0x0C）、
   opcode 1/2/3/5/6/7/10–15/20/21、0x284 字节记录、pcscfg_*/CFG_* API
