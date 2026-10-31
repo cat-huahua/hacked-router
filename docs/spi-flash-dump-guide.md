@@ -55,8 +55,8 @@ md5sum dump1.bin dump2.bin
 ## 三、Flash 分区（来自 OpenWrt 的 `we410443.dts`，32MB NOR）
 
 ```
-0x000000  192KB   u-boot          ← ★ rootfs 的解密密钥在这里（或它引用的地方）
-0x030000   64KB   u-boot-env      ← ★ 先看这里：密钥可能是里面的一个环境变量
+0x000000  192KB   u-boot          ← bootloader；本rootfs解码无需其key
+0x030000   64KB   u-boot-env      ← bootloader环境；不能推断有rootfs key
 0x040000   64KB   factory         ← 射频校准
 0x050000  31.4MB  firmware
 0x1FB0000  64KB   glbcfg          ← ★ 明文配置（WiFi 口令在这里）

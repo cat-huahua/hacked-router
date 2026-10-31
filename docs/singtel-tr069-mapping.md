@@ -136,7 +136,7 @@ ARC_UPNP_Enable
 2. **ACS 可以改管理密码/root 口令**：
    `ARC_SYS_Password`、`ARC_ROOT_Passwd`。
 3. **ACS 可以改自动升级 URL/时间窗**：`ARC_SYS_AUTOFW_Url` 等。
-4. **默认 ACS 凭据是 `singtel/singtel`**（见 tr069 文档），
+4. **默认 ACS 凭据是 `<vendor-user>/<vendor-password>`**（见 tr069 文档），
    且 45 秒一次 Inform —— 攻击面持续在线。
 5. **TR-069 走 `.glbcfg` 而不是 CMS**：两套配置系统可能不同步，
    ACS 改的值可能被 CMS/本地覆盖。

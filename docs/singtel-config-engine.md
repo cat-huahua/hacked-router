@@ -295,7 +295,9 @@ mng_cli action reboot
    `del` 加 `commit` 会让字段回到“未设置”，服务可能起不来。
 2. **`commit` 才落盘**：只 `set` 不 `commit`，重启即丢；反过来，
    `commit` 写 flash，频繁写会磨损 `pricfg`。
-3. **`action reboot` 会立即重启**，不会等配置提交。
+3. **软件重启和冷断电须区分**：已记录的reboot消息脚本包含commit，
+   见[事件总线](singtel-boot-event-bus.md)；不能据此推断其它路径也提交，
+   或用软件重启验证断电持久性。
 4. **`@section` 写错会改到别的命名空间**，脚本里很少用，别乱加。
 5. **`mng` 挂了整机不可配置**；`pslist.conf` 会拉起它（`mng` 异常退出→重启）。
 

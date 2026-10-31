@@ -1,7 +1,7 @@
 # Singtel Mesh Router 里的 **EmbedUR 云管理代理**
 
 > 设备：Singtel Mesh Router（Arcadyan WG9116AEAC23-ST，v5.02.00 build09b）
-> 材料：`WE410443-ST_v6.02.00_build14.trx` 解出的 UBIFS rootfs
+> 材料：`Singtel-MeshRG.w` 解出的ARM主路由UBIFS rootfs；不是MIPS extender TRX
 > 日期：2026-10-17
 
 ---

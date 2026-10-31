@@ -1,7 +1,8 @@
 # Singtel Mesh Extender（Arcadyan WE410443-ST v6.02.00）固件分析
 
-2026-10-14 / 15 实测。**结论先行：官方固件是签名 + 加密的，rootfs 解不开；
-bootloader 压根不在固件包里。**
+2026-10-31 状态校正：官方rootfs已完整提取，无需flash AES key；
+正常更新仍有footer验证，bootloader不在此更新包里。
+[真实解码证据](singtel-extender-crypto-path.md)优先于下文早期猜测。
 
 ## 官方固件直链
 
@@ -151,7 +152,7 @@ OpenWrt 移植者写的是 "bootloader is locked with a password… **currently 
 
 ```
 ① 内核  → 能读（LZMA 非标准参数，FORMAT_ALONE 直接解）
-② rootfs → 读不了（唯一加密的部分；云端 agent / 网页代码 / 默认配置都在里面）
+② rootfs → 已完整提取（固定byte变换包裹XZ；不是缺flash AES key）
 ③ bootloader → 不在这份文件里（在芯片 0x0~0x30000）
 ```
 

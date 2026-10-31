@@ -4,7 +4,7 @@
 > 材料：`/usr/sbin/tr69`（555 KB ELF）、`/usr/sbin/tr69_trigger`、
 > `/usr/share/msg/tr69_*`、`.glbcfg` 的 `ARC_TR69_*`
 > 一句话：**这是一套完整的 Arcadyan CWMP 客户端，默认开启，ACS 是 Singtel 的
-> `bs-hdm.singnet.com.sg`，出厂账号 `singtel/singtel`，每 45 秒 Inform 一次。**
+> `bs-hdm.singnet.com.sg`，出厂账号 `<vendor-user>/<vendor-password>`，每 45 秒 Inform 一次。**
 
 ---
 
@@ -14,8 +14,8 @@
 |---|---|---|
 | `ARC_TR69_EnableCWMP` | **1** | CWMP 开 |
 | `ARC_TR69_URL` | `https://bs-hdm.singnet.com.sg/cwmpWeb/CPEMgt` | ACS |
-| `ARC_TR69_Username` | `singtel` | ACS 认证账号 |
-| `ARC_TR69_Password` | `singtel` | ACS 认证口令 |
+| `ARC_TR69_Username` | `VENDOR_CREDENTIAL_HERE` | ACS 认证账号 |
+| `ARC_TR69_Password` | `VENDOR_CREDENTIAL_HERE` | ACS 认证口令 |
 | `ARC_TR69_PeriodicInformEnable` | **1** | 周期 Inform |
 | `ARC_TR69_PeriodicInformInterval` | **45** 秒 | ★ 非常频繁 |
 | `ARC_TR69_ConnectionRequestPort` | 30005 | ACS 反向连接端口 |
@@ -191,7 +191,7 @@ mng_cli commit
 
 ## 9. 安全观察
 
-1. **默认开启 + 固定账号**：`singtel/singtel`，ACS 地址固定。
+1. **默认开启 + 固定账号**：`<vendor-user>/<vendor-password>`，ACS 地址固定。
    如果这个账号在 Singtel 侧是共享的，拿到它就是“云端管理权限”。
 2. **每 45 秒 Inform**：设备会持续向 ACS 上报状态并拉取任务；
    流量不大，但意味着 **云端随时可以下发配置/固件**。

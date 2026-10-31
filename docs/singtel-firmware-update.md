@@ -150,7 +150,7 @@ total = atoi(img + 0x3E) + 0x100;
 
 ```
 0x000  …                       tag 头（含 magic/version）
-0x03E  "12345678\0"            totalImageLen（ASCII）
+0x03E  "VENDOR_BACKHAUL_PSK_HERE\0"            totalImageLen（ASCII）
 0x0D8  …                       保留/其他字段
 0x0EC  u32                    前 0xEC 字节的 CRC32
 0x100  …                       镜像数据
@@ -203,7 +203,7 @@ S 是 T **之前**的独立 20 字节 trailer，CRC/chip 字段不在 T 的开�
 |---:|---|---|
 | `0x00` | `]Cot`（`5d 43 6f 74`） | 容器魔数 |
 | `0x04` | `0x00DE3000`（LE） | 镜像长度（= 文件大小 − 0x10000） |
-| `0x08` | `0xD5E90D3B` | 32 位校验值（**算法尚未对上**，见 §7） |
+| `0x08` | `0xD5E90D3B` | CRC-32 raw state（覆盖`image[12:declared_length]`，见extender证据） |
 | `0x0C` | `0x00010000` | 版本 / 标志 |
 | `0x10` | `0x0000001C` | **kernel 偏移** = 28 |
 | `0x14` | `0x002D001C` | **rootfs 偏移** = 0x2D001C |
@@ -252,9 +252,9 @@ crc = table[(crc ^ byte) & 0xff] ^ (crc >> 8);
 | 范围 | 整段 / 去签名块 / payload / kernel / rootfs / rootfs+96 |
 | 其它 | Adler-32、MD5/SHA1/SHA256 前后 4 字节、两段 CRC 的 XOR/加/减 |
 
-**全部未命中。** 说明它不是“标准 CRC + 连续区间”的组合；
-可能是打包工具的自定义校验，或覆盖范围包含/排除了某些头字段。
-如实记录在这里，不再猜。
+**以上是早期未命中记录，结论已被后续代码证据推翻。**
+真实连续覆盖范围为`image[12:declared_length]`，其zlib CRC取反命中原厂样本；
+详见[extender证据](singtel-extender-autofw.md)。候选失败不能排除算法。
 
 > 尾部大部分为零不妨碍它承载 envelope，但 `0x290` 之后仍有非零字段；
 > 不应把整个剩余区域一概称作 padding。

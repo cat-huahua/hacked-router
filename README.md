@@ -77,7 +77,8 @@ pws    = ArcMD5(ArcMD5(密码)   + token)
 - **token 是一次性的** —— 登录会消耗掉它，之后每个请求都要重新从页面取。
   ★ 这正是"写配置永远崩溃"的根因：拿已消耗的 token 打 `toplogy.cgi`，
   CGI 失败后服务端吐 `error`，客户端看到的是 `BadStatusLine('error')`
-- `.exe` 端点全部 connection reset；能用的只有 `.cgi` 和 `/cgi/*.js`
+- 旧脚本曾观察到直接请求部分`.exe`端点失败；不能推广成所有`.exe`不可用，
+  也不能取代原页面公共helper的真实控制流。
 - 重命名节点时 `device_mac` **不是网卡 MAC**，是**网卡 MAC 最后一字节 +1**；
   传错也返回 `ok` 但静默不生效
 
@@ -108,7 +109,8 @@ POST /cgi-bin/toplogy.cgi
 见 [`docs/singtel-mesh-login-lock.md`](docs/singtel-mesh-login-lock.md)。
 
 一句话：**锁 = 配置里存在 `ARC_SYS_LoginBlocked` 这个键；失败满 10 次就写进 flash。
-它跟时间无关，重启也清不掉，唯一可靠的清除办法是恢复出厂。**
+重启不清掉该持久锁；现有实测清除办法是恢复出厂，
+不能据此排除有shell权限时直接修复配置的可能。**
 
 **纪律**：绝不连续试密码。每次试之前先读登录页里的 `wait_secs`，不是 `0` 就绝对别发请求。
 
@@ -136,8 +138,8 @@ PUBLISH   devices/data/shadow                zlib 压缩的身份上报
 ### ★ 固件与 bootloader
 
 - [`docs/singtel-firmware-analysis.md`](docs/singtel-firmware-analysis.md) —— 加密地图、分区表、密码存储方式
-- [`docs/uboot-web-recovery.md`](docs/uboot-web-recovery.md) —— ★ **u-boot 的 Web 恢复模式**（不鉴权，能写 bootloader）
-- [`docs/spi-flash-dump-guide.md`](docs/spi-flash-dump-guide.md) —— ★ **SPI flash 读取指南**：三个解不开的目标，钥匙都在同一块 flash 里；含具体步骤、分区偏移、拿到 dump 后怎么用
+- [`docs/uboot-web-recovery.md`](docs/uboot-web-recovery.md) —— 原厂recovery入口尚未验证，旧版fork推论已撤回
+- [`docs/spi-flash-dump-guide.md`](docs/spi-flash-dump-guide.md) —— SPI flash备份指南；extender rootfs已无需flash key
 - `kallsyms_extract.py` —— ★ **从裸内核解出 kallsyms 全符号表**：内核把符号名压缩存储，
   `strings` 只能捞到零星几个；这个工具解出全部（实测两台真机内核 40,349 / 17,483 个）
 - `jffs2_extract.py` —— ★ **JFFS2 提取器（自动判端序）**：常规工具遇到「字段端序反了」
@@ -155,7 +157,7 @@ PUBLISH   devices/data/shadow                zlib 压缩的身份上报
   （**密钥在设备上，不在文件里**）
 - [`docs/arcadyan-singtel-config-format.md`](docs/arcadyan-singtel-config-format.md) —— ★
   **Arcadyan / Singtel 的配置与密码机制**：glbcfg **是明文**、密码派生规则
-  （`s1ngt3l` + 序列号后 6 位，已实证）、extender rootfs 为什么解不开（附完整证据链）
+  （`VENDOR_PREFIX_HERE` + 序列号后 6 位，已实证）、extender rootfs已解码及旧AES推断的更正
 - [`docs/singtel-atdp-tlv.md`](docs/singtel-atdp-tlv.md) —— ★★★ **ATDP TLV 精确结构**：
   从 `drv_atdp.ko` 的 DWARF 读出 `Cmdu_Header`(8B)、`ARC_vSpf_31`(10B)、
   `ARC_vSpf_35`(44B)、`FUTURE_EXTENSION_01`(131B)、`LinkMetric`(318B) 的全部字段偏移
@@ -198,7 +200,7 @@ PUBLISH   devices/data/shadow                zlib 压缩的身份上报
   Unix socket `/tmp/arc-middle/core_trnx`、16 字节头（opcode@0x0A、length@0x0C）、
   opcode 1/2/3/5/6/7/10–15/20/21、0x284 字节记录、pcscfg_*/CFG_* API
 - [`docs/singtel-web-cgi-map.md`](docs/singtel-web-cgi-map.md) —— ★ **web 端点与 CGI 地图**：
-  `login/logout/setpwd/setpwd2/apply_abstract/get_info/get_topology_clients/json/owl_cmd/upload/mt`
+  `login/logout/setpwd/setpwd2/apply_abstract/get_info/get_topology_clients/json/owl_cmd/upload`
   等端点、`get_*`/`set_*` 函数清单、认证辅助
 - [`docs/singtel-arc-nvram-map.md`](docs/singtel-arc-nvram-map.md) —— ★★ **ARC 配置 ↔ nvram 映射**：
   `ARC_WLAN_*` → `wl0_*`/`wl1_*`/`fh_*`/`bh_*` 的键名对照、前缀/VAP 规则、
@@ -245,11 +247,11 @@ PUBLISH   devices/data/shadow                zlib 压缩的身份上报
   GPIO 映射（低电平有效）、`arc_led` 命令、`arc_ledd`/`arc_gpiod` 守护；
   ★ GPIO32 按住 8 秒 = 恢复出厂，短按 = 重启
 - [`docs/singtel-tr069.md`](docs/singtel-tr069.md) —— ★★ **TR-069 / CWMP**：
-  Arcadyan CWMP 客户端、ACS `bs-hdm.singnet.com.sg`、默认 `singtel/singtel`、
+  Arcadyan CWMP 客户端、ACS `bs-hdm.singnet.com.sg`、默认 `<vendor-user>/<vendor-password>`、
   **45 秒一次 Inform**、30005 反向连接 + STUN、完整 RPC 列表、固件下载签名校验、
   ACS 能触发的 10 条 `tr69_*` 动作
 - [`docs/singtel-wps-and-mesh-pairing.md`](docs/singtel-wps-and-mesh-pairing.md) —— ★ **WPS 与 mesh 配对**：
-  前传 WPS 默认关、**回传 WPS 默认开且 PIN 出厂 12345670、PSK 12345678**；
+  前传 WPS 默认关、**回传 WPS 默认开且 PIN 出厂 VENDOR_WPS_PIN_HERE、PSK VENDOR_BACKHAUL_PSK_HERE**；
   Broadcom WPS 状态码、板级数据覆盖、如何关闭回传 WPS
 - [`docs/singtel-dbus-command-map.md`](docs/singtel-dbus-command-map.md) —— ★★ **dbus 命令字典**：
   35 个 agent、95 个唯一 `CMD_*`、`dbus-arca-cli` 用法与示例；
@@ -333,3 +335,9 @@ netgear_r7800/  NETGEAR SOAP API 客户端
 见[真实byte算法与证据](docs/singtel-extender-crypto-path.md)；
 [extender更新协议](docs/singtel-extender-autofw.md)对应`autofw_server.py`本机服务。
 `extender_rootfs.py`只提取，`autofw_server.py`只供文件；尚未生成经验证可刷入的自定义镜像。
+
+2026-10-31 全仓核查与OpenWrt准备：见[WE410443恢复与配置持久化](docs/singtel-openwrt-recovery.md)。
+`openwrt/recovery.py prepare`下载并核验官方镜像；`watch`有期限地观察指定HTTP服务，
+不自动上传。`openwrt/mesh-settings`在已安装OpenWrt后检查overlay、提交UCI并核对重启后的配置hash。
+原厂免密码首次安装入口仍未验证；断网或出现HTTP页面不能触发自动刷写。
+`cfgpack.py pack/decrypt`现需仓库外`--key-file`，公开源码不再内置备份口令。

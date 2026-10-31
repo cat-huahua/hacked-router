@@ -24,7 +24,7 @@ ARC_WAN_BaseType=1
 ARC_WAN_Active=0 1 2
 ...
 ARC_UI_WEB_REMOTEMN_Password=<32 位 MD5>                          ← MD5(SN)，见下
-ARC_TR69_Password=singtel                                          ← 默认值
+ARC_TR69_Password=VENDOR_PASSWORD_HERE                                          ← 默认值
 ```
 
 flash 里的 `glbcfg`(0x1fb0000) / `config`(0x1fc0000) 分区同理 ——
@@ -36,8 +36,8 @@ flash 里的 `glbcfg`(0x1fb0000) / `config`(0x1fc0000) 分区同理 ——
 里面把每个默认密码怎么来的写得清清楚楚：
 
 ```sh
-# 默认 SSH 密码 = s1ngt3l + 序列号后 6 位
-ssh_passwd="s1ngt3l`echo $sn | cut -c $(($s_len-5))-`"
+# 默认 SSH 密码 = VENDOR_PREFIX_HERE + 序列号后 6 位
+ssh_passwd="VENDOR_PREFIX_HERE`echo $sn | cut -c $(($s_len-5))-`"
 echo -e "$ssh_passwd\n$ssh_passwd\n" | passwd admin
 mngcli set ARC_ROOT_Passwd=`echo -n "$ssh_passwd" | md5sum | ...`
 
@@ -47,7 +47,7 @@ mngcli set ARC_UI_WEB_REMOTEMN_Password=`echo -n "$sn" | md5sum | ...`
 
 | 东西 | 怎么来的 | 能否离线算出 |
 |---|---|---|
-| **root / SSH 密码** | `s1ngt3l` + **序列号后 6 位** | ★ **能**（只要知道 SN） |
+| **root / SSH 密码** | `VENDOR_PREFIX_HERE` + **序列号后 6 位** | ★ **能**（只要知道 SN） |
 | `ARC_ROOT_Passwd` | `MD5(上面那个)` | ★ **能** |
 | `ARC_UI_WEB_REMOTEMN_Password` | `MD5(序列号)` | ★ **能** |
 | **管理界面密码** `ARC_SYS_Password` | `arc_board get gui-pwd` | ✗ 板级出厂数据 |
@@ -67,10 +67,10 @@ mngcli set ARC_UI_WEB_REMOTEMN_Password=`echo -n "$sn" | md5sum | ...`
 ### ★ 这条规则是被实证过的，不只是读代码
 
 同一厂固件的默认账户哈希（模板值，见第 6 节）。用 hashcat 模式 500 +
-掩码 `s1ngt3l?d?d?d?d?d?d`（100 万候选）**31 秒命中**：
+掩码 `VENDOR_PREFIX_HERE?d?d?d?d?d?d`（100 万候选）**31 秒命中**：
 
 ```
-命中值 = s1ngt3l + 模板设备序列号的后 6 位
+命中值 = VENDOR_PREFIX_HERE + 模板设备序列号的后 6 位
 ```
 
 **代码里读到的派生规则 = 哈希里解出来的真值** —— 两个方向互证，规则钉死。
@@ -105,7 +105,7 @@ Location: /change_pwd.htm
 
 1. **先判断是不是弱变换**：单字节 XOR（256 种）、4 字节块 `rand()` XOR（种子取文件头各字段）、
    重复密钥 XOR（**自相关找周期**）、ECB（**数重复的 16 字节块**）。
-2. **再试候选密钥**：厂商名、型号、`s1ngt3l`、全零/全 FF、文件头魔数、已知哈希。
+2. **再试候选密钥**：厂商名、型号、`VENDOR_PREFIX_HERE`、全零/全 FF、文件头魔数、已知哈希。
 3. **拿 AES 试**：ECB 与 CBC（IV=0 / 文件头 IV / 块号），**只看第一个数据块能不能变成合法魔数**。
 4. 都不中 → 老老实实承认密钥不在手上。
 
@@ -161,7 +161,7 @@ ARC_OWL_CLOUD_URL=https://stage1.arciot.com:55668      ← ★ 注意 stage1 = �
 从同厂某台设备的官方固件里解出的 rootfs 中（**未加密部分**）实测到：
 
 - **`admin` 账户自带一个 MD5-crypt 默认哈希**（模板值）→ 说明默认口令是**全设备族共用**的，
-  不是每台现算的。**已破解**（模式 500 + `s1ngt3l?d?d?d?d?d?d` 掩码，31 秒）→ 见第 2 节。
+  不是每台现算的。**已破解**（模式 500 + `VENDOR_PREFIX_HERE?d?d?d?d?d?d` 掩码，31 秒）→ 见第 2 节。
 - **两张未加密的共用 RSA 私钥**（`server.key` / `key.pem`，2048 位，无 `Proc-Type: ENCRYPTED` 头）。
   **厂商全设备共用同一把私钥** = 这些设备的 TLS 身份不具备唯一性。
 - **自签证书的 CN 直接写成 `www.singtel.com`**（有效期 2021–2031）；
@@ -244,7 +244,7 @@ ARC_SYS_PPPOEPassthru=1      ARC_SYS_MACCLONE_Enable=0
 ## ★ WPS / WEP 的出厂状态
 
 ```
-ARC_WLAN_*_SSID_*_WPS_ExRegistrarPIN = 12345670      ← 所有 SSID 同一个出厂 WPS PIN
+ARC_WLAN_*_SSID_*_WPS_ExRegistrarPIN = VENDOR_WPS_PIN_HERE      ← 所有 SSID 同一个出厂 WPS PIN
 ARC_WLAN_24G_WPS_PINEnable = 0                        ← WPS PIN 默认关
 ARC_WLAN_*_WEP_KeyType = hex   WEP_DftKeyId = 1   WEP_KeyLen = 0
 ARC_WLAN_*_SSID_*_WPA_GroupRekey = 0
@@ -262,7 +262,7 @@ ARC_USB_DONGLE_PinState=-1  PinLock=0  PinTimes=3     ← 3G/4G 上网卡 SIM �
 | 安全问题答案 | `PWD_answer1/2` = SHA256 | 无此机制 | 无 |
 | PPPoE | `wan_pppoe_*`（出厂 `guest`/`flets`） | `ARC_WAN_*_PPP_*` | 未知 |
 | 云端账号 | ReadyCLOUD（运行时下载 agent） | `ARC_OWL_CLOUD_USER=mg-test@...` | 未知 |
-| TR-069 | `cwmp_*` | `ARC_TR69_Password=singtel` | 未知 |
+| TR-069 | `cwmp_*` | `ARC_TR69_Password=VENDOR_PASSWORD_HERE` | 未知 |
 | 远程管理白名单 | — | **预置 Singtel 公网 IP** | — |
 | 弱口令检查 | `weak_password_check=0` | — | — |
 
@@ -648,7 +648,7 @@ gpon-sn        gpon-pwd
 > 与 `arc_glbcfg` 里那三条"可离线算"的规则对照：
 > | 东西 | 来源 |
 > |---|---|
-> | root/SSH 密码 = `s1ngt3l`+SN后6位 | **算**（`arc_board get sn` 拿到 SN 即可） |
+> | root/SSH 密码 = `VENDOR_PREFIX_HERE`+SN后6位 | **算**（`arc_board get sn` 拿到 SN 即可） |
 > | `ARC_ROOT_Passwd` = MD5(上面那个) | **算** |
 > | `ARC_UI_WEB_REMOTEMN_Password` = MD5(SN) | **算** |
 > | `ARC_SYS_Password` = `arc_board get gui-pwd` | **读**（板级区） |
@@ -807,7 +807,7 @@ mngcli commit
 root/SSH 密码、`ARC_ROOT_Passwd`、`ARC_UI_WEB_REMOTEMN_Password` 等**）→ `commit`。
 
 所以"恢复出厂后密码是什么"的答案就在这条链里 ——
-**root/SSH 密码 = `s1ngt3l` + 序列号后 6 位**（可算），**管理密码来自 `gui-pwd`**（读板级区）。
+**root/SSH 密码 = `VENDOR_PREFIX_HERE` + 序列号后 6 位**（可算），**管理密码来自 `gui-pwd`**（读板级区）。
 
 ## 5. 重启
 
@@ -1029,7 +1029,7 @@ WPS_Enable  WPS_ExRegistrarEnable  WPS_ExRegistrarPIN  WPS_Unconfigured
 1. **WEP 的 4 个 key 槽还在** —— 这套代码是从很老的版本一路改下来的（和前面
    `Fixme, some old code still use VAR_` 那条注释一个味道）
 2. `WPS_Unconfigured` 这个字段 —— WPS 的"未配置"状态是**单独存**的，
-   说明 `WPS_ExRegistrarPIN` 那个固定 PIN（出厂 `12345670`）是有专门处理路径的
+   说明 `WPS_ExRegistrarPIN` 那个固定 PIN（出厂 `VENDOR_WPS_PIN_HERE`）是有专门处理路径的
 
 ## MAC 过滤
 

@@ -156,7 +156,7 @@ NG_INTERESTING = [
 # ══════════════════════════════════════════════════════════════════════
 HW_HEADER = 32          # 设备额外加的头
 HW_TAG = 32             # 密文末尾的 HMAC-SHA256
-HW_ONTSHARED_KEY = b"hex:13395537D2730554A176799F6D56A239"   # 老光猫全网共用
+HW_ONTSHARED_KEY = b"VENDOR_SHARED_KEY_HERE"   # 老光猫全网共用
 
 HW_MODEL_LINE = (
     "  结构 = [设备头 %d 字节][16 字节 IV][AES-256 密文（CBC 链式）][32 字节 HMAC-SHA256]\n"
@@ -309,7 +309,7 @@ def trx_report(data, out_prefix):
             print("   ★ kernel 解出来了（%d 字节）→ %s" % (len(k), out))
         except Exception as e:
             print("   kernel 解压失败: %s" % str(e)[:60])
-    # rootfs：超块应是明文，其后应解不开
+    # rootfs：超块与comp_opts明文，自定义XZ块由extender_rootfs.py处理
     off = h["off2"]
     sb = sqsh_super(data, off)
     if sb:
@@ -323,7 +323,7 @@ def trx_report(data, out_prefix):
             print("       flags 含 COMP_OPT(0x0400) → 超块后紧跟 comp_opts 块")
         # 超块之后的第一个块：明文还是密文？
         after = data[off + 96:off + 96 + 16]
-        print("       超块后首块: %s  ← 若读不出压缩器选项即为【密文】" % after.hex())
+        print("       超块后首块: %s  ← 该字段本身不能证明是否加密" % after.hex())
     elif data[off:off + 4] == SQSH_MAGIC:
         print("   rootfs: 那 4 字节 hsqs 是【假标记】（后面全 0）")
     print()
@@ -350,7 +350,7 @@ ARC_NOTE = (
     "     设备上的 glbcfg(0x1fb0000) / config(0x1fc0000) 分区同理 ——\n"
     "     **管理密码、WiFi 口令都是明文躺在里面**，SPI 读出来即可。\n"
     "  密码怎么来的（见 /sbin/arc_glbcfg 脚本）：\n"
-    "     root/SSH 密码 = 's1ngt3l' + 序列号后 6 位   ← ★ 可离线算\n"
+    "     root/SSH 密码 = 'VENDOR_PREFIX_HERE' + 序列号后 6 位   ← ★ 可离线算\n"
     "     ARC_ROOT_Passwd = MD5(上面那个)              ← ★ 可离线算\n"
     "     ARC_UI_WEB_REMOTEMN_Password = MD5(序列号)   ← ★ 可离线算\n"
     "     ARC_SYS_Password(管理界面) = arc_board get gui-pwd   ← 板级出厂数据\n"

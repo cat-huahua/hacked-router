@@ -1,101 +1,46 @@
-# u-boot 的 Web 恢复模式 —— 一条不经过密码的刷机入口
+# WE410443 原厂 U-Boot recovery：尚未验证的入口
 
-**状态：已从公开源码确认存在，尚未在真机上验证。** 2026-10-15。
+2026-10-31 更正。公开 MediaTek U-Boot fork 有 HTTP recovery 实现；
+**这不证明 Singtel WE410443-ST 原厂 bootloader 包含或启用了同一实现。**
+旧版把“同SDK”和fork的“enhanced”描述推成原厂必有，还给出猜测IP、按键和上传命令，
+这些步骤没有本机bootloader或真实请求证据，现撤回。
 
-## 为什么这条路重要
+## 已解
 
-设备上所有的刷机入口都被两样东西守住了：
+- 本仓库已解码官方extender rootfs；正常系统更新经 `autofw`、`arcupload`、
+  `arc_uploadhelper`，有CRC与footer封装验证。见[实际调用链](singtel-extender-autofw.md)。
+- 管理界面的登录锁、SSH认证和bootloader认证是不同路径；恢复管理密码不能由
+  “ping通了”或“出现一个HTTP页面”来证明。
+- OpenWrt有WE410443目标与官方sysupgrade/initramfs镜像；首次安装与后续sysupgrade
+  是不同操作。见[准备与持久化工具](singtel-openwrt-recovery.md)。
+- 公开fork代码只能作为寻找HTTP parser/恢复模式的线索，不能替代原厂二进制或观察。
 
-| 入口 | 拦路虎 |
+## 未解
+
+- 原厂是否支持HTTP/TFTP recovery，触发条件和按键时长是什么。
+- 恢复模式的IP、端口、上传字段、目标分区以及镜像接受规则。
+- 是否验签、是否允许RAM-only启动，以及是否有读取配置的接口。
+
+长按按键可能恢复出厂设置，不能将猜测按键流程称为“零损失”。
+普通管理页、HTTP200、网络重新连通都不等价于已进入bootloader recovery。
+设备离线时也无法通过该接口写flash；等待工具应等待已确认的服务出现，
+而不是把断网当作自动刷写触发器。
+
+## 本地观察工具
+
+`openwrt/recovery.py watch --url <observed-url>` 只对一个用户指定的URL执行有期限的GET，
+可将页面存到仓库外以供检查。它不枚举地址、不提交固件、不修改DNS、不尝试密码。
+返回的`recovery_verified`始终为false：内容需与本机恢复协议独立核对。
+它不是可用刷机入口的证明。
+
+## 证据索引
+
+| 材料 | 支持范围 |
 |---|---|
-| Web 管理界面上传固件（`/fwupload.cgi`） | 只收**官方签名**镜像（`arca_validateImage`） |
-| 串口菜单的 TFTP | **bootloader 密码**（社区至今没解） |
-| OpenWrt 刷机 | 同上，所以社区最后都去拆 SPI |
+| 本地`docs/singtel-extender-autofw.md`的VA/file offset表 | 原厂系统更新调用链，不能推断bootloader实现 |
+| 本地`docs/singtel-extender-password-change.md` | 页面真实流程、脚本混淆与未解认证状态 |
+| [官方OpenWrt设备页](https://openwrt.org/toh/arcadyan/astoria/we410443) | 支持型号及安装资料；仍需确认本机硬件/入口 |
+| [OpenWrt目标定义](https://github.com/openwrt/openwrt/blob/v25.12.6/target/linux/ramips/image/mt7621.mk) | `Device/arcadyan_we410443`，不是原厂recovery实现 |
+| [ec-/u-boot-mt7621](https://github.com/ec-/u-boot-mt7621) | 旧版引用的独立fork；本仓库未证明其与本机bootloader字节匹配 |
 
-**但 u-boot 的 Web 恢复模式在 bootloader 层** —— 在操作系统**之下**，
-所以：没有登录锁、没有会话、没有 `wait_secs`、**也可能没有签名校验**
-（签名是上层 `/bin/fw_upgrade` 干的）。
-
-## 证据：公开源码里有完整的实现
-
-`ec-/u-boot-mt7621`（基于 **MediaTek SDK 5.0.1.0**，和设备上的
-`Ralink UBoot Version: 5.a.0.1` 同源）源码里有一整个 `httpd/` 目录：
-
-```
-uboot-5.x.x.x/httpd/httpd.c          21KB   ← web 服务器本体
-uboot-5.x.x.x/httpd/main.c                  ← uIP 主循环
-uboot-5.x.x.x/httpd/vendors/general/index.html   ← 恢复网页
-```
-
-**关键：`httpd.c` 里 `uip_listen(HTONS(80))` —— 开在 80 端口，
-而整个请求处理只有 GET/POST 解析，一行鉴权代码都没有。**
-
-恢复页面提供的上传表单：
-
-```html
-<form enctype="multipart/form-data"><input type="file" name="uboot">    <input value="Update U-Boot"></form>
-<form enctype="multipart/form-data"><input type="file" name="firmware"> <input value="Update Firmware"></form>
-<form enctype="multipart/form-data"><input type="file" name="config">   <input value="Update Config"></form>
-<form enctype="multipart/form-data"><input type="file" name="radio">    <input value="Update Radio"></form>
-<form enctype="multipart/form-data"><input type="file" name="initramfs"></form>
-```
-
-**它能写 bootloader 本身、写固件、写配置 —— 而且表单里没有任何密码字段。**
-
-README 的原话：
-
-```
-- U-Boot will perform switch to Web Recovery mode on flash content integrity fail.
-- Alert LED(s) is blinking in Recovery mode and on erasing/flashing.
-- Much enhanced Web Recovery functionality, ...
-```
-
-**"Much enhanced" 意味着【原厂本来就有】这个功能**，那个 fork 只是增强了它。
-
-## 怎么进（按社区惯例）
-
-| 项 | 值 |
-|---|---|
-| **触发** | 开机时按住 **WPS 键 2~3 秒**（有的厂商用 reset 键） |
-| **设备 IP** | **`192.168.1.1`** |
-| **你的电脑** | 静态 **`192.168.1.2/24`** |
-| **入口** | `http://192.168.1.1`（80 端口） |
-| **也可以** | `curl -F "firmware=@file.bin" 192.168.1.1` |
-| **自动进入** | flash 内容完整性校验失败时 u-boot 自己切过去 |
-
-**触发键和 IP 因厂商而异**（有的用 `192.168.0.1`，有的会自己开 DHCP）。
-
-## 真机验证步骤（安全，不写任何东西）
-
-```
-① 电脑插 USB-网卡转接器，配成 192.168.1.2/24
-② 把那台设备的网线从主路由上拔下来，只接电脑     ← 隔离，避免它的 DHCP 跟家里打架
-③ 拔电源 → 按住 WPS → 插电源 → 按 2~3 秒松手
-④ 抓包 / ping 192.168.1.1
-
-   出现了 → 拿到 bootloader 层的写接口，可以用 curl 上传任意镜像
-   没出现 → 它正常启动，什么也没发生，零损失
-```
-
-**风险极低**：这只是让它换一种启动模式，不写任何东西。
-最坏情况是它照常启动。
-
-## 如果成功，下一步能做什么
-
-1. **先传一个不带密码的 u-boot 进去** → 从此串口菜单也自由了
-2. **传 OpenWrt 的 initramfs** → 拿到一个完全可控的 Linux
-3. Hmm — 也可以**读**：如果恢复模式有下载/备份功能，就能把 `config` 分区
-   （里面有明文的管理密码）拿出来
-
-## 待验证的问题
-
-- [ ] 原厂 Arcadyan 的 u-boot 到底有没有开这个 httpd
-- [ ] 触发键是 WPS 还是 reset
-- [ ] IP 是 192.168.1.1 还是别的
-- [ ] **它到底验不验签名**（这是最关键的一条）
-
-## 参考
-
-- <https://github.com/ec-/u-boot-mt7621> —— 含 httpd 恢复源码
-- <https://github.com/Ser9ei/u-boot_mtk> —— 更广的 MTK u-boot fork，含 HTTPD failsafe repair
-- <https://docs.gl-inet.com/router/fr/4/faq/debrick/> —— GL.iNet 的 u-boot 救砖流程（192.168.1.1）
+本篇没有真机恢复测试、写flash结果或已验证的bootloader替换方案。

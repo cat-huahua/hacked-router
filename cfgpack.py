@@ -14,9 +14,9 @@ cfgpack —— Arcadyan / Singtel 路由器的【配置恢复包】工具
   web 界面「备份」下载的 Settings.CFG 其实是一条 shell 命令拼出来的：
 
       tar czf /tmp/.config.tgz -C /tmp/.config/ .
-      openssl enc -aes-256-cbc -salt -a -in /tmp/.config.tgz -k xf8V3zOa
+      openssl enc -aes-256-cbc -salt -a -in /tmp/.config.tgz -k BACKUP_PASSPHRASE_HERE
 
-  也就是说 —— **加密口令是固件里写死的，全机型通用**，不需要设备就能解。
+  也就是说 —— **已分析固件的加密口令是写死的；跨机型通用性需独立验证**，不需要设备就能解。
   算法取自配置项 ARC_PROJ_HTTPD_CONFIG_SSL_EncrptType（默认 aes-256-cbc）。
 
   ★ 坑：路由器上是 OpenSSL 1.0.1t，`-k` 的默认 KDF 是 **MD5**；
@@ -26,8 +26,8 @@ cfgpack —— Arcadyan / Singtel 路由器的【配置恢复包】工具
 用法:
     python3 cfgpack.py rootfs  <rootfs目录>
     python3 cfgpack.py glbcfg  <.glbcfg> [-o 字段.tsv]
-    python3 cfgpack.py decrypt <Settings.CFG> [-o 输出目录]
-    python3 cfgpack.py pack    <配置目录> [-o Settings.CFG]
+    python3 cfgpack.py decrypt <Settings.CFG> --key-file /private/backup-passphrase.txt [-o 输出目录]
+    python3 cfgpack.py pack    <配置目录> --key-file /private/backup-passphrase.txt [-o Settings.CFG]
     python3 cfgpack.py carve   <flash.bin> [-o 输出目录]
 """
 import argparse
@@ -42,7 +42,6 @@ import tempfile
 import zlib
 
 WEB_CIPHER = "aes-256-cbc"      # ARC_PROJ_HTTPD_CONFIG_SSL_EncrptType 的出厂值
-WEB_KEY = "xf8V3zOa"            # httpd 里写死的 -k 参数
 WEB_DIGEST = "md5"              # OpenSSL 1.0.1t 的 enc 默认摘要
 
 # ★ 只挑真正可能存凭据的字段。
@@ -192,12 +191,15 @@ def cmd_rootfs(a):
 
 # ───────────────────── ③ web 备份解密/打包 ─────────────────────
 
-def _openssl(decrypt, src, dst):
+def _openssl(decrypt, src, dst, key_file):
     args = ["openssl", "enc", "-" + WEB_CIPHER, "-md", WEB_DIGEST, "-salt", "-a",
             "-pass", "stdin", "-in", str(src), "-out", str(dst)]
     if decrypt:
         args.insert(2, "-d")
-    r = subprocess.run(args, input=(WEB_KEY + "\n").encode(),
+    key = pathlib.Path(key_file).read_text().rstrip("\r\n")
+    if not key or "\n" in key or "\r" in key:
+        raise ValueError("口令文件必须包含一行非空口令")
+    r = subprocess.run(args, input=(key + "\n").encode(),
                        capture_output=True)
     if r.returncode != 0:
         raise RuntimeError(r.stderr.decode(errors="replace").strip())
@@ -219,9 +221,9 @@ def cmd_decrypt(a):
     tmp = pathlib.Path(tempfile.mkdtemp(prefix="cfgpack_"))
     tgz = tmp / "config.tgz"
     try:
-        _openssl(True, src, tgz)
-        print("★ 解密成功（%s / -md %s / -k %s）"
-              % (WEB_CIPHER, WEB_DIGEST, WEB_KEY))
+        _openssl(True, src, tgz, a.key_file)
+        print("★ 解密成功（%s / -md %s；口令不显示）"
+              % (WEB_CIPHER, WEB_DIGEST))
         with tarfile.open(tgz, "r:gz") as tf:
             _safe_extract(tf, out)
         print("→ %s" % out)
@@ -251,7 +253,7 @@ def cmd_pack(a):
             # 与设备一致：把配置目录的内容放在 config/ 下
             for item in sorted(src.iterdir()):
                 tf.add(item, arcname="config/" + item.name)
-        _openssl(False, tgz, out)
+        _openssl(False, tgz, out, a.key_file)
         print("★ 已生成恢复文件: %s（%d 字节）" % (out, out.stat().st_size))
         print("  上传路径: 系统 → 备份/恢复 → 恢复，或 upload.cgi cmd=SYS_PROF")
     except Exception as e:
@@ -332,11 +334,13 @@ def main():
 
     p = sub.add_parser("decrypt", help="离线解密 web 备份 Settings.CFG")
     p.add_argument("backup")
+    p.add_argument("--key-file", required=True, help="仓库外的备份口令文件")
     p.add_argument("-o", "--out")
     p.set_defaults(func=cmd_decrypt)
 
     p = sub.add_parser("pack", help="把配置目录打包成可恢复的 Settings.CFG")
     p.add_argument("dir")
+    p.add_argument("--key-file", required=True, help="仓库外的备份口令文件")
     p.add_argument("-o", "--out")
     p.set_defaults(func=cmd_pack)
 

@@ -3,7 +3,7 @@
 > 设备：Arcadyan WG9116AEAC23-ST（v5.02.00 build09b）
 > 材料：`/bin/wps_monitor`、`/sbin/arc_wps_monitor`、`/sbin/arc_wps_led.sh`、
 > `/usr/share/msg/WPS_*`、`.glbcfg`
-> 一句话：**前传（用户 WiFi）的 WPS 默认关；回传（mesh）的 WPS 默认开，PIN 是 12345670。**
+> 一句话：**前传（用户 WiFi）的 WPS 默认关；回传（mesh）的 WPS 默认开，PIN 是 VENDOR_WPS_PIN_HERE。**
 
 ---
 
@@ -82,19 +82,19 @@ ARC_WLAN_24G_WPS_HwButtonEnable=0     ← 无硬件按钮
 ```
 ARC_WLAN_24G_STA_SSID_0_ESSID=Arc_Backhaul
 ARC_WLAN_24G_STA_SSID_0_WPS_Enable=1
-ARC_WLAN_24G_STA_SSID_0_WPS_ExRegistrarPIN=12345670
-ARC_WLAN_24G_STA_SSID_0_WPA_Passphrase=12345678
+ARC_WLAN_24G_STA_SSID_0_WPS_ExRegistrarPIN=VENDOR_WPS_PIN_HERE
+ARC_WLAN_24G_STA_SSID_0_WPA_Passphrase=VENDOR_BACKHAUL_PSK_HERE
 
 ARC_WLAN_24G_FH_SSID_0_ESSID=Arc_Fronthaul
 ARC_WLAN_24G_FH_SSID_0_WPS_Enable=1
-ARC_WLAN_24G_FH_SSID_0_WPS_ExRegistrarPIN=12345670
-ARC_WLAN_24G_FH_SSID_0_WPA_Passphrase=12345678
+ARC_WLAN_24G_FH_SSID_0_WPS_ExRegistrarPIN=VENDOR_WPS_PIN_HERE
+ARC_WLAN_24G_FH_SSID_0_WPA_Passphrase=VENDOR_BACKHAUL_PSK_HERE
 
 ARC_WLAN_24G_BH_SSID_0_ESSID=Arc_Backhaul
 ARC_WLAN_24G_BH_SSID_0_Hide=0              ← ★ 不隐藏
 ARC_WLAN_24G_BH_SSID_0_WPS_Enable=1        ← ★ 开
-ARC_WLAN_24G_BH_SSID_0_WPS_ExRegistrarPIN=12345670
-ARC_WLAN_24G_BH_SSID_0_WPA_Passphrase=12345678
+ARC_WLAN_24G_BH_SSID_0_WPS_ExRegistrarPIN=VENDOR_WPS_PIN_HERE
+ARC_WLAN_24G_BH_SSID_0_WPA_Passphrase=VENDOR_BACKHAUL_PSK_HERE
 ```
 
 5G 同理。
@@ -124,7 +124,7 @@ wifi_bh_pwd=`arc_board get wifi-bh-pwd`
 - WPS PIN = 板级 `wps-pin`
 
 **但如果板级数据丢失/损坏**（例如 SPI flash 被擦过、`/dev/brcmboard` 读不到），
-设备就会退回 `.glbcfg` 的默认值：`12345678` / `12345670`。
+设备就会退回 `.glbcfg` 的默认值：`VENDOR_BACKHAUL_PSK_HERE` / `VENDOR_WPS_PIN_HERE`。
 
 ---
 
@@ -144,10 +144,10 @@ wifi_bh_pwd=`arc_board get wifi-bh-pwd`
 
 ## 6. 安全观察
 
-1. **回传 SSID 不隐藏 + WPS 默认开 + PIN 出厂固定 12345670** ——
+1. **回传 SSID 不隐藏 + WPS 默认开 + PIN 出厂固定 VENDOR_WPS_PIN_HERE** ——
    如果板级 `wps-pin` 没有覆盖（或攻击者能触发默认值），
    回传网络存在 **WPS PIN 攻击**面。
-2. **回传 PSK 默认 12345678** —— 同上，板级数据缺失时回传是可预测的。
+2. **回传 PSK 默认 VENDOR_BACKHAUL_PSK_HERE** —— 同上，板级数据缺失时回传是可预测的。
 3. **前传 WPS 默认关**，这点是好的；`WPS_PINEnable=0` 也减少了 PIN 攻击面。
 4. **Broadcom WPS 的已知问题**：WPS PIN 的校验分成两半，可被离线/在线爆破
    （Reaver 类工具）。只要回传 WPS 开着，就有这个风险。

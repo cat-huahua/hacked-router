@@ -138,7 +138,7 @@ ps | grep wps_monitor ... || /bin/wps_monitor &
 ARC_WLAN_24G_WPS_Enable=1
 ARC_WLAN_24G_WPS_PINEnable=0
 ARC_WLAN_*_SSID_*_WPS_Enable
-ARC_WLAN_*_SSID_*_WPS_ExRegistrarPIN=12345670
+ARC_WLAN_*_SSID_*_WPS_ExRegistrarPIN=VENDOR_WPS_PIN_HERE
 ```
 
 `arc_wlan` 的 `wps_pbc` / `wps_sta_pin` 会调用：
@@ -155,7 +155,7 @@ hostapd_cli -i wlan0 wps_pin any <pin> 120
 ## 7. 安全观察
 
 1. **有 PIN 锁定**：`wps_aplockdown` / `wps_lock_*_cnt` 能挡住大部分在线爆破。
-2. **但回传 WPS 默认开、PIN 默认 12345670**（见
+2. **但回传 WPS 默认开、PIN 默认 VENDOR_WPS_PIN_HERE**（见
    [singtel-wps-and-mesh-pairing.md](singtel-wps-and-mesh-pairing.md)）——
    如果板级 `wps-pin` 没覆盖，默认 PIN 仍然是可预测的。
 3. **`wps_aplockdown_disable`** 如果被设为 1，锁定就失效（工厂/调试残留风险）。

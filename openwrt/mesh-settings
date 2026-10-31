@@ -1,0 +1,51 @@
+#!/bin/sh
+# OpenWrt WE410443 only. Never restores settings or flashes on every boot.
+set -eu
+umask 077
+root=${MESH_SETTINGS_ROOT:-}
+command=${1:-check}
+fail() { echo "$*" >&2; exit 1; }
+[ "$(cat "$root/tmp/sysinfo/board_name" 2>/dev/null)" = 'arcadyan,we410443' ] ||
+    fail 'Requires OpenWrt board arcadyan,we410443; no settings changed.'
+awk '$2 == "/rom" && $3 == "squashfs" { found=1 } END { exit !found }' "$root/proc/mounts" ||
+    fail 'No squashfs /rom: initramfs/failsafe is not a persistent installation.'
+awk '$2 == "/overlay" && $3 ~ /^(jffs2|ubifs|ext4|f2fs)$/ && $4 ~ /(^|,)rw(,|$)/ { found=1 }
+     END { exit !found }' "$root/proc/mounts" ||
+    fail 'No writable persistent /overlay; RAM settings would be lost on power-off.'
+case "$command" in
+    check)
+        echo 'WE410443 has a writable persistent overlay.'
+        ;;
+    commit)
+        [ -z "$root" ] || fail 'Test-root mode cannot commit real UCI settings.'
+        uci commit
+        sync
+        echo 'UCI changes committed. Run mark before a controlled power-cycle test.'
+        ;;
+    mark)
+        directory="$root/etc/mesh-persistence"
+        mkdir -p "$directory"
+        temporary=$(mktemp "$directory/baseline.XXXXXX")
+        trap 'rm -f "$temporary"' EXIT HUP INT TERM
+        count=0
+        for file in "$root"/etc/config/*; do
+            [ -f "$file" ] && [ ! -L "$file" ] || continue
+            # Record hashes and generic filenames, never configuration contents.
+            hash=$(sha256sum "$file")
+            hash=${hash%% *}
+            printf '%s  %s\n' "$hash" "${file##*/}" >> "$temporary"
+            count=$((count + 1))
+        done
+        [ "$count" -gt 0 ] || fail 'No UCI files found.'
+        mv "$temporary" "$directory/baseline.sha256"
+        trap - EXIT HUP INT TERM
+        sync
+        echo 'Baseline saved on overlay; power-cycle only after settings are committed.'
+        ;;
+    verify)
+        baseline="$root/etc/mesh-persistence/baseline.sha256"
+        [ -s "$baseline" ] || fail 'No baseline survived; run mark first or investigate overlay/reset.'
+        (cd "$root/etc/config" && sha256sum -c "$baseline")
+        ;;
+    *) fail 'Usage: mesh-settings [check|commit|mark|verify]' ;;
+esac

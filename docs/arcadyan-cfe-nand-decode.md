@@ -164,11 +164,11 @@ PSI Size / System Log Size / Auxillary File System Size Percent
 | 默认 2.4G SSID | `Mesh_Router_2.4G` |
 | 默认 5G SSID | `Mesh_Router_5G` |
 | 默认回程 SSID | `RG_Backhaul` |
-| 默认 WPS PIN | `12345670` |
+| 默认 WPS PIN | `VENDOR_WPS_PIN_HERE` |
 | 默认 Base MAC | `00:10:18:00:00:00`（Broadcom OUI） |
-| 其他候选默认串 | `0000000000` `1234567890` `ABCDEFGHIJ` `0987654321` `0016814500` `NOSLIC` `ARSA20170001` `ZZ/01` `BRCM12345678` |
+| 其他候选默认串 | `0000000000` `VENDOR_BACKHAUL_PSK_HERE90` `ABCDEFGHIJ` `0987654321` `0016814500` `NOSLIC` `ARSA20170001` `ZZ/01` `BRCMVENDOR_BACKHAUL_PSK_HERE` |
 
-> `BRCM12345678` 出现在默认值区，**疑似 CFE/串口默认口令**（未验证）。
+> `BRCMVENDOR_BACKHAUL_PSK_HERE` 出现在默认值区，**疑似 CFE/串口默认口令**（未验证）。
 > 这些默认值都来自**官方公开固件**，且 CFE 入口需要**串口或同网段访问**。
 
 **★ 实际意义**：这台设备的**出厂默认 SSID/回程名/WPS PIN 是固定的**（不像 extender 那样按序列号派生）。
@@ -432,7 +432,7 @@ Arcadyan WLAN Territory Code      :        Invalid Territory Code
 | 型号 | `DSL-AC87VG` |
 | 国家/版本 | `DE/01` |
 | 语音芯片 | `Si32260_LCQC`（Silicon Labs Si32260 编解码器） |
-| 其它 | `0016814500` · `BRCM12345678`（疑似默认口令） · `12345670`（默认 WPS PIN） |
+| 其它 | `0016814500` · `BRCMVENDOR_BACKHAUL_PSK_HERE`（疑似默认口令） · `VENDOR_WPS_PIN_HERE`（默认 WPS PIN） |
 
 > `963138_GFAST` 正好解释了我们解出的 `963138_debug.dtb` ✓
 

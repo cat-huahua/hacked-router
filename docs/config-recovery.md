@@ -21,7 +21,7 @@
 | SPI flash dump | `pricfg` 分区里的 `.config.tgz` + `/data` 里的 `passwd` | CH341A |
 | 设备 shell | `mng_cli backup` 直接导出 | root |
 
-★ **最有用的一条**：web 备份是 **`aes-256-cbc` + 全机型固定口令 `xf8V3zOa`**，
+★ **最有用的一条**：web 备份是 **`aes-256-cbc` + 全机型固定口令 `BACKUP_PASSPHRASE_HERE`**，
 加密口令**不在设备里、也不是一机一密** —— 拿到文件就能离线解开，设备不在身边也行。
 
 ---
@@ -149,15 +149,15 @@ usr/lib/server.key                                         1675 B
 | 字段 | 出厂值 |
 |---|---|
 | `ARC_SYS_Password` | `admin`（明文存 glbcfg） |
-| `ARC_TR69_Username` / `Password` | `singtel` / `singtel` |
-| backhaul / fronthaul PSK | `12345678` |
-| WPS PIN | `12345670` |
+| `ARC_TR69_Username` / `Password` | `VENDOR_CREDENTIAL_HERE` / `VENDOR_CREDENTIAL_HERE` |
+| backhaul / fronthaul PSK | `VENDOR_BACKHAUL_PSK_HERE` |
+| WPS PIN | `VENDOR_WPS_PIN_HERE` |
 | `ARC_UI_WEB_REMOTEMN_Password` | 32 位 MD5 字符串 |
 
 运行时会被 `arc_board` 的板级数据覆盖：
 
 ```
-root/SSH 密码 = "s1ngt3l" + 序列号后 6 位
+root/SSH 密码 = "VENDOR_PREFIX_HERE" + 序列号后 6 位
 ARC_ROOT_Passwd            = MD5(它)
 ARC_UI_WEB_REMOTEMN_Password = MD5(序列号)
 GUI 密码 / WiFi 口令 / WPS PIN = arc_board get gui-pwd / wifi-*-pwd / wps-pin
@@ -192,7 +192,7 @@ GUI 密码 / WiFi 口令 / WPS PIN = arc_board get gui-pwd / wifi-*-pwd / wps-pi
 0x35260   mov r3, 0x11      ; 取 17 字节
 0x35268   movw r1, 0x0047   ; movt r1, 0x0f   → 配置键 0xF0047
 0x35274   bl arc_cfg_get
-0x35278   movw r3, 0xdc70   ; movt r3, 4      → 0x4DC70 = "xf8V3zOa"（-k 参数）
+0x35278   movw r3, 0xdc70   ; movt r3, 4      → 0x4DC70 = "BACKUP_PASSPHRASE_HERE"（-k 参数）
 0x35288   movw r2, 0xf770   ; movt r2, 4      → 上面的 openssl 格式串
 0x35298   bl snprintf
 0x352A0   bl system
@@ -221,7 +221,7 @@ ARC_PROJ_HTTPD_CONFIG_SSL_EncrptType=aes-256-cbc
 文件名   Settings.CFG
 内容     OpenSSL「加盐 + base64」文本，开头是 "U2FsdGVkX1"（= "Salted__"）
 算法     aes-256-cbc
-口令     xf8V3zOa        ← 固件写死，全机型通用
+口令     BACKUP_PASSPHRASE_HERE        ← 固件写死，全机型通用
 KDF      EVP_BytesToKey，摘要 = MD5   ★ 见下
 明文     gzip tar（根下是 config/，内含 .glbcfg / glbcfg.fix / 服务配置）
 ```
@@ -236,11 +236,11 @@ KDF      EVP_BytesToKey，摘要 = MD5   ★ 见下
 
 ```bash
 # ✗ 现代默认（SHA-256）
-openssl enc -d -aes-256-cbc -salt -a -k xf8V3zOa -in Settings.CFG -out x.tgz
+openssl enc -d -aes-256-cbc -salt -a -k BACKUP_PASSPHRASE_HERE -in Settings.CFG -out x.tgz
 # → bad decrypt
 
 # ✓ 显式 MD5
-openssl enc -d -aes-256-cbc -md md5 -salt -a -k xf8V3zOa -in Settings.CFG -out x.tgz
+openssl enc -d -aes-256-cbc -md md5 -salt -a -k BACKUP_PASSPHRASE_HERE -in Settings.CFG -out x.tgz
 tar tzf x.tgz
 # config/.glbcfg
 # config/glbcfg.fix
@@ -326,7 +326,7 @@ cat data-out/passwd
 
 ```
 0x4DC30  openssl enc -%s -salt -d -a -in %s -out /tmp/.config.tgz -k %s
-0x4DC70  xf8V3zOa
+0x4DC70  BACKUP_PASSPHRASE_HERE
          tar xzf /tmp/.config.tgz -C /tmp/.config
          cp -af /tmp/.config/config/. /etc/config
 ```
@@ -394,7 +394,7 @@ python3 cfgpack.py carve flash.bin -o carved
 | `0x4F744` | `tar czf /tmp/.config.tgz -C /tmp/.config/ .` |
 | `0x4F770` | `openssl enc -%s -salt -a -in … -k %s`（备份） |
 | `0x4DC30` | `openssl enc -%s -salt -d -a -in … -k %s`（恢复） |
-| `0x4DC70` | `xf8V3zOa` |
+| `0x4DC70` | `BACKUP_PASSPHRASE_HERE` |
 | `0x35254`–`0x352A0` | 备份函数：取 `0xF0047` → 拼 openssl → `system()` |
 
 `libarccfg.so.0.1`（`mod_table` @0x3D0F4，23 项；`arc_proj_cfg_item_table` @0x4B81C，
@@ -407,3 +407,10 @@ python3 cfgpack.py carve flash.bin -o carved
 1. **导出过备份文件就别乱传** —— 它是可解的。
 2. 恢复出厂后第一件事：改 GUI 口令、WiFi PSK、关掉不用的 Samba guest / Transmission RPC / UPnP。
 3. 换机/送修前，先 `cfgpack.py decrypt` 留一份明文配置，比备份文件可靠。
+
+
+## 2026-10-31：公开代码不再包含固定备份口令
+
+`cfgpack.py decrypt` 与 `pack` 现在必须提供 `--key-file /private/backup-passphrase.txt`。
+从自有固件/私有记录取得口令并放在仓库外；工具通过stdin传给OpenSSL，
+不在源码、命令行参数或成功日志输出其值。以上旧命令若调用cfgpack，需补充此参数。

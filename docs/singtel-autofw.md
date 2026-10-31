@@ -15,8 +15,8 @@
 ```json
 {
   "Url": "http://192.168.1.200",
-  "SerialNum": "A1234567890",
-  "ProductClass": "F1234567890",
+  "SerialNum": "AVENDOR_BACKHAUL_PSK_HERE90",
+  "ProductClass": "FVENDOR_BACKHAUL_PSK_HERE90",
   "CurrentVersion": "v1.00.00",
   "Interface1": "vlan20",
   "Seed": 3671539428,

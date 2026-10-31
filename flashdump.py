@@ -25,8 +25,8 @@ from pathlib import Path
 
 # ── 已知分区表（Singtel/Arcadyan WE410443-ST，32MB NOR；来自 we410443.dts）──
 PARTITIONS = [
-    (0x000000, 0x030000, "u-boot",     "★ rootfs 解密密钥可能在这"),
-    (0x030000, 0x010000, "u-boot-env", "★ 先当人话读：密钥可能是环境变量"),
+    (0x000000, 0x030000, "u-boot",     "bootloader；本extender rootfs解码不需要其key"),
+    (0x030000, 0x010000, "u-boot-env", "bootloader环境；勿推断包含rootfs key"),
     (0x040000, 0x010000, "factory",    "射频校准"),
     (0x050000, 0x1F60000, "firmware",  "kernel + rootfs"),
     (0x1FB0000, 0x010000, "glbcfg",    "★ 明文配置（WiFi 口令）"),

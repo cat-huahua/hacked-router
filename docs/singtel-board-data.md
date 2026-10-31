@@ -135,7 +135,7 @@ arc_board set gui-pwd 'NewGuiPassword'
 
 1. **板级数据是明文**：拿到 root/SPI dump 就能读出所有一机一密口令。
 2. **`gui-pwd` 是 GUI 密码的真正来源**：不是 `passwd` 里的哈希，
-   也不是 SN 派生（SN 只派生出 SSH/root 密码 `s1ngt3l+后6位`）。
+   也不是 SN 派生（SN 只派生出 SSH/root 密码 `VENDOR_PREFIX_HERE+后6位`）。
 3. **`wps-pin` 是 8 位**，如果 WPS 开着（回传默认开），就是可攻击面。
 4. **`gpon-pwd`** 是 GPON 认证口令，属于运营商层面的敏感数据。
 5. **`arc_board set` 会写板级 NVRAM**，写错可能导致 WiFi/管理口令变化；
