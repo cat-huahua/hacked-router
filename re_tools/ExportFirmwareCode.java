@@ -87,6 +87,7 @@ public class ExportFirmwareCode extends HeadlessScript {
         summary.put("recognized_functions", recognized);
         summary.put("decompiled_functions", completed);
         summary.put("failed_functions", failed);
+        summary.put("analysis_enabled_in_this_run", isHeadlessAnalysisEnabled());
         summary.put("analysis_timed_out", analysisTimeoutOccurred());
         summary.put("all_machine_code_proven_covered", false);
         Path temporary = out.resolve("summary.json.tmp");

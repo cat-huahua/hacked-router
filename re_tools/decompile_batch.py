@@ -69,9 +69,9 @@ def run(roots, output, ghidra, reuse, workers, analysis_timeout):
     output = output.resolve()
     if any(output.is_relative_to(root) for root in roots):
         raise ValueError('Output must be outside input trees')
+    if output.exists():
+        raise ValueError('Use a new batch directory; existing output is never overwritten')
     output = private_directory(output)
-    if (output / 'inventory.json').exists():
-        raise ValueError('Use a fresh batch directory; previous evidence is not overwritten')
     headless = ghidra.resolve(strict=True) / 'support/analyzeHeadless'
     if not headless.is_file():
         raise ValueError('Missing analyzeHeadless')

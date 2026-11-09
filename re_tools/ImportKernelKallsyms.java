@@ -24,6 +24,9 @@ public class ImportKernelKallsyms extends GhidraScript {
             !"MIPS:LE:32:default".equals(currentProgram.getLanguageID().toString()) ||
             currentProgram.getMinAddress().getOffset() != 0x81001000L)
             throw new IllegalArgumentException("Kernel identity, language or base mismatch");
+        // This heuristic demonstrably misclassified this build's returning
+        // printk as no-return. Keep known non-returning-function analysis.
+        setAnalysisOption(currentProgram, "Non-Returning Functions - Discovered", "false");
         Path output = Path.of(args[1]).toAbsolutePath().normalize();
         Path parent = output.getParent().toRealPath();
         for (Path p = parent; p != null; p = p.getParent())
@@ -43,7 +46,8 @@ public class ImportKernelKallsyms extends GhidraScript {
         // __per_cpu_load. Do not decode intervening init data merely because
         // kallsyms labels those records T/t in this vendor kernel.
         text.addRange(toAddr(0x81760c80L), toAddr(0x81761fffL));
-        Set<String> boundaries = Set.of("_stext", "_sinittext", "_einittext", "_text", "_etext");
+        Set<String> nonFunctions = Set.of("_stext", "_sinittext", "_einittext", "_text", "_etext",
+                                         "sys_call_table"); // T in this vendor map, but consumed as data.
         Map<Address,String> functions = new LinkedHashMap<>();
         int labels = 0, outside = 0, labelErrors = 0, codeOutside = 0;
         for (String[] row : records) {
@@ -53,7 +57,7 @@ public class ImportKernelKallsyms extends GhidraScript {
             try { createLabel(address, row[2], false, SourceType.IMPORTED); labels++; }
             catch (Exception error) { labelErrors++; }
             boolean code = row[1].equals("T") || row[1].equals("t") || row[1].equals("W");
-            if (code && !boundaries.contains(row[2])) {
+            if (code && !nonFunctions.contains(row[2])) {
                 if (!text.contains(address) || (address.getOffset() & 3) != 0) { codeOutside++; continue; }
                 functions.putIfAbsent(address, row[2]);
             }
@@ -84,6 +88,8 @@ public class ImportKernelKallsyms extends GhidraScript {
         summary.put("disassembly_status", command.getStatusMsg());
         summary.put("weak_symbols_in_text_treated_as_function_candidates", true);
         summary.put("exit_text_range_inferred", "81760c80-81761fff");
+        summary.put("non_returning_functions_discovered_enabled", false);
+        summary.put("known_text_data_not_seeded_as_functions", List.of("sys_call_table"));
         summary.put("all_machine_code_proven_covered", false);
         Files.writeString(output, new Gson().toJson(summary));
         println("Kernel symbols=" + records.size() + " function seeds=" + functions.size() +

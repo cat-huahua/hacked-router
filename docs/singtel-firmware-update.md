@@ -319,10 +319,12 @@ ARC_SYS_SIMPLE_FW_UPGRADE done: %s
 - `]Cot` 头`0x08`的CRC已由extender真实代码恢复并命中原厂样本，
   详见[extender autofw证据](singtel-extender-autofw.md)；其它变体仍须分别验证。
 
+- HDR0 的 `0x290` 字节和 envelope 分区已还原，见 [逐字段说明](singtel-firmware-footer.md)；
+  extender 原厂样本的两个 envelope 与末64-byte版本记录均已离线解码并通过各自摘要/CRC；见该篇补充节。
+
 **未解（如实记录）：**
 
-- HDR0 的 `0x290` 字节和 envelope 分区已还原，见 [逐字段说明](singtel-firmware-footer.md)；
-  extender 的匹配 key 与余区字段仍未解。
+- 保留字段的设计含义，以及设备实际升级接受条件和异常路径。
 - `image_manager` 的容器已另有[格式说明](singtel-embedur-image-format.md)，实际 key 仍缺失。
 
 ---
@@ -341,8 +343,10 @@ ARC_SYS_SIMPLE_FW_UPGRADE done: %s
 
 ### 整份 extender 镜像的区域核对记录
 
-本地 `router-notes-private/decode-all-20261109/region-inventory.json` 记录8个连续、
+本地 `router-notes-private/decode-all-20261109/region-inventory.json` 记录9个连续、
 不重叠区域的 offset / length / SHA-256，合计14,626,816 bytes，完整覆盖本样本。
 证据来自 `]Cot` 的长度/分区字段、uImage 的 size/CRC、LZMA decoder 的 EOF/unused_data、
 squashfs 的 bytes_used 与实际填充 byte 统计。全区域有清单不等于全字段语义已解：
-footer 两个 envelope 的内容仍未在这次核对中解密，余区非零字段也不擅自命名。
+footer 两个 envelope 后续已完成[原厂样本只读解码与摘要核对](singtel-firmware-footer.md)；
+末64-byte非零区随后已确认是OWL updater读取的版本记录，其CRC匹配；
+中间64,816 bytes逐byte确认为全零填充，详见同篇补充。

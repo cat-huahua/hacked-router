@@ -26,6 +26,8 @@ python3 re_tools/decode_embedur.py /path/to/extracted-rootfs /path/to/private/ne
 
 另已静态展开四个 web 文件中的五个已识别混淆块：三个文件里的四个 Dean Edwards packer block，以及 `global.js` 的 base64 → XOR 3 → JavaScript `unescape` wrapper。解码没有调用 `eval` 或执行页面。原始和解码后的文件、hash 与清单均保留私有；这只是已识别 wrapper 的覆盖，不证明不存在其他编码数据。
 
+可复用工具为 [decode_web_assets.py](../re_tools/decode_web_assets.py)，扫描了166个web文本文件。自动筛选另报两个 `unresolved_candidate`，人工核对均没有静态 packed payload：`jquery.arctransform.js:201–208` 的 `arcTransInputHover` 执行 DOM focus/blur callback 字符串；`menu.htm:174–184` 的 `JumpMainMenu` 根据参数构造 frame 属性查询。这两个标签不是“仍加密”的证据；来源核对保留于私有 `web-tool-verified/runtime-eval-review.json`。
+
 ## 未解与边界
 
 - 普通文件与嵌套包提取成功，不等于所有 ELF 都已逐函数理解；反编译覆盖另见 [覆盖记录](singtel-extender-decompile-coverage.md)。

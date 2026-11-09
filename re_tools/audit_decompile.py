@@ -38,10 +38,19 @@ def audit(directory):
                 errors.append(f'missing or empty {name}')
             else:
                 hashes[name] = hashlib.sha256(path.read_bytes()).hexdigest()
+        code_file = summary_file.parent / 'pseudocode.c'
+        code = code_file.read_text(errors='replace') if code_file.is_file() else ''
+        # These are quality caveats, not evidence of a bug in the target.
+        warning_markers = ('WARNING: Control flow encountered bad instruction data',
+                           'WARNING: Could not recover jumptable',
+                           'WARNING: Unimplemented instruction',
+                           'WARNING: Bad instruction')
         rows.append(dict(directory=str(summary_file.parent.relative_to(directory)),
                          input_sha256=summary.get('input_sha256'), recognized=len(records),
                          decompiled=successful, failed=failed, errors=errors,
-                         artifact_sha256=hashes))
+                         artifact_sha256=hashes,
+                         pseudocode_warning_markers={marker: code.count(marker)
+                             for marker in warning_markers if marker in code}))
     return dict(modules=len(rows), reconciled=sum(not r['errors'] for r in rows), rows=rows,
                 all_machine_code_proven_covered=False)
 

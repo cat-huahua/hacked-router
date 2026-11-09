@@ -82,6 +82,17 @@ class BatchLedgerTests(unittest.TestCase):
         self.assertEqual(status, 0)
         self.assertEqual(ledger['modules'][0]['status'], 'exported')
 
+    def test_existing_output_is_not_overwritten(self):
+        inputs = self.root / 'inputs'
+        inputs.mkdir()
+        output = self.root / 'evidence'
+        output.mkdir()
+        existing = output / 'headless-0.log'
+        existing.write_text('previous unrelated evidence')
+        with self.assertRaisesRegex(ValueError, 'new batch directory'):
+            BATCH.run([inputs], output, self.ghidra, None, 1, 10)
+        self.assertEqual(existing.read_text(), 'previous unrelated evidence')
+
     def test_analysis_timeout_is_partial(self):
         status, ledger = self.export('timeout')
         self.assertEqual(status, 1)

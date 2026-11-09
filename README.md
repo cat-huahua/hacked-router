@@ -341,3 +341,11 @@ netgear_r7800/  NETGEAR SOAP API 客户端
 不自动上传。`openwrt/mesh-settings`在已安装OpenWrt后检查overlay、提交UCI并核对重启后的配置hash。
 原厂免密码首次安装入口仍未验证；断网或出现HTTP页面不能触发自动刷写。
 `cfgpack.py pack/decrypt`现需仓库外`--key-file`，公开源码不再内置备份口令。
+
+2026-11-09 extender全量静态处理：
+[嵌套EmbedUR包与Web wrapper](docs/singtel-extender-embedded-agent-decode.md)已解码，
+[原厂footer](docs/singtel-firmware-footer.md)的两个envelope及版本记录均完成离线核对。
+[反编译工具](re_tools/README.md)按输入hash保留私有pseudocode、assembly和失败记录；
+完成范围见[覆盖记录](docs/singtel-extender-decompile-coverage.md)。
+kernel另外内嵌[MT7615 MCU映像](docs/singtel-extender-embedded-mcu.md)，其中两个RAM映像仍为加密下载格式；
+不能把rootfs已解出或ELF导出成功称作所有内嵌code都已解密。

@@ -10,6 +10,14 @@ python3 re_tools/decode_embedur.py /private/rootfs /private/new-agent-output
 
 工具从已验证 build 的 `arc_swap` 读取 substitution table，验证包自带 SHA-256 和 BZip2 EOF，然后安全提取。拒绝未知 build、既有输出目录、路径穿越、链接和特殊文件。详见 [嵌套包证据](../docs/singtel-extender-embedded-agent-decode.md)。
 
+Web wrapper 的静态展开：
+
+```sh
+python3 re_tools/decode_web_assets.py /private/rootfs /private/new-web-output
+```
+
+只处理已验证的 packer/template，不执行 JavaScript；未知候选保留原文。`eval` 候选也可能只是普通 runtime callback，不能据此断言加密。
+
 ## 全量 ELF 导出
 
 准备独立安装的 Ghidra 和兼容 Java；没有自动安装或修改客户端配置。一次可输入外层 rootfs 和嵌套包，按 SHA-256 去重：
@@ -42,6 +50,14 @@ python3 re_tools/report_decompile.py /private/new-elf-batch
 
 审计核对逐函数记录与 summary 计数、重复地址及输出文件，并保存输出 hash；它不验证 pseudocode 语义。文本脚本、HTML 与普通 JavaScript 本来就可直接读取，不需要 native decompiler。
 
+首次函数超时后，可等对应 shard 完全退出，再在保留的 project 上使用
+`-process '*.elf' -recursive -noanalysis -readOnly`，并以
+`RetryFailedFunctions.java /private/new-elf-batch/modules /private/new-retry-output`
+作 postScript。它只重试原索引中失败的函数，每函数120秒，输出独立结果，保留原始失败记录。
+不要在仍由导入进程使用的 project 上启动另一进程。完成后可用
+`report_decompile.py /private/new-elf-batch --retry /private/new-retry-output`
+核对原始 summary/index hash 并生成包含重试的索引；不会覆盖原始导出。
+
 ## 已验证 kernel 的符号导入
 
 ```sh
@@ -55,6 +71,8 @@ python3 re_tools/we410443_kallsyms.py /private/raw-kernel /private/kernel-symbol
 ```
 
 不能把所有 `T/t` 符号都当函数：此 vendor kernel 也这样标记部分 init data。Importer 仅在所选代码范围 seed 函数，额外 exit-text 范围明确记为推断。符号导入成功与函数 decompile 成功分别记录。
+
+本 build 的默认 Ghidra heuristic 曾把实际返回的 `printk` 误判为 no-return，截断普通调用后的控制流。新版 importer 因此禁用 `Non-Returning Functions - Discovered`，保留已知不返回函数分析。已有数据库的修复使用 `RepairKernelPrintkFlow.java`，只在分析副本中修正已证实的 printk 标记与普通调用；合法尾调用仍保留。`RestoreKernelSeedEntries.java` 按已验证符号补回缺失候选，遇到已有函数或 data 冲突则记录并跳过。这些操作改变分析数据库，不改变 firmware bytes；仍需核对实际 return、fallthrough 和函数覆盖。
 
 ## 验证工具本身
 

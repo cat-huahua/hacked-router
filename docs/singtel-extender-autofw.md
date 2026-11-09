@@ -162,7 +162,10 @@ WRITEFUNCTION=20011、WRITEDATA=10001。POST与下载均在perform成功后读�
 - libcurl 7.19.6厂商构建对VERIFYHOST=1的精确实现，以及CA目录运行时内容。
 - 结果回报所有数值的业务意义、重试/重启窗口的完整状态机。
 - HTTP响应buffer边界、超长/异常JSON容错；本轮未做fuzz或目标执行。
-- 完整footer验证的离线复现仍未完成；后续flash路径已补充，仍需与recovery链分开验证。
+- footer 保留字段语义、异常输入与设备实际接受条件仍未穷尽，仍需与recovery链分开验证。
+
+**已解更正：** 原厂样本两个footer envelope已完成[只读离线解码与摘要核对](singtel-firmware-footer.md)，
+末64-byte版本记录也已由OWL reader解码并通过CRC。
 
 ## 本机服务代码与验证
 
@@ -248,7 +251,9 @@ footer中的索引和长度范围，分别在 `0x402440–0x40247c`。
 `0x4025c0–0x40260c`）。
 
 **静态事实与未知分界：** 本样本确有比CRC更深的footer/hash/加密封装验证；
-本轮没有完整验证每个key slot、封装算法参数和异常输入分支，也没有导出任何key。
+早期分析没有完整验证每个key slot、封装算法参数和异常输入分支。后续已按该原厂样本
+实际选择的两个slot完成[只读解码与摘要核对](singtel-firmware-footer.md)；其他slot/异常输入
+仍未穷尽，key值不公开。
 不能只因二进制导出RSA/DES符号便将这个格式简写为“标准RSA签名”，更不能声称
 保留旧footer后任意修改payload仍会通过。重打包镜像目前只能视为离线研究产物，
 尚无这条完整验证链可接受它的证明。
