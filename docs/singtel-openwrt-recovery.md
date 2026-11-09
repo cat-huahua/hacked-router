@@ -101,3 +101,41 @@ mesh-settings verify
 | [官方目标源码](https://github.com/openwrt/openwrt/blob/v25.12.6/target/linux/ramips/image/mt7621.mk) | `Device/arcadyan_we410443`、sysupgrade recipe与KERNEL_INITRAMFS |
 | [OpenWrt flash layout](https://openwrt.org/docs/techref/flash.layout) | `/rom`、`/overlay`、`rootfs_data`的持久存储关系 |
 | `tests/test_openwrt_recovery.py` | loopback GET、固定hash/损坏拒绝、RAM overlay拒绝与hash变化测试；非实机刷写 |
+
+## 2026-11-09：首次有线 WPS 开机观察
+
+通过用户指定的USB Ethernet接口做只读观察。用户按历史方案进行WPS开机，
+报告过紫灯、随后红灯；按住时长没有独立测量。没有登录POST、上传或flash写入。
+
+两个有期限的观察窗口分别为90秒、120秒。电脑临时使用`192.168.1.2/24`，
+向旧方案候选`192.168.1.1:80`发GET，均未取得响应。捕获到DHCP流量，
+但不能将它直接归为bootloader请求；没有观察到UDP69上的TFTP请求。
+这不证明其它地址或协议没有恢复服务，也不证明WPS recovery根本不存在。
+
+继续核对**已解出的extender自身模板**，找到：
+
+```text
+ARC_LAN_0_IP4_Addr=192.168.1.150
+ARC_SYS_ModelName=WE410443-ST
+```
+
+对`https://192.168.1.150/login.htm`的有线GET收到HTTP200及原厂登录HTML，
+其中`wait_secs=0`。HTTP路径则返回302；HTTPS数据接收在页面主体取得后报告curl56，
+所以本轮仅确认收到该页面内容，不声称TLS关闭行为完全正常。
+没有因为wait_secs为0就猜测密码，也没有把原厂登录页当成recovery上传页。
+
+**观察结论：** 这次WPS尝试之后能访问原厂登录界面，未确认进入bootloader恢复模式。
+`192.168.1.150`是模板默认管理地址，不等于已经证明bootloader也使用它。
+不能由地址变化认定WPS清除了配置、密码已重置或已找到配置丢失的根因。
+
+补充证据索引：
+
+| 材料 | 定位/结论 |
+|---|---|
+| extender `usr/share/config/etc/config/glbcfg.dft` | `ARC_LAN_0_IP4_Addr`、`ARC_SYS_ModelName`原键值；文件SHA-256 `e13303f15b53885e725e9680b8d4007c92122503d398d0722ef616dba26f7ddb` |
+| 本机有线观察记录（私有，不上传） | 两次限定窗口、无候选HTTP响应；原厂HTTPS登录页、wait_secs=0 |
+| Claude归档`chat/transcript.md:18242–18372` | 历史WPS/候选IP方案来源；它是拟议操作，不是本机成功结果 |
+| 同归档`chat/transcript.md:18905` | 明确记载当时仍“没在真机上试过” |
+| [Singtel设备规格](https://cdn1.singteldigital.com/content/dam/singtel/business/sb/Support/connectivity/routers/singnet/Singtel_Mesh_Extender_WE410443-ST_v1.2.pdf) §2.4 | 紫色常亮为启动、红色可表示连接/错误状态；灯色不能独立证明recovery |
+
+仍需本机bootloader证据或真实恢复协议，才能决定首次OpenWrt刷写方式。
