@@ -44,3 +44,29 @@
 | [ec-/u-boot-mt7621](https://github.com/ec-/u-boot-mt7621) | 旧版引用的独立fork；本仓库未证明其与本机bootloader字节匹配 |
 
 本篇没有真机恢复测试、写flash结果或已验证的bootloader替换方案。
+
+## 2026-11-09：重新检索型号专属资料
+
+检索范围包括WE410443、Singtel-ST、WPS/recovery/failsafe/TFTP、原始OpenWrt提交
+及后来的同型号变种实测。部分wiki/论坛直连被Anubis或抓取错误阻挡；可检索到
+wiki正文，并直接读取官方commit邮件与作者发布的变种实测，未将读取失败算成已读。
+
+### 已找到的直接证据
+
+| 来源 | 明确记录 | 对本机的边界 |
+|---|---|---|
+| [OpenWrt首次支持提交](https://lists.infradead.org/pipermail/lede-commits/2025-June/025765.html)，`b6a07dd0914e`，2025-06-07发布 | 作者因bootloader密码锁采用外接SPI写入，并配置bootpartition后安装 | 支持这条已发表安装路线；不证明所有运营商变种的bootloader完全一样 |
+| [OpenWrt WE410443设备页](https://openwrt.org/toh/arcadyan/astoria/we410443)，OEM installation/TFTP章节 | 记载SPI安装；TFTP boot入口有未知密码阻碍 | 未提供Singtel-ST按WPS开机进入Web recovery的实测步骤 |
+| [Telus变种作者记录](https://gist.github.com/dthomas1202/37eb8179457eb73d31a5d57da935824e)，2026-06-05 | 作者报告Telus的bootloader未锁，可经串口访问并使用TFTP；其镜像还需处理不同TRX预期 | 是Telus证据，不能当Singtel-ST免密码或镜像通用的证明 |
+| [Singtel WE410443-ST规格](https://cdn1.singteldigital.com/content/dam/singtel/business/sb/Support/connectivity/routers/singnet/Singtel_Mesh_Extender_WE410443-ST_v1.2.pdf)，§2.4 | 定义WPS配对与灯态 | 未给出bootloader recovery按键流程 |
+
+### 检索结论与未解
+
+本轮未找到可核验的Singtel-ST “WPS+上电→某IP的免密码recovery”步骤。
+这是有范围的检索结果，不是对功能不存在的证明；旧Claude泛用fork方案不能升级成
+型号专属操作说明。现在也没有依据建议继续猜测不同的按住时长或破坏镜像来触发模式。
+
+如果继续核实入口，可先读取本机UART启动日志，与上述发布记录核对。
+设备页给出的串口规格是3.3V、57600、8N1；串口日志读取不等于绕过菜单密码。
+SPI则是文献已记录的安装/备份路径，实际实施前仍须核对本机芯片、分区和备份。
+本次网络检索没有进行任何设备写入或恢复出厂。
