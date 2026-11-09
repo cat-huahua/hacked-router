@@ -42,7 +42,7 @@ dhcrelay 首轮 5,029 条记录，autoanalysis 超时；后续 autoanalysis 正�
 
 ## 尚未解密与材料边界
 
-- 内嵌 Wi-Fi MCU 的 N9、CR4 firmware：loader 明确设置加密下载标志，匹配 key 和完整 cipher 尚未确定，仍是密文。ROM patch 未设置该标志，但 ISA/入口布局未确认。见 [MCU 证据](singtel-extender-embedded-mcu.md)。
+- 内嵌 Wi-Fi MCU 的 N9、CR4 firmware：loader 明确设置加密下载标志，匹配 key 和完整 cipher 尚未确定，仍是密文。ROM patch 未设置该标志；后续已确认 NDS32 代码，并完成55个候选函数的自动导出，入口完整语义与外部 ROM 仍缺失，见 [patch 分析](singtel-extender-rom-patch.md)。见 [MCU 证据](singtel-extender-embedded-mcu.md)。
 - bootloader 本体未包含在现有材料中，无法据此恢复完整 recovery 实现。
 - pseudocode 不等于原始或可编译 C，尚未全部逐函数人工验证，也没有据此生成或验证可刷写的 OpenWrt 镜像。
 - 本篇仅涵盖 extender 样本；主路由器独立 image_manager 容器问题不据此宣告解决。

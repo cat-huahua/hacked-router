@@ -65,7 +65,7 @@ CR4_mode = 0x80000010 | (CR4_feature & 7)
 ## 未解
 
 - 匹配的 MCU key、实际 cipher/初始化规则，以及 MCU 下载接收端代码。
-- ROM patch 的 ISA、entry layout 和完整处理器端语义。
+- ROM patch 后续已识别 NDS32 代码并导出候选函数，见 [patch 分析](singtel-extender-rom-patch.md)；完整 entry layout、外部 ROM 与处理器端语义仍未恢复。
 - 当前已能解释 host 如何要求解密与发送 ciphertext，尚不能生成解密后的 N9/CR4 code。
 - 发送链之外的匿名数据、间接调用和外部硬件功能不在本篇已排除范围内。
 

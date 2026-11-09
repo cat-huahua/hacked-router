@@ -58,7 +58,7 @@ N9 路径以 `MtCmdFwStartReq(adapter, 1, first_region_address)` 启动，故本
 
 ROM patch 使用 30-byte header，随后 11,072-byte payload。外层包含构建日期、
 platform、hardware/software version、patch version 与 checksum；格式与上述
-官方 `mt7615_patch_hdr` 相符。checksum 本轮仅解析，尚未独立验证其计算结果。
+官方 `mt7615_patch_hdr` 相符。checksum 后续已与 payload 的16-bit one's-complement sum匹配，见 [patch分析](singtel-extender-rom-patch.md)；这不构成签名或密码算法验证。
 
 本 kernel 的 `AndesMTLoadRomMethodFwDlRing` 用 `size - 0x1e` 计算长度，
 从 blob `+0x1e` 下载到配置地址 `0x80000`，mode=`0x80000000`，没有 ENCRYPT 位；
@@ -74,8 +74,9 @@ patch payload。payload 仍可能包含 patch tables、代码和数据，不能�
   ARM Cortex-R4；将此 CR4 blob 对应到该核心有硬件资料与 driver 命名支持，
   但尚未验证本样本解密后指令和启动状态。
   参见 [AsiaRF AW7615-NP1 datasheet](https://asiarf.com/wp-content/uploads/2023/08/AW7615-NP1_V1-P1-conpressed.pdf)。
-- N9 和 ROM patch 的精确 ISA/entry layout 尚未由本样本确认。名称 `N9` 或
-  driver 前缀 `Andes` 本身不足以完成 ISA 识别。有限的 architecture 字符串检索也未给出确认信息。
+- N9 主映像仍加密，解密后指令与 entry layout 未验证。后续 ROM patch 已由表内地址、
+  NDS32 指令及调用关系确认代码 ISA，并导出55个候选函数，见 [ROM patch 分析](singtel-extender-rom-patch.md)；
+  完整入口语义与 ROM 外部目标仍未恢复，不能把 patch 的结果当成主映像已解密。
 - 本机 `rasm2 -L` 列出 `nds32` / `AndesTar v3 NDS32 (binutils)`，Ghidra 安装含 ARM
   processor；这些是工具能力，不是本样本 ISA 的证据。本轮没有强行按 ARM/MIPS/NDS32
   对未知或加密 bytes 生成所谓“已完成反编译”的结果。

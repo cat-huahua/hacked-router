@@ -353,3 +353,6 @@ kernel另外内嵌[MT7615 MCU映像](docs/singtel-extender-embedded-mcu.md)，�
 后续：[N9/CR4 解密边界](docs/singtel-extender-mcu-decrypt-path.md)、
 [MCU loader 缺陷审查](docs/singtel-extender-mcu-loader-audit.md)与
 [安全/可靠性清单](docs/singtel-extender-security-review.md)。密钥仍未取得，条件性代码缺陷不等于已验证的远程利用。
+
+MCU 后续静态分析：[ROM patch NDS32代码](docs/singtel-extender-rom-patch.md)已导出55个候选函数；
+[下载前 key 搜索](docs/singtel-extender-mcu-key-search.md)记录初始化顺序及密文模式。N9/CR4匹配key仍未恢复。
