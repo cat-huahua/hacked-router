@@ -349,3 +349,7 @@ netgear_r7800/  NETGEAR SOAP API 客户端
 完成范围见[覆盖记录](docs/singtel-extender-decompile-coverage.md)。
 kernel另外内嵌[MT7615 MCU映像](docs/singtel-extender-embedded-mcu.md)，其中两个RAM映像仍为加密下载格式；
 不能把rootfs已解出或ELF导出成功称作所有内嵌code都已解密。
+
+后续：[N9/CR4 解密边界](docs/singtel-extender-mcu-decrypt-path.md)、
+[MCU loader 缺陷审查](docs/singtel-extender-mcu-loader-audit.md)与
+[安全/可靠性清单](docs/singtel-extender-security-review.md)。密钥仍未取得，条件性代码缺陷不等于已验证的远程利用。

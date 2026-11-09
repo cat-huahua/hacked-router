@@ -79,7 +79,7 @@ helper 设置以下curl选项，数字来自实际 `curl_easy_setopt` 参数：
 服务端证书的CA链验证。样本显式开启 VERIFYPEER，而没有设为0。
 另一方面，VERIFYHOST的实际值是1；不能把它写成现代常用的2，或未核对便声称
 完整hostname匹配已启用。捆绑 `libcurl.so.4` 含 `libcurl/7.19.6` 字符串，历史版本
-和厂商补丁的具体hostname行为需继续查看该libcurl实现。
+和厂商补丁的具体hostname行为已在本文末尾按实际 libcurl binary 补充：无 SAN 的 CN fallback 对值1不拒绝名称不匹配，SAN 路径仍检查匹配。
 
 如果通过合法的本机配置控制 `Url` 为 HTTP，则这条服务链支持HTTP，TLS选项对HTTP
 不会建立TLS会话。二进制本身还有内置HTTP测试地址默认值（此处不复制地址）。
@@ -159,7 +159,7 @@ WRITEFUNCTION=20011、WRITEDATA=10001。POST与下载均在perform成功后读�
 ## 未解
 
 - 真机运行时的Url与接口路由；配置生成者与出厂公共URL已在后续补充确认。
-- libcurl 7.19.6厂商构建对VERIFYHOST=1的精确实现，以及CA目录运行时内容。
+- CA目录运行时内容、实际服务端证书及网络条件；vendor libcurl 的 VERIFYHOST=1 分支已在文末静态核对。
 - 结果回报所有数值的业务意义、重试/重启窗口的完整状态机。
 - HTTP响应buffer边界、超长/异常JSON容错；本轮未做fuzz或目标执行。
 - footer 保留字段语义、异常输入与设备实际接受条件仍未穷尽，仍需与recovery链分开验证。
@@ -330,8 +330,9 @@ ARC_SYS_AUTOFW_Url=https://firmware.singnet.com.sg
 | helper内部封装decoder | `0x4011a0` | `0x11a0` |
 | helper `sha256_hash` | `0x40cd84` | `0xcd84` |
 
-尚缺的最终验证是：对原厂样本复现完整footer校验，然后对离线重打包产物复现同一检查；
-在此之前不宣布修改后的镜像可供recovery或正常更新安全刷写。
+后续已对原厂样本完成两个 envelope 的解码、摘要比较及版本尾记录 CRC 核对，见
+[footer 补充证据](singtel-firmware-footer.md)。离线重打包产物是否通过同一检查、完整设备
+接受链与 recovery 兼容性仍未验证，不能据此宣布修改后的镜像可安全刷写。
 
 ## 已解：本样本 `]Cot` 头 +8 的 CRC（2026-10-24）
 
@@ -354,3 +355,45 @@ crc = zlib.crc32(image[12:length]) ^ 0xffffffff
 
 本结果覆盖当前原厂样本的flag bit0=0分支；其它flag/长度异常组合仍按代码独立验证。
 CRC恢复不解决footer封装或签名接受问题。
+
+
+## 已解补充：vendor libcurl 的 VERIFYHOST=1 精确行为
+
+2026-11-09 对解包的 `usr/lib/libcurl.so.4.1.1` 继续核对，没有执行目标 ELF、建立
+TLS 连接或构造拦截流量。结果由实际 binary 支持，不是按 `libcurl/7.19.6` 字符串推测。
+
+`Curl_setopt` 对 option `81` 原样保存整数到会话对象 `+0x224`，没有把1自动规范化为2。
+证书处理函数首先在该值非零时进入 hostname 检查，随后区分两条路径：
+
+- **SAN extension 存在**：遍历 DNS/IP 类型，匹配失败返回 `0x33`。值1在此路径仍要求匹配。
+- **没有 SAN、回退到 CN**：要求能取得可解析 CN，并做字符串长度一致性检查；
+  hostname matcher 返回不匹配时，只有 `verifyhost > 1` 才设置错误。
+  因此 `autofw` 实际设置的1不会因 CN 名称不匹配而终止这条分支。
+
+CA 验证没有因此关闭：后续 `SSL_get_verify_result` 非零、且 `VERIFYPEER` 非零时仍返回
+`0x33`。这是特定 CN fallback 下的 hostname 验证缺口，不是“所有证书都接受”。
+实际利用条件还取决于 CA 信任、证书内容及网络条件，本轮没有动态复现。
+即使 TLS 接受，也不等于后续 firmware envelope / digest 检查会接受修改后的镜像。
+修复应设置 `VERIFYHOST=2`，同时更新受支持的 TLS 栈，并分别验证 CN/SAN 的正反测试。
+
+### vendor TLS 证据索引
+
+输入 SHA-256：`f0895cba9e91808787a8b5cb05af3dce7dd540b1a9b11d2c4666a9c1739eeb56`。
+该库是 ET_DYN；**本次 Ghidra 导出额外加了 `0x10000` image base**，与原始 ELF 地址不同。
+下表原始 RX 段的 ELF VA 与 file offset 相同，不把分析地址误写成文件偏移。
+
+| 证据 | Ghidra 导出 VA | 原始 ELF VA / file offset |
+|---|---:|---:|
+| `Curl_setopt` | `0x2a188` | `0x1a188` |
+| option81分支 / 原值保存 | `0x2a3b0` / `0x2b854–0x2b860` | `0x1a3b0` / `0x1b854–0x1b860` |
+| 证书检查函数（自动名 `FUN_0002d988`） | `0x2d988` | `0x1d988` |
+| hostname检查的非零门槛 | `0x2ed80–0x2ed88` | `0x1ed80–0x1ed88` |
+| `X509_get_ext_d2i` 的 SAN NID `0x55` | `0x2edc4–0x2ede8` | `0x1edc4–0x1ede8` |
+| SAN 无匹配拒绝 | `0x2ef28–0x2ef30` | `0x1ef28–0x1ef30` |
+| CN matcher / 阈值比较 | `0x2f100–0x2f144` | `0x1f100–0x1f144` |
+| peer结果与 `VERIFYPEER` 检查 | `0x2f378–0x2f3ac` | `0x1f378–0x1f3ac` |
+
+CN 分支关键指令为 `lw v0,0x224(s3)`、`slti v0,v0,2`、条件跳过设置错误；
+与 pseudocode 的 `1 < verifyhost` 相符。已用独立 r2 反汇编核对六个窗口的全部
+指令 bytes 等于原 ELF。私有证据在 `mcu-followup-20261109/tls-review/`；
+其中记录输入 hash、原始地址、分析 base 与调用参数，不含部署或利用脚本。

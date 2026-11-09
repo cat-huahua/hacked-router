@@ -109,3 +109,7 @@ patch payload。payload 仍可能包含 patch tables、代码和数据，不能�
 
 私有 `decode-all-20261109/embedded-code/manifest.json` 与 `regions.json` 保留完整
 提取、region、输入 hash、参考 source URL 与状态记录。没有上传 blob、设备凭据或 key。
+
+## 后续追踪
+
+[host 下载与解密边界](singtel-extender-mcu-decrypt-path.md)已将原始 payload 跟踪到 PCI DMA，并确认 CR4 reset-IV 的字段来源不一致。未找到匹配 key；N9/CR4 仍未解密。[loader 审计](singtel-extender-mcu-loader-audit.md)单独记录边界、分配与所有权问题及其触发前提。
