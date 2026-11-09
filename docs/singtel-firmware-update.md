@@ -219,14 +219,24 @@ S 是 T **之前**的独立 20 字节 trailer，CRC/chip 字段不在 T 的开�
            hcrc   0x5477A2E7   ← CRC32(header) 校验通过 ✓
            size   0x002CFFC0   （约 2.95 MB）
            dcrc   0xC7F8F6C5   ← CRC32(data) 校验通过 ✓
-0x2D0000 0xFF 填充（0x1C 字节）
-0x2D001C squashfs（rootfs）  magic "hsqs"
-0xDE3000 结束（= 文件大小 − 0x10000）
-0xDE3000 – 0xDF3000：64 KB 签名块（尾部）
+0x0005C – 0x2B520E  LZMA-alone stream（0x2b51b2 bytes）
+0x2B520E – 0x2D001C  0xFF 填充（110094 bytes，仍在 uImage data size / dcrc 范围内）
+0x2D001C – 0xDE287A  squashfs bytes_used（11610206 bytes，magic "hsqs"）
+0xDE287A – 0xDE3000  全零填充（1926 bytes）
+0xDE3000  ]Cot 声明范围结束（= 文件大小 − 0x10000）
+0xDE3000 – 0xDF3000  64 KiB footer（其开头0x290 bytes为HDR0结构）
 ```
 
-★ **uImage 的 hcrc 和 dcrc 都是对的**，说明 kernel 段是完整的标准 uImage；
-rootfs 是紧随其后的 squashfs（`hsqs`）。
+**2026-11-09 复核：uImage 的 hcrc、dcrc 与 ]Cot CRC 均命中样本值。**
+`hcrc` 计算先把64-byte uImage header中的该字段清零；`dcrc` 覆盖
+`[0x5c, 0x2d001c)`，包含 LZMA EOF 后的全部 `0xff` 填充。
+LZMA decoder 在 `0x2b520e` 达到 EOF，输出7,743,232 bytes，SHA-256为
+`9ccc2e7356de88658bbd1c905035695fc032f4784e697ec28cc3cc5c2cd4fb7a`。
+先前仅列 `0x2d0000` 起28-byte填充遗漏了更早的填充；该28-byte尾段同样属于uImage payload。
+
+squashfs superblock `+0x28` 的 u64 `bytes_used=0xb1285e` 确定实际有效结尾
+`0xde287a`。此前保存的11,677,668-byte squashfs slice 从 `0x2d001c` 延伸至
+`.trx` EOF，实际包含上述全零填充及64 KiB footer；不应把这个截取长度写成文件系统有效长度。
 
 样本最后 64 KiB 的起点为 T=`0xde3000`，带 `HDR0` 结构；
 主路由校验器另读 T 前 20 字节的 CRC/chip trailer，该样本此处全零且 CRC 不匹配。
@@ -327,3 +337,12 @@ ARC_SYS_SIMPLE_FW_UPGRADE done: %s
 | 实际 envelope 原语 | helper `0x11f78` / `0x11dd0`、`R_OpenInit`、`RSAPrivateDecrypt`、`DES3_CBCInit`、`sha256_hash`；详见 footer 文档 |
 | 结果字段 | `ARC_SYS_TempUpgradeResult`、`ARC_SYS_SIMPLE_FW_UPGRADE` |
 | 样本 | `WE410443-ST_v6.02.00_build14.trx`（`]Cot`，0xDE3000 + 0x10000） |
+
+
+### 整份 extender 镜像的区域核对记录
+
+本地 `router-notes-private/decode-all-20261109/region-inventory.json` 记录8个连续、
+不重叠区域的 offset / length / SHA-256，合计14,626,816 bytes，完整覆盖本样本。
+证据来自 `]Cot` 的长度/分区字段、uImage 的 size/CRC、LZMA decoder 的 EOF/unused_data、
+squashfs 的 bytes_used 与实际填充 byte 统计。全区域有清单不等于全字段语义已解：
+footer 两个 envelope 的内容仍未在这次核对中解密，余区非零字段也不擅自命名。

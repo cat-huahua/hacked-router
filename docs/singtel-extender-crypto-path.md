@@ -34,7 +34,7 @@ kernel；这条路径没有从 flash 取 AES key 的调用，也没有调用 AES
 | addresses | `0x55a140` | 32,911 个 little-endian u32，整体非递减 |
 | num_syms | `0x57a380` | u32=`32911` |
 | names | `0x57a390` | 每项单 byte 长度+token索引，按num_syms完整解码 |
-| names 结束 | `0x5d8d87` | 最后符号为 `bklist_remove_lock` |
+| names 结束 | `0x5d8d87` | 最后一项为 type `b` + name `klist_remove_lock` |
 | markers | `0x5d8d90` | 129 项，全部等于每第256个name相对names起点的偏移 |
 | token_table | `0x5d8fa0` | 256个NUL结束token |
 | token_index | `0x5d9320` | 256个u16，精确指回每个token |
@@ -126,8 +126,16 @@ kernel，然后 `pd` 上述地址；避免自动检测把 raw binary映射到错
 ## 已解：完整 rootfs 提取验证
 
 样本 `WE410443-ST_v6.02.00_build14.trx` 的 squashfs 起点为 `0x2d001c`。
-提取出的 squashfs 大小11,677,668 bytes，SHA-256：
-`b5b3a1cfb4591c72cf17fd8af2ccdc454547e750fdb996811afae3ba1042c935`。
+历史提取文件是从此起点一直截到原始 `.trx` EOF 的 slice，大小11,677,668 bytes，
+SHA-256 `b5b3a1cfb4591c72cf17fd8af2ccdc454547e750fdb996811afae3ba1042c935`。
+**该 slice 含文件系统尾部填充和额外64 KiB footer，不是 squashfs 自身的有效长度。**
+
+2026-11-09 逐字段复核：superblock `+0x28` 的 little-endian `bytes_used` 为
+`0xb1285e`（11,610,206 bytes），所以实际文件系统区间为
+`[0x2d001c, 0xde287a)`，SHA-256 为
+`342a8ea8c26b3245460004ae5b6f54773f002453305169e55163ef9982d14704`。
+其后 `[0xde287a, 0xde3000)` 的1,926 bytes全部为0；从 `0xde3000` 起才是64 KiB footer。
+原提取仍然有效，因为 unsquashfs 按 superblock/table 读取，并不把 slice 尾部都当作文件系统。
 
 `extender_rootfs.py` 编译 host-only `arc_xz_shim.c`，仅在子进程环境中设置
 `LD_PRELOAD`，由原生 `unsquashfs` 读取metadata/block/fragment。
