@@ -75,3 +75,6 @@ ttyS1::askfirst:/bin/login
 观察没有覆盖启动或重启，不排除其他接口、其他时段的更新流量。此次HTTPS页面检查也包含在抓包中。
 抓包已由用户停止；原始流量及设备标识留在私有 `mcu-dump-plan-20261112/`，不上传。
 这些证据不足以启动面向未知客户端的DHCP/DNS服务，也不证明已有修改镜像接受链。
+
+后续静态对照已确认上述68个Discover匹配内置探测常量，身份不一致由程序构造解释，
+见 [DHCP探测路径](singtel-extender-dhcp-detection.md)。这是正常backhaul探测，不是recovery客户端证据。

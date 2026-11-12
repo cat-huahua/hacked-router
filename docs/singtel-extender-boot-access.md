@@ -156,3 +156,10 @@ console=ttyS1,57600n8 root=/dev/mtdblock5 init=/sbin/preinit rootfstype=squashfs
 对该 raw kernel 大小写敏感字节检索未见 `tftp`、`firmware.singnet`、`bootcmd`、`bootargs`、`bootdelay`、小写 `recovery`；包含 Recovery 的 Wi-Fi/TCP 状态与错误处理字符串不构成固件恢复入口。唯一小写 `password` 命中来自无线 invalid PSK 的诊断文本（file `0x5f182c` 起），不是候选口令值或登录校验逻辑。
 
 当前证据更支持“此 kernel 常规启动本地 rootfs，再由 Linux 服务联网”，未定位用户当前 recovery 的独立下载器。内核没有 initramfs/网络启动的相关证据，不等同已穷尽整个 kernel，也不排除恢复模式运行另一份程序。下一步仍需将 recovery 实际网络请求与客户端代码对应。
+
+## 2026-11-12 后续证据
+
+[按键路径](singtel-extender-button-path.md)确认Linux运行后的WPS是配对、Reset约10秒是清配置并重启。
+[DHCP探测路径](singtel-extender-dhcp-detection.md)将已捕获Discover对应到内置探测函数，
+并补出OFFER→event9→普通Ethernet uplink选择→DHCP client/server切换。
+两者均没有建立bootloader recovery入口；缺少的该阶段代码不能由普通Linux流程替代。

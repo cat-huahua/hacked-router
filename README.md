@@ -356,3 +356,6 @@ kernel另外内嵌[MT7615 MCU映像](docs/singtel-extender-embedded-mcu.md)，�
 
 MCU 后续静态分析：[ROM patch NDS32代码](docs/singtel-extender-rom-patch.md)已导出55个候选函数；
 [下载前 key 搜索](docs/singtel-extender-mcu-key-search.md)记录初始化顺序及密文模式。N9/CR4匹配key仍未恢复。
+
+2026-11-12：[WPS/Reset实际动作](docs/singtel-extender-button-path.md)与
+[DHCP探测及上游切换](docs/singtel-extender-dhcp-detection.md)已对应到代码；尚无已验证的bootloader recovery触发序列。
