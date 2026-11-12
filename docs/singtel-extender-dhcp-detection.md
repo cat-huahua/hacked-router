@@ -21,7 +21,7 @@ WE410443 的 `drv_atdp.ko` 会主动构造 DHCP DISCOVER，vendor class 为 `KPN
 
 ## 未解／边界
 
-- 尚未做 OFFER 后的实时验证；没有证明所有 monitor switch 分支已恢复。
+- 已完成下述一次正常 upstream 实测；没有证明所有 monitor switch 分支已恢复。
 - 没有从此路径发现 recovery downloader、bootloader 改写或镜像签名绕过。
 - 正常 uplink 后能否访问固件服务器，仍受 DHCP hook、DNS、系统时间、TLS 和镜像校验约束，参见 `singtel-extender-boot-access.md` 与 autofw 文档。
 
@@ -43,3 +43,15 @@ WE410443 的 `drv_atdp.ko` 会主动构造 DHCP DISCOVER，vendor class 为 `KPN
 | DHCP helper | VA `0x00404ba8` / `0x00404b60` | restart client / stop server |
 
 ET_REL module 的 analysis address 是本次导出地址，不应直接当成设备 runtime VA 或原始文件偏移。上述用户态 VA 来自 MIPS ELF 的加载布局。私有 capture 仅公布字段匹配结果。
+
+## 2026-11-12 正常 upstream 实测
+
+电脑在直连 USB Ethernet 上提供受限 DHCP/DNS，经 Wi-Fi NAT 转发。响应探测后，设备以真实 client 身份完成 DHCPREQUEST/ACK，随后主动查询运营商 NTP 和 MQTT 域名。用户报告指示灯由红变蓝。这验证了本机本次正常 upstream 切换，不证明进入 recovery。
+
+三分钟 capture 包含 182 帧。可见 NTP client request 和 MQTT TCP SYN；这些请求本身不能证明服务器应答、校时成功或 MQTT 会话建立。此次没有据此得出固件签名绕过或 shell 访问成功的结论。
+
+### 补充证据索引
+
+- 私有 PCAP：2026-11-12 09:07:27 起约 180 秒；DHCP option 53 REQUEST/ACK、设备源 DNS query、NTP mode 3、TCP destination port 8883 / SYN。原始地址、设备标识和抓包不公开。
+- 私有 dnsmasq 日志：同窗口的 DHCPREQUEST/DHCPACK 与 DNS query/reply。
+- 用户现场反馈：“已变蓝”；这是人工灯色观察，非软件测量。
