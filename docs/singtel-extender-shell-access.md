@@ -64,3 +64,14 @@ ttyS1::askfirst:/bin/login
 
 原始 decompiled C/ASM、文件身份和连接观测留在私有
 `router-notes-private/mcu-dump-plan-20261112/`；不公开设备地址、节点标识、口令或 key。
+
+## 2026-11-12 直连接口观察补充
+
+一次已停止的过滤抓包覆盖约342秒，共1263个packet，snaplen为512 bytes。
+967个DNS查询均由电脑发向设备，未见设备主动查询已知更新域名，也未见设备主动建立TCP连接。
+同时记录11组电脑的DHCPREQUEST与设备ACK；另外68个Discover的Ethernet来源与标签MAC相近，
+但BOOTP client地址不同，客户端身份未确认，不能将其认定为recovery请求。
+
+观察没有覆盖启动或重启，不排除其他接口、其他时段的更新流量。此次HTTPS页面检查也包含在抓包中。
+抓包已由用户停止；原始流量及设备标识留在私有 `mcu-dump-plan-20261112/`，不上传。
+这些证据不足以启动面向未知客户端的DHCP/DNS服务，也不证明已有修改镜像接受链。
